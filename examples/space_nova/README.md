@@ -14,3 +14,20 @@ python3 -m ai3d character validate examples/space_nova/characters/mara_venn.json
 
 The example specifies design intent only: it does **not** fetch images,
 regenerate meshes, or join a head to a body automatically.
+
+## Generate Mara's head reference (Qwen image only)
+
+```bash
+python3 -m ai3d character reference \
+  examples/space_nova/characters/mara_venn.json \
+  --part head --dry-run
+# Inspect the preview, then run without --dry-run:
+python3 -m ai3d character reference \
+  examples/space_nova/characters/mara_venn.json \
+  --part head --width 384 --height 384 --steps 12
+```
+
+The part-specific prompt deliberately excludes the full-body master prompt.
+The resulting text-to-image reference may not perfectly match the original
+Mara image; do not infer identity preservation. Hunyuan and Paint3D are not
+launched by this command.

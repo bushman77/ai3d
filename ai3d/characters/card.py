@@ -149,9 +149,18 @@ def validate_card(card: object) -> list[str]:
                 for ref_id in refs:
                     if ref_id not in ref_ids:
                         errors.append(f"{tag} has unknown reference: {ref_id}")
+            ref_view = part.get("reference_view")
+            if ref_view is not None and (not _string(ref_view) or not ref_view.strip()):
+                errors.append(f"{tag}.reference_view must be a nonempty string")
+            elif ref_view is not None and isinstance(prompts, dict) and ref_view not in prompts.get("reference_views", {}):
+                errors.append(f"{tag}.reference_view is not defined in prompts.reference_views")
             pp = part.get("prompts")
             if not isinstance(pp, dict) or not all(_string(pp.get(k)) for k in ("geometry", "texture")):
                 errors.append(f"{tag}.prompts requires geometry and texture strings")
+            if isinstance(pp, dict):
+                for optional_prompt in ("reference", "negative"):
+                    if optional_prompt in pp and not _string(pp[optional_prompt]):
+                        errors.append(f"{tag}.prompts.{optional_prompt} must be a string")
             gen = part.get("generation")
             if not isinstance(gen, dict):
                 errors.append(f"{tag}.generation must be an object")

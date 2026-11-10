@@ -65,7 +65,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "Reconstruct a full-body A-pose with coherent proportions and practical sci-fi outfit silhouette.",
-        "texture": ""
+        "texture": "",
+        "reference": "Entire character standing upright in a relaxed A-pose, complete figure from head to feet with generous margins. Forest-green and charcoal engineering jumpsuit, reinforced seams, clean equipment belt, sturdy industrial boots. Camera at chest height, accurate human proportions, arms slightly separated, open hands fully visible, realistic hands and fingers. Studio lighting and clean light gray background. Only one character; include all limbs.",
+        "negative": ""
       },
       "generation": {
         "geometry_backend": null,
@@ -78,7 +80,8 @@
         "Correct proportions and complete silhouette",
         "Inspect the original shape before any reduction"
       ],
-      "notes": "Keep the main body independent of experiments on smaller parts."
+      "notes": "Keep the main body independent of experiments on smaller parts.",
+      "reference_view": "front"
     },
     {
       "id": "head",
@@ -89,7 +92,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "Reconstruct isolated head-and-neck geometry with clearly shaped eye sockets, eyelids, nose, lips, ears, and jaw while preserving Mara's identity.",
-        "texture": "Natural skin, consistent eye shape, facial expression, and hairline; no hair texture bleeding across the eyes."
+        "texture": "Natural skin, consistent eye shape, facial expression, and hairline; no hair texture bleeding across the eyes.",
+        "reference": "Portrait-quality isolated head-and-neck reference of the same adult character. Frame from hair crown to the base of the neck including only a glimpse of the high engineering collar. Face fills most of the image; do not depict the full body. Nearly front-facing with both eyes and ears visible, symmetrical believable facial proportions. Chestnut-brown hair tied back with clean side-swept hairline. Sharp distinctive cheekbones, slightly raised chin, one subtly arched eyebrow, confident aloof and faintly unimpressed expression. Explicit detailed upper and lower eyelids, natural eye sockets, nose bridge and nostrils, clearly formed lips and jawline. Soft even neutral studio lighting, no face-obscuring shadows, clean light-gray backdrop, high quality stylized-realistic character turnaround reference for precise 3D reconstruction.",
+        "negative": "No full body, no legs, no hands, no floating or severed head, no duplicate face, no asymmetrical eyes, no distorted anatomy, no extra people, no text, no watermark, no helmet, no kiosk, no dramatic shadows."
       },
       "generation": {
         "geometry_backend": null,
@@ -104,7 +109,8 @@
         "Recognizable expression and facial silhouette",
         "Inspect front and profile geometry before texture painting"
       ],
-      "notes": "Generate separately when full-body reconstruction loses facial anatomy."
+      "notes": "Generate separately when full-body reconstruction loses facial anatomy.",
+      "reference_view": "head_closeup"
     },
     {
       "id": "hair",
@@ -115,7 +121,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "Chestnut-brown hair pulled back, with clean hairline and consistent silhouette.",
-        "texture": ""
+        "texture": "",
+        "reference": "Close-up hair and hairline design reference only, showing a neat chestnut-brown tied-back hairstyle, front-to-side hairline transition and realistic volume. Neutral light-gray backdrop with hair fully visible.",
+        "negative": "No full body, no extra people, no text, no watermark, no helmet, no extravagant hairstyle."
       },
       "generation": {
         "geometry_backend": null,
@@ -127,7 +135,8 @@
       "quality_gates": [
         "Hairline does not obscure eyes"
       ],
-      "notes": "Region or separate mesh: choose during implementation."
+      "notes": "Region or separate mesh: choose during implementation.",
+      "reference_view": "head_closeup"
     },
     {
       "id": "outfit",
@@ -138,7 +147,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "",
-        "texture": "Forest-green and charcoal engineering jumpsuit, practical seams, reinforced details, modest wear."
+        "texture": "Forest-green and charcoal engineering jumpsuit, practical seams, reinforced details, modest wear.",
+        "reference": "Detailed reference of the forest-green and charcoal-gray engineering jumpsuit showing seams, reinforced material boundaries, high collar, fitted torso and practical industrial design. Avoid dramatic lighting and occlusion.",
+        "negative": ""
       },
       "generation": {
         "geometry_backend": null,
@@ -151,7 +162,8 @@
         "Material boundaries are clear",
         "Textures do not bleed across UV islands"
       ],
-      "notes": "A region need not be a separate mesh."
+      "notes": "A region need not be a separate mesh.",
+      "reference_view": "front"
     },
     {
       "id": "hands",
@@ -162,7 +174,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "",
-        "texture": ""
+        "texture": "",
+        "reference": "Close-up reference of a pair of realistically proportioned hands wearing fitted work gloves; fingers extended naturally and fully visible; neutral background, even lighting.",
+        "negative": "No extra fingers, no missing fingers, no full body, no text, no watermark."
       },
       "generation": {
         "geometry_backend": null,
@@ -174,7 +188,8 @@
       "quality_gates": [
         "Finger count and joint silhouettes are plausible"
       ],
-      "notes": "Can later become an independent mesh if needed."
+      "notes": "Can later become an independent mesh if needed.",
+      "reference_view": "front"
     },
     {
       "id": "equipment",
@@ -185,7 +200,9 @@
       "reference_ids": [],
       "prompts": {
         "geometry": "Separate small tool pouches and equipment attached at the belt, no handheld items.",
-        "texture": ""
+        "texture": "",
+        "reference": "Isolated detailed view of practical spacecraft repair belt equipment: pouches, holsters and small metallic repair tools, clean and functional geometry, on a neutral studio background without a full person.",
+        "negative": "No full person, no duplicated tools, no text, no watermark, no kiosk."
       },
       "generation": {
         "geometry_backend": null,
@@ -197,7 +214,8 @@
       "quality_gates": [
         "Accessories do not intersect the body unexpectedly"
       ],
-      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now."
+      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now.",
+      "reference_view": "three_quarter"
     }
   ],
   "assembly": {

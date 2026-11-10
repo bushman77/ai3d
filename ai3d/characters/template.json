@@ -44,6 +44,8 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -57,7 +59,8 @@
       "quality_gates": [
         "Correct proportions and complete silhouette"
       ],
-      "notes": "Keep the main body independent of experiments on smaller parts."
+      "notes": "Keep the main body independent of experiments on smaller parts.",
+      "reference_view": "front"
     },
     {
       "id": "head",
@@ -67,6 +70,8 @@
       "attachment": "neck (planned; not automatically merged)",
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -82,7 +87,8 @@
         "Nose, mouth, ears and jaw clearly formed",
         "Recognizable expression and facial silhouette"
       ],
-      "notes": "Generate separately when full-body reconstruction loses facial anatomy."
+      "notes": "Generate separately when full-body reconstruction loses facial anatomy.",
+      "reference_view": "head_closeup"
     },
     {
       "id": "hair",
@@ -92,6 +98,8 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -105,7 +113,8 @@
       "quality_gates": [
         "Hairline does not obscure eyes"
       ],
-      "notes": "Region or separate mesh: choose during implementation."
+      "notes": "Region or separate mesh: choose during implementation.",
+      "reference_view": "head_closeup"
     },
     {
       "id": "outfit",
@@ -115,6 +124,8 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -129,7 +140,8 @@
         "Material boundaries are clear",
         "Textures do not bleed across UV islands"
       ],
-      "notes": "A region need not be a separate mesh."
+      "notes": "A region need not be a separate mesh.",
+      "reference_view": "front"
     },
     {
       "id": "hands",
@@ -139,6 +151,8 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -152,7 +166,8 @@
       "quality_gates": [
         "Finger count and joint silhouettes are plausible"
       ],
-      "notes": "Can later become an independent mesh if needed."
+      "notes": "Can later become an independent mesh if needed.",
+      "reference_view": "front"
     },
     {
       "id": "equipment",
@@ -162,6 +177,8 @@
       "attachment": "to be defined",
       "reference_ids": [],
       "prompts": {
+        "reference": "",
+        "negative": "",
         "geometry": "",
         "texture": ""
       },
@@ -175,7 +192,8 @@
       "quality_gates": [
         "Accessories do not intersect the body unexpectedly"
       ],
-      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now."
+      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now.",
+      "reference_view": "three_quarter"
     }
   ],
   "assembly": {

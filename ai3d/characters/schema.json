@@ -291,6 +291,12 @@
             },
             "texture": {
               "type": "string"
+            },
+            "reference": {
+              "type": "string"
+            },
+            "negative": {
+              "type": "string"
             }
           }
         },
@@ -331,6 +337,10 @@
         },
         "notes": {
           "type": "string"
+        },
+        "reference_view": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

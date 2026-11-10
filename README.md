@@ -116,9 +116,22 @@ The reusable template and JSON Schema are in `ai3d/characters/`. See
 [the card format guide](ai3d/characters/README.md) and the
 [Mara Venn example](examples/space_nova/characters/mara_venn.json).
 
-**Generation by part and automatic assembly are not implemented yet.** The
-card establishes their persistent data contract and preserves identity,
-prompts, reference metadata and intended attachment relationships.
+**Per-part Qwen reference-image generation is implemented.** Shape generation,
+head-to-body alignment, and assembly are future work. The card maintains
+persistent design identity and per-part prompts independently of generated
+images and meshes.
+
+To preview Mara's head-specific Qwen prompt without running inference:
+
+```bash
+python3 -m ai3d character reference \
+  examples/space_nova/characters/mara_venn.json --part head --dry-run
+```
+
+Then remove `--dry-run` to create the head reference in
+`outputs/mara_venn_head_head_closeup/`. See the
+[reference generation guide](ai3d/characters/README.md) for settings and
+the identity-consistency limitations of text-to-image generation.
 
 ## Project layout
 

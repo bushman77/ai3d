@@ -29,3 +29,5 @@ reference image plus untextured mesh; no inference is launched in CI.
 
 - `test_character_cards.py`: schema version, source-card creation, parent
   cycles, reference IDs, non-overwriting persistence and CLI validation.
+- `test_character_reference.py`: Qwen per-part prompt isolation, CLI dry run,
+  safe output policy, resume caching and generated metadata with mocked image inference.
