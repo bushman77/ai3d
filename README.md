@@ -2,6 +2,35 @@
 
 A project-agnostic, local-first toolkit for generating and preparing 3D assets.
 
+## Standalone CLI
+
+From the repository root (no additional host Python packages required for
+the CLI itself):
+
+```bash
+python3 -m ai3d --help
+python3 -m ai3d generate --help
+python3 -m ai3d inspect /path/to/model.glb
+```
+
+Generate from an image, reusing the existing separated Hunyuan, Paint3D
+and Blender installations:
+
+```bash
+python3 -m ai3d generate --name example_character \\
+  --image /path/to/reference.png --stop-after reference
+```
+
+All generated artifacts default to `outputs/<name>/`. The existing
+`space_nova_pipeline/space_nova_pipeline.py` path remains available as a
+compatibility launcher. The current pipeline continues to produce a final
+`06_game.glb` filename and `game` stage for compatibility; neither requires
+Space Nova to run. More expressive export naming will come later.
+
+`inspect` performs read-only structural GLB metadata inspection; add
+`--require-texture` to require UVs, image metadata, and a base-color texture
+reference. This is not a full glTF conformance or visual-quality check.
+
 ## Project layout
 
 - `ai3d/`: reusable Python modules, including GLB structural validation,
@@ -72,6 +101,12 @@ Python test suite.
 
 The legacy CLI also accepts optional `--sd-cli` and `--qwen-model-dir`
 overrides, with the original known-working local defaults preserved.
+
+**Phase 4:** orchestration moved into `pipelines/image_to_3d.py`, with
+`python3 -m ai3d generate` and `python3 -m ai3d inspect` as
+project-independent entry points. The older Space Nova launcher now delegates
+to the same pipeline without duplicating generation logic. No AI weights,
+CUDA environments, or runtime assets were changed.
 
 ## Run tests
 

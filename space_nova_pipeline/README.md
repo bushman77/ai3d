@@ -4,7 +4,10 @@ A working command-line orchestrator for the tools **already installed** on the u
 
 `Qwen-Image (optional) → background removal → Hunyuan3D-2mini → paint-prep mesh → Paint3D → material-preserving Blender optimization → validation report`
 
-**Two real Python scripts are supplied:** `space_nova_pipeline.py` (orchestration) and `space_nova_blender_finalize.py` (preserves existing paint, UVs and materials while reducing triangles).
+**Compatibility launchers:** `space_nova_pipeline.py` now delegates to
+`pipelines/image_to_3d.py`, and `space_nova_blender_finalize.py` delegates to
+`ai3d/optimization/blender_finalize.py`. The general-purpose CLI is
+`python3 -m ai3d generate` or `python3 -m ai3d inspect`.
 
 This is **not** a rigging or animation solution. It also **does not automatically repair missing facial topology, face identity, or texture seams**; these require review of the intermediate GLBs. Full automatic humanoid retopology and rigging are separate projects.
 
