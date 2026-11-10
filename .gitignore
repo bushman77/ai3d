@@ -6,6 +6,7 @@
 # Excluding them also avoids accidentally adding embedded Git repositories.
 /AiGameKit/
 /Hunyuan3D-2/
+/stable-diffusion.cpp/
 
 # AI weights, generated characters and inference output (root-level runtime data).
 /models/

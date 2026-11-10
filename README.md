@@ -220,3 +220,28 @@ python3 space_nova_pipeline/space_nova_pipeline.py --help
 
 No AI packages are required for these tests. For existing image-to-3D
 workflows, see `space_nova_pipeline/README.md` and `DEPENDENCIES.md`.
+
+## Local stable-diffusion.cpp dependency
+
+The default executable is now `~/ai3d/stable-diffusion.cpp/build/bin/sd-cli`.
+An existing installation can be reused with a symbolic link, without moving
+source code, duplicating model weights or rebuilding CUDA:
+
+```bash
+ln -s "$HOME/ai-image/stable-diffusion.cpp" "$HOME/ai3d/stable-diffusion.cpp"
+./doctor.sh
+./install.sh --dry-run --only sd-cpp
+```
+
+Both a real local checkout and a valid symlink are supported. The installer
+**never overwrites a symlink or builds through one**. A broken symlink produces
+a clear error rather than being treated as an absent checkout. The link/checkout
+is excluded from Git using `/stable-diffusion.cpp/`.
+
+On a fresh install without a checkout, `./install.sh --apply --only sd-cpp`
+can build the pinned source into the same project-local path, subject to
+CUDA and build prerequisites. This is an intentionally limited installer:
+it does not set up every model or Python environment.
+
+Use `SD_ROOT`/`SD_CLI` shell overrides or the generation command's
+`--sd-cli` argument when pointing AI3D at a different executable.

@@ -6,12 +6,19 @@ import unittest
 
 from ai3d.geometry.hunyuan import build_prepaint_command, build_shape_command
 from ai3d.image.background import build_cutout_command
-from ai3d.image.qwen import build_qwen_command
+from ai3d.image.qwen import DEFAULT_SD_CLI, build_qwen_command
 from ai3d.textures.paint3d import build_texture_command
 from space_nova_pipeline.space_nova_pipeline import arguments
 
 
 class BackendAdapterTests(unittest.TestCase):
+    def test_qwen_default_is_project_local_and_symlink_compatible(self):
+        self.assertEqual(DEFAULT_SD_CLI, Path(__file__).resolve().parents[1] / "stable-diffusion.cpp/build/bin/sd-cli")
+
+    def test_pipeline_parser_default_matches_qwen_adapter(self):
+        options = arguments(["--name", "test", "--stop-after", "shape"])
+        self.assertEqual(options.sd_cli, DEFAULT_SD_CLI)
+
     def test_qwen_command_matches_legacy_arguments(self):
         command = build_qwen_command(Path("/sd-cli"), Path("/weights"),
                                      "a space captain", Path("/output.png"))

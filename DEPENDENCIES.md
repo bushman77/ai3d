@@ -1,6 +1,6 @@
 # Space Nova AI3D — Dependency Inventory
 
-This is an inventory of the *currently working local generator*, not a reproducible lockfile yet. The launcher currently expects fixed paths in `~/ai-image` and `~/ai3d`. Record tested versions/commits before attempting a clean-machine installation.
+This is an inventory of the *currently working local generator*, not a reproducible lockfile yet. The launcher now defaults to `~/ai3d/stable-diffusion.cpp` and `~/ai3d` dependency paths. On existing machines, `stable-diffusion.cpp` may be a symlink to an external installation (for example `~/ai-image/stable-diffusion.cpp`). Record tested versions/commits before attempting a clean-machine installation.
 
 ## 1. System / build prerequisites
 
@@ -34,7 +34,7 @@ sudo apt install -y \
 
 | Component | Upstream | Local launcher expectation | Purpose |
 |---|---|---|---|
-| `stable-diffusion.cpp` | https://github.com/leejet/stable-diffusion.cpp | `~/ai-image/stable-diffusion.cpp/build/bin/sd-cli` | Qwen image reference generation; build with `-DSD_CUDA=ON` |
+| `stable-diffusion.cpp` | https://github.com/leejet/stable-diffusion.cpp | `~/ai3d/stable-diffusion.cpp/build/bin/sd-cli` (real directory or symlink) | Qwen image reference generation; build with `-DSD_CUDA=ON` |
 | Hunyuan3D-2 | https://github.com/Tencent-Hunyuan/Hunyuan3D-2 | `~/ai3d/Hunyuan3D-2` | Background removal and Hunyuan3D-2mini shape generation |
 | AiGameKit / Paint3D | https://github.com/maikramer/AiGameKit | `~/ai3d/AiGameKit/Paint3D` | Multi-view texture inference, UV atlas and PBR baking |
 | Blender | https://www.blender.org/ | `blender` on PATH | GLB prepaint mesh decimation, final optimization, rig tooling |
@@ -126,7 +126,7 @@ python3 --version
 ~/ai3d/AiGameKit/Paint3D/.venv/bin/python --version
 ~/ai3d/Hunyuan3D-2/.venv/bin/python -m pip freeze > hunyuan-freeze.txt
 ~/ai3d/AiGameKit/Paint3D/.venv/bin/python -m pip freeze > paint3d-freeze.txt
-~/ai-image/stable-diffusion.cpp/build/bin/sd-cli --help | head
+~/ai3d/stable-diffusion.cpp/build/bin/sd-cli --help | head
 ```
 
 The `pip freeze` outputs are **machine snapshots**, not automatically portable universal requirements files. Review/edit them before pinning versions or adding them to the repository.

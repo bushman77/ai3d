@@ -1,13 +1,12 @@
 
 #!/usr/bin/env bash
-# Space Nova AI3D — dependency-aware installer (safe initial version)
+# AI3D — dependency-aware installer (safe initial version)
 # Default: dry run. --apply can build ONLY a missing stable-diffusion.cpp.
 # Existing Hunyuan/Paint3D environments, models and drivers are never modified.
 set -Eeuo pipefail
 
 ROOT="${AI3D_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
-IMAGE_ROOT="${AI_IMAGE_ROOT:-$HOME/ai-image}"
-SD_ROOT="${SD_ROOT:-$IMAGE_ROOT/stable-diffusion.cpp}"
+SD_ROOT="${SD_ROOT:-$ROOT/stable-diffusion.cpp}"
 SD_CLI="${SD_CLI:-$SD_ROOT/build/bin/sd-cli}"
 HUN_ROOT="${HUNYUAN_ROOT:-$ROOT/Hunyuan3D-2}"
 PAINT_ROOT="${PAINT3D_ROOT:-$ROOT/AiGameKit/Paint3D}"
@@ -32,7 +31,9 @@ This is the initial safe installer, not yet a full fresh-machine setup.
 It NEVER changes installed NVIDIA drivers, CUDA, Python environments,
 PyTorch, model weights, or existing third-party source checkouts.
 
-Overrides: AI3D_ROOT, AI_IMAGE_ROOT, SD_ROOT, SD_CLI,
+Default sd.cpp location: <AI3D_ROOT>/stable-diffusion.cpp (directory or symlink).
+Existing symlinks are reused, never replaced or built through.
+Overrides: AI3D_ROOT, SD_ROOT, SD_CLI,
            HUNYUAN_ROOT, PAINT3D_ROOT, BUILD_JOBS.
 HELP
 }
@@ -80,6 +81,9 @@ check_python() {
 
 build_missing_sd() {
   local tool rev arch stage
+
+  # A link is an external installation. Never build into or replace its target.
+  [[ ! -L "$SD_ROOT" ]] || abort "Existing symlink at $SD_ROOT; refusing to build through or replace it"
 
   for tool in git cmake g++ nvcc nvidia-smi; do
     command -v "$tool" >/dev/null 2>&1 ||
@@ -146,6 +150,10 @@ build_missing_sd() {
 }
 
 check_sd() {
+  if [[ -L "$SD_ROOT" && ! -d "$SD_ROOT" ]]; then
+    abort "Broken stable-diffusion.cpp symlink: $SD_ROOT (repair the target before continuing)"
+  fi
+
   if [[ -x "$SD_CLI" ]]; then
     reuse stable-diffusion.cpp "$SD_CLI"
 
@@ -169,7 +177,7 @@ check_sd() {
   fi
 }
 
-printf 'Space Nova AI3D installer — %s\n' "$([[ "$APPLY" -eq 1 ]] && echo APPLY || echo DRY RUN)"
+printf 'AI3D installer — %s\n' "$([[ "$APPLY" -eq 1 ]] && echo APPLY || echo DRY RUN)"
 printf 'Root: %s\n' "$ROOT"
 
 case "$ONLY" in

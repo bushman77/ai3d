@@ -1,12 +1,12 @@
 """Pure command builder for guarded Qwen image reference generation.
 
 This module does not load image models or import CUDA dependencies.
-The defaults preserve the original tested local configuration.
+Defaults use the AI3D-local dependency path; this may be a real directory or a symlink.
 """
 
 from pathlib import Path
 
-DEFAULT_SD_CLI = Path.home() / "ai-image/stable-diffusion.cpp/build/bin/sd-cli"
+DEFAULT_SD_CLI = Path(__file__).resolve().parents[2] / "stable-diffusion.cpp/build/bin/sd-cli"
 DEFAULT_MODEL_DIR = Path.home() / "models/Qwen-Image-2512"
 
 

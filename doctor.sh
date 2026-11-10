@@ -1,11 +1,10 @@
 
 #!/usr/bin/env bash
-# Space Nova AI3D — read-only dependency audit
+# AI3D — read-only dependency audit
 set -uo pipefail
 
 ROOT="${AI3D_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
-IMAGE_ROOT="${AI_IMAGE_ROOT:-$HOME/ai-image}"
-SD_ROOT="${SD_ROOT:-$IMAGE_ROOT/stable-diffusion.cpp}"
+SD_ROOT="${SD_ROOT:-$ROOT/stable-diffusion.cpp}"
 SD_CLI="${SD_CLI:-$SD_ROOT/build/bin/sd-cli}"
 HUN_ROOT="${HUNYUAN_ROOT:-$ROOT/Hunyuan3D-2}"
 PAINT_ROOT="${PAINT3D_ROOT:-$ROOT/AiGameKit/Paint3D}"
@@ -65,7 +64,7 @@ check_python() {
   fi
 }
 
-printf 'Space Nova AI3D dependency doctor (read-only)\n'
+printf 'AI3D dependency doctor (read-only)\n'
 printf 'AI3D root: %s\n' "$ROOT"
 
 section 'System tools'
@@ -100,6 +99,12 @@ else
 fi
 
 section 'Source-built inference'
+
+if [[ -L "$SD_ROOT" && ! -d "$SD_ROOT" ]]; then
+  fail 'sd.cpp symlink' "Broken symlink: $SD_ROOT"
+elif [[ -L "$SD_ROOT" ]]; then
+  ok 'sd.cpp symlink' "$(readlink -- "$SD_ROOT")"
+fi
 
 if [[ -x "$SD_CLI" ]]; then
   ok stable-diffusion.cpp "$SD_CLI"
