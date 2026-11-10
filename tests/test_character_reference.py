@@ -72,12 +72,14 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertEqual(view, "front")
         prompt = compose_reference_prompt(self.card, part, view)
         self.assertIn("A-pose", prompt)
-        self.assertIn("No cropped body parts", prompt)
+        self.assertIn("no cropped body parts", prompt.lower())
 
     def test_missing_dedicated_reference_prompt_rejected(self):
-        part, view = select_part_and_view(new_card("any_character"), "head")
+        card = new_card("any_character")
+        card["prompts"]["reference_views"]["head_closeup"] = "Front head close-up."
+        part, view = select_part_and_view(card, "head")
         with self.assertRaisesRegex(RuntimeError, "prompts.reference"):
-            compose_reference_prompt(new_card("any_character"), part, view)
+            compose_reference_prompt(card, part, view)
 
     def test_unknown_part_and_view_explained(self):
         with self.assertRaisesRegex(RuntimeError, "no part"):
