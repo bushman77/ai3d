@@ -31,6 +31,33 @@ Space Nova to run. More expressive export naming will come later.
 `--require-texture` to require UVs, image metadata, and a base-color texture
 reference. This is not a full glTF conformance or visual-quality check.
 
+## Blender round-trip validation (optional)
+
+Use an existing **already-textured static GLB** to exercise the real Blender
+optimizer without launching Qwen, Hunyuan, or Paint3D:
+
+```bash
+python3 -m ai3d inspect /path/to/painted.glb --require-texture
+
+python3 -m ai3d validate-blender /path/to/painted.glb \\
+  --name sample_blender_check --target-faces 15000 --dry-run
+
+python3 -m ai3d validate-blender /path/to/painted.glb \\
+  --name sample_blender_check --target-faces 15000
+```
+
+By default, this writes **only** to
+`outputs/sample_blender_check/`, including
+`blender_validated.glb`, `blender_validation.json` and
+`logs/blender_validation.log`. The input file is never overwritten.
+A nonempty output run directory is rejected; use a new `--name` for each
+validation. This check verifies structural GLB metadata and triangle counts,
+**not visual texture quality**. Inspect the resulting GLB in Blender Material
+Preview from front, side and back before treating it as production-ready.
+
+The built-in finalizer currently only targets static unrigged meshes.
+Animated or armature-bearing exports are not supported by this test.
+
 ## Project layout
 
 - `ai3d/`: reusable Python modules, including GLB structural validation,
@@ -107,6 +134,11 @@ overrides, with the original known-working local defaults preserved.
 project-independent entry points. The older Space Nova launcher now delegates
 to the same pipeline without duplicating generation logic. No AI weights,
 CUDA environments, or runtime assets were changed.
+
+**Phase 5:** added opt-in `ai3d validate-blender` for nondestructive
+Blender round-trip validation. Real Blender execution is only possible on a
+machine with Blender and a suitable textured GLB; CI covers command routing,
+path safety, reports, and validation logic with a mocked subprocess.
 
 ## Run tests
 

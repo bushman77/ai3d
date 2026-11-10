@@ -16,8 +16,8 @@ def main(argv: list[str] | None = None) -> int:
         description="AI3D: generate, inspect and validate local 3D assets",
     )
     root.add_argument(
-        "command", nargs="?", choices=("generate", "inspect"),
-        help="generate an asset, or inspect an existing GLB",
+        "command", nargs="?", choices=("generate", "inspect", "validate-blender"),
+        help="generate, inspect, or round-trip validate an existing textured GLB",
     )
     if not args or args[0] in ("-h", "--help"):
         root.print_help()
@@ -27,6 +27,12 @@ def main(argv: list[str] | None = None) -> int:
         from pipelines.image_to_3d import main as generate
 
         generate(args[1:], prog="ai3d generate")
+        return 0
+
+    if args[0] == "validate-blender":
+        from ai3d.blender_validation import parse_and_validate
+
+        parse_and_validate(args[1:])
         return 0
 
     if args[0] == "inspect":

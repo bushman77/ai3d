@@ -14,3 +14,9 @@ python3 -m unittest discover -s tests -v
 
 Live Blender glTF import/decimation/export and GPU inference remain separate,
 hardware-dependent integration tests.
+
+- `test_blender_validation.py`: safe validation-directory policy,
+  dry-run and structurally checked round trips using a mocked Blender command
+
+Real Blender GLB round trips must be run separately against a local textured
+static GLB. A passing metadata check does not imply visually correct textures.
