@@ -10,16 +10,22 @@ It never alters upstream repositories or original images/GLBs.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shutil
-import struct
 import subprocess
 import sys
-import time
+
+# Allow the legacy script to run directly from any working directory.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from ai3d.common import ensure_file, resolve
+from ai3d.export.validation import readable_glb
+from ai3d.pipeline_runner import Runner
 
 HOME = Path.home()
 AI3D = HOME / "ai3d"
@@ -71,137 +77,6 @@ def arguments() -> argparse.Namespace:
     p.add_argument("--qwen-swap", default="1G", help="systemd MemorySwapMax for optional Qwen stage")
     p.add_argument("--no-finalize", action="store_true", help="Use full painted GLB as final; skip polygon reduction")
     return p.parse_args()
-
-
-def resolve(p: Path) -> Path:
-    return p.expanduser().resolve()
-
-
-def ensure_file(path: Path, label: str) -> None:
-    if not path.is_file() or path.stat().st_size == 0:
-        raise RuntimeError(f"{label} missing/empty: {path}")
-
-
-def readable_glb(path: Path, need_texture: bool = False) -> dict:
-    """Quick self-contained GLB/glTF structural check; no rendering needed."""
-    ensure_file(path, "GLB")
-    with path.open("rb") as f:
-        header = f.read(12)
-        if len(header) != 12:
-            raise RuntimeError(f"Truncated GLB: {path}")
-        magic, version, total = struct.unpack("<4sII", header)
-        if magic != b"glTF" or version != 2 or total != path.stat().st_size:
-            raise RuntimeError(f"Invalid GLB v2 header: {path}")
-        size, kind = struct.unpack("<II", f.read(8))
-        if kind != 0x4E4F534A:
-            raise RuntimeError("GLB first chunk is not JSON")
-        doc = json.loads(f.read(size))
-    meshes = doc.get("meshes", [])
-    if not meshes:
-        raise RuntimeError(f"GLB has no meshes: {path}")
-    tris = 0
-    uv = False
-    textured_primitives = 0
-    for mesh in meshes:
-        for prim in mesh.get("primitives", []):
-            if prim.get("mode", 4) != 4:
-                raise RuntimeError("Non-triangle glTF primitive detected; manual review required")
-            index = prim.get("indices")
-            if index is not None:
-                tris += doc["accessors"][index]["count"] // 3
-            else:
-                tris += doc["accessors"][prim["attributes"]["POSITION"]]["count"] // 3
-            uv = uv or "TEXCOORD_0" in prim.get("attributes", {})
-            material_idx = prim.get("material")
-            if material_idx is not None:
-                materials = doc.get("materials", [])
-                if 0 <= material_idx < len(materials):
-                    pbr = materials[material_idx].get("pbrMetallicRoughness", {})
-                    if pbr.get("baseColorTexture") is not None:
-                        textured_primitives += 1
-    info = {
-        "file": str(path), "bytes": path.stat().st_size,
-        "meshes": len(meshes), "triangles": tris,
-        "materials": len(doc.get("materials", [])),
-        "textures": len(doc.get("textures", [])),
-        "images": len(doc.get("images", [])),
-        "uv0": uv, "base_color_primitives": textured_primitives,
-    }
-    if tris <= 0:
-        raise RuntimeError(f"GLB has no triangles: {path}")
-    if need_texture and not (uv and textured_primitives and info["images"]):
-        raise RuntimeError(f"GLB is missing applied UV/base-color material/images: {path}")
-    return info
-
-
-class Runner:
-    def __init__(self, root: Path, resume: bool, force: bool, dry: bool):
-        self.root = root
-        self.logs = root / "logs"
-        self.meta = root / ".stages"
-        self.resume = resume
-        self.force = force
-        self.dry = dry
-        if not dry:
-            self.logs.mkdir(parents=True, exist_ok=True)
-            self.meta.mkdir(parents=True, exist_ok=True)
-        self.timing: dict[str, dict] = {}
-
-    @staticmethod
-    def fingerprint(paths: list[Path], config: dict) -> str:
-        data = {"config": config, "paths": []}
-        for p in paths:
-            p = resolve(p)
-            if p.exists():
-                s = p.stat()
-                data["paths"].append([str(p), s.st_size, s.st_mtime_ns])
-            else:
-                data["paths"].append([str(p), "missing"])
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
-
-    def run(self, label: str, inputs: list[Path], outputs: list[Path], config: dict, action) -> None:
-        token = self.fingerprint(inputs, config)
-        stamp = self.meta / f"{label}.json"
-        if self.resume and not self.force and stamp.is_file() and all(o.is_file() and o.stat().st_size for o in outputs):
-            try:
-                previous = json.loads(stamp.read_text())
-                if previous.get("fingerprint") == token:
-                    print(f"[SKIP] {label}: validated cached outputs", flush=True)
-                    self.timing[label] = {"cached": True, "seconds": 0}
-                    return
-            except (OSError, ValueError):
-                pass
-        print(f"\n[RUN] {label}", flush=True)
-        begin = time.monotonic()
-        if not self.dry:
-            action()
-            for o in outputs:
-                ensure_file(o, label + " output")
-            stamp.write_text(json.dumps({"fingerprint": token, "outputs": [str(o) for o in outputs]}, indent=2))
-        self.timing[label] = {"cached": False, "seconds": round(time.monotonic() - begin, 1)}
-
-    def command(self, label: str, cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> None:
-        print("$ " + subprocess.list2cmdline(cmd), flush=True)
-        if self.dry:
-            return
-        log = self.logs / f"{label}.log"
-        with log.open("w") as fh:
-            result = subprocess.Popen(cmd, cwd=str(cwd) if cwd else None,
-                                      env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                      text=True, errors="replace", bufsize=1)
-            assert result.stdout is not None
-            for line in result.stdout:
-                fh.write(line)
-                fh.flush()
-                print(line, end="", flush=True)
-            code = result.wait()
-        if code:
-            raise RuntimeError(f"{label} failed (exit {code}). Full log: {log}")
-
-    def copy(self, source: Path, target: Path) -> None:
-        print(f"copy {source} -> {target}", flush=True)
-        if not self.dry and source != target:
-            shutil.copy2(source, target)
 
 
 def should_stop(args, stage):

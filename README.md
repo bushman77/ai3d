@@ -4,24 +4,39 @@ A project-agnostic, local-first toolkit for generating and preparing 3D assets.
 
 ## Project layout
 
-- `ai3d/`: reusable backend interfaces for image, geometry, textures,
-  rigging, animation, optimization and export
-- `pipelines/`: general-purpose pipeline orchestration (scaffold only)
-- `examples/`: application-specific integration examples
-- `tests/`: project-independent tests
+- `ai3d/`: reusable package modules, including GLB structural validation and
+  a stage/subprocess runner; image, geometry, textures, rigging, animation,
+  optimization and export backends are future integration targets
+- `pipelines/`: general-purpose orchestration (scaffold only)
+- `examples/space_nova/`: consumer-specific integration example (scaffold)
+- `tests/`: dependency-free unit tests
 - `config/`: future source/dependency manifests
-- `space_nova_pipeline/`: existing working experimental implementation
+- `space_nova_pipeline/`: existing working experimental implementation,
+  now reusing `ai3d` core utilities without changing its CLI
 - `doctor.sh` and `install.sh`: existing dependency checks and cautious bootstrap
 
-## Current state
+## Migration status
 
-**This commit introduces only a directory/package structure.** It does not
-migrate the working pipeline, change the Python environments, install
-software, or claim new generation features.
+**Phase 1 complete:** extracted filesystem helpers, GLB metadata validation,
+subprocess execution, stage caching and logging into reusable Python modules.
+The legacy `space_nova_pipeline.py` imports them, keeping its command-line
+interface and existing generation stages. The source-built AI engines, virtual
+environments, model weights and generated assets are not changed.
 
-Existing local upstream checkouts (AiGameKit and Hunyuan3D-2), model weights,
-assets, and runtime outputs stay in place and outside Git tracking.
-They remain independent dependencies; consult `DEPENDENCIES.md`.
+This extraction is not a complete new generation CLI. The existing runner's
+resume fingerprint uses input paths, file sizes, modification times and
+stage settings (not content hashes). `--dry-run` remains non-executing and
+cannot yet preview every subprocess command. GLB validation is structural,
+not a full glTF conformance or visual-quality check. Both limitations will
+be addressed in later migrations.
 
-The goal is reusable image-to-3D processing with configurable inputs,
-backends and output formats, not a tool tied to any particular game.
+## Run tests
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 space_nova_pipeline/space_nova_pipeline.py --help
+```
+
+No AI packages are required for these tests. For the existing image-to-3D
+workflow and hardware expectations, see `space_nova_pipeline/README.md` and
+`DEPENDENCIES.md`.
