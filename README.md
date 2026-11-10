@@ -98,6 +98,28 @@ after reviewing the debug images.
 `--painted-mesh`, which skips painting. All artifacts remain in the single
 `outputs/` root. Existing experimental assets remain untouched.
 
+## Reusable character cards
+
+Version 1 includes a **permanent, project-independent character-card
+template** with separate body, head, hair, clothing, hands and equipment
+sections. Each part can have its own prompts, references, generation
+preferences and quality gates. The source cards are editable JSON files,
+never temporary generated outputs.
+
+```bash
+python3 -m ai3d character init my_character --name "My Character"
+python3 -m ai3d character validate characters/my_character.json
+```
+
+New cards default to `characters/<id>.json`, a tracked source directory.
+The reusable template and JSON Schema are in `ai3d/characters/`. See
+[the card format guide](ai3d/characters/README.md) and the
+[Mara Venn example](examples/space_nova/characters/mara_venn.json).
+
+**Generation by part and automatic assembly are not implemented yet.** The
+card establishes their persistent data contract and preserves identity,
+prompts, reference metadata and intended attachment relationships.
+
 ## Project layout
 
 - `ai3d/`: reusable Python modules, including GLB structural validation,
@@ -183,6 +205,11 @@ path safety, reports, and validation logic with a mocked subprocess.
 **Phase 6:** optional `--paint-debug` exposes Paint3D's own selected
 multiview images, UV bake mask and intermediate atlases. Unit tests verify
 the environment and output contract without launching inference.
+
+**Phase 7:** versioned character-card definitions, JSON Schema, source-only
+templates and a standard-library `character init/validate` CLI. The worked
+Mara example lives outside the project-agnostic core. Character cards contain
+no live generation status or generated geometry.
 
 ## Run tests
 

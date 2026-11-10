@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "id": "example_character",
+  "name": "Example Character",
+  "category": "humanoid",
+  "project": null,
+  "revision": 1,
+  "identity": {
+    "role": "",
+    "species": "",
+    "age_group": "adult",
+    "personality_traits": [],
+    "backstory": "",
+    "continuity_rules": []
+  },
+  "appearance": {
+    "style": "stylized realistic",
+    "silhouette": "",
+    "face": "",
+    "hair": "",
+    "clothing": "",
+    "equipment": "",
+    "palette": [],
+    "recognition_traits": []
+  },
+  "prompts": {
+    "master": "",
+    "negative": "",
+    "reference_views": {
+      "front": "",
+      "three_quarter": "",
+      "side": "",
+      "back": "",
+      "head_closeup": ""
+    }
+  },
+  "references": [],
+  "parts": [
+    {
+      "id": "body",
+      "label": "Body / primary silhouette",
+      "kind": "mesh",
+      "parent": null,
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Correct proportions and complete silhouette"
+      ],
+      "notes": "Keep the main body independent of experiments on smaller parts."
+    },
+    {
+      "id": "head",
+      "label": "Head and face",
+      "kind": "mesh",
+      "parent": "body",
+      "attachment": "neck (planned; not automatically merged)",
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Eyes and eyelids readable in solid shading",
+        "Nose, mouth, ears and jaw clearly formed",
+        "Recognizable expression and facial silhouette"
+      ],
+      "notes": "Generate separately when full-body reconstruction loses facial anatomy."
+    },
+    {
+      "id": "hair",
+      "label": "Hair / head covering",
+      "kind": "region",
+      "parent": "head",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Hairline does not obscure eyes"
+      ],
+      "notes": "Region or separate mesh: choose during implementation."
+    },
+    {
+      "id": "outfit",
+      "label": "Clothing and surface materials",
+      "kind": "region",
+      "parent": "body",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Material boundaries are clear",
+        "Textures do not bleed across UV islands"
+      ],
+      "notes": "A region need not be a separate mesh."
+    },
+    {
+      "id": "hands",
+      "label": "Hands / gloves",
+      "kind": "region",
+      "parent": "body",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Finger count and joint silhouettes are plausible"
+      ],
+      "notes": "Can later become an independent mesh if needed."
+    },
+    {
+      "id": "equipment",
+      "label": "Equipment / accessories",
+      "kind": "attachment",
+      "parent": "body",
+      "attachment": "to be defined",
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Accessories do not intersect the body unexpectedly"
+      ],
+      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now."
+    }
+  ],
+  "assembly": {
+    "units": "meters",
+    "up_axis": "+Z",
+    "forward_axis": "-Y",
+    "rest_pose": "A-pose",
+    "rigging_required": false,
+    "notes": "Attachment points are design intentions until alignment/assembly tooling exists."
+  },
+  "provenance": {
+    "creator": "",
+    "license": "",
+    "notes": ""
+  },
+  "notes": []
+}

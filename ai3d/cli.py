@@ -16,12 +16,17 @@ def main(argv: list[str] | None = None) -> int:
         description="AI3D: generate, inspect and validate local 3D assets",
     )
     root.add_argument(
-        "command", nargs="?", choices=("generate", "inspect", "validate-blender"),
-        help="generate, inspect, or round-trip validate an existing textured GLB",
+        "command", nargs="?", choices=("generate", "inspect", "validate-blender", "character"),
+        help="generate, inspect, validate GLBs, or manage reusable character cards",
     )
     if not args or args[0] in ("-h", "--help"):
         root.print_help()
         return 0
+
+    if args[0] == "character":
+        from ai3d.characters.cli import main as character
+
+        return character(args[1:])
 
     if args[0] == "generate":
         from pipelines.image_to_3d import main as generate

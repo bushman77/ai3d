@@ -26,3 +26,6 @@ static GLB. A passing metadata check does not imply visually correct textures.
 
 The real Paint3D debug capture requires a GPU-equipped installation and a
 reference image plus untextured mesh; no inference is launched in CI.
+
+- `test_character_cards.py`: schema version, source-card creation, parent
+  cycles, reference IDs, non-overwriting persistence and CLI validation.

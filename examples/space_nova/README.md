@@ -1,6 +1,16 @@
-# Space Nova integration example
+# Space Nova integration examples
 
-This directory is reserved for **examples and integration adapters**, not
-for core AI3D behavior. AI3D must be usable without Space Nova.
+This folder is an **example consumer** of the project-independent AI3D
+toolkit, not a required AI3D dependency.
 
-No project-specific assets or generated models are included.
+`characters/mara_venn.json` illustrates a durable character card for
+a full-body spaceport engineer with separate head, hair, outfit, hands and
+equipment definitions. Its head prompt is independent of the full-body
+reference to support controlled shape reconstruction experiments.
+
+```bash
+python3 -m ai3d character validate examples/space_nova/characters/mara_venn.json
+```
+
+The example specifies design intent only: it does **not** fetch images,
+regenerate meshes, or join a head to a body automatically.

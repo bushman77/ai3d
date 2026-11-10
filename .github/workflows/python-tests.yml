@@ -23,4 +23,7 @@ jobs:
           python -m ai3d generate --help >/dev/null
           python -m ai3d inspect --help >/dev/null
           python -m ai3d validate-blender --help >/dev/null
+          python -m ai3d character --help >/dev/null
+          python -m ai3d character init --help >/dev/null
+          python -m ai3d character validate ai3d/characters/template.json
           python space_nova_pipeline/space_nova_pipeline.py --help >/dev/null

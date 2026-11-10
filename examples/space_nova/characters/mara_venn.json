@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "id": "mara_venn",
+  "name": "Mara Venn",
+  "category": "humanoid",
+  "project": "space_nova",
+  "revision": 1,
+  "identity": {
+    "role": "Spaceport repair engineer",
+    "species": "human",
+    "age_group": "adult",
+    "personality_traits": [
+      "confident",
+      "aloof",
+      "meticulous",
+      "subtly snobbish",
+      "faintly unimpressed"
+    ],
+    "backstory": "Adult engineer working at a science-fiction spaceport repair facility.",
+    "continuity_rules": [
+      "Keep Mara's facial proportions, eye shape and hairstyle consistent across references.",
+      "Keep costume colors and equipment consistent across all views.",
+      "Inspect head geometry in solid shading before painting."
+    ]
+  },
+  "appearance": {
+    "style": "stylized realistic 3D game character",
+    "silhouette": "Realistic human proportions, A-pose, arms slightly away, feet fully visible.",
+    "face": "Sharp distinctive face with one subtly arched eyebrow, visible eyelids, nose bridge, lips and jaw.",
+    "hair": "Chestnut-brown hair neatly tied back.",
+    "clothing": "Fitted forest-green and charcoal-gray engineering jumpsuit, reinforced seams, work gloves, dark industrial boots.",
+    "equipment": "Practical utility belt with small repair-tool attachments; no handheld props.",
+    "palette": [
+      "forest green",
+      "charcoal gray",
+      "chestnut brown",
+      "restrained metallic details"
+    ],
+    "recognition_traits": [
+      "sharp face",
+      "one arched eyebrow",
+      "confident, unimpressed expression",
+      "meticulous uniform"
+    ]
+  },
+  "prompts": {
+    "master": "Full-body character reference for a stylized science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she's the smartest technician in the room. Keep her attractive but believable, capable and clearly recognizable, with realistic human proportions and a memorable silhouette. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit with restrained metallic details, reinforced seams, practical utility belt, subtle repair-tool attachments, work gloves and sturdy dark industrial boots. Her clothes show mild signs of working around spacecraft, but she is unusually meticulous and tidy. No helmet, no bulky backpack, no tools held in her hands. Character is standing upright in a relaxed A-pose, arms slightly away from the torso, hands open and visible, legs separated slightly, feet fully visible. Entire character in frame from top of head to soles of boots, generous margins on all sides. Single character only, front three-quarter view, camera at chest height, accurate anatomy and symmetrical limbs. Soft even studio lighting, clean light-gray seamless background, no ground props, no scenery, no shadows obscuring the feet. High-quality stylized realistic 3D game character concept art, clearly separated clothing materials, crisp facial features and costume details, suitable as a reference image for image-to-3D mesh reconstruction.",
+    "negative": "No text, no labels, no watermark, no collage, no extra people, no cropped body parts, no additional limbs or fingers, no exaggerated caricature, no dramatic action pose, no kiosk.",
+    "reference_views": {
+      "front": "Neutral front view with upright A-pose and all body parts fully visible.",
+      "three_quarter": "Slight three-quarter view showing face, outfit and silhouette without occlusion.",
+      "side": "Clean orthographic side view with identical face and hairstyle.",
+      "back": "Straight back view consistent with other references.",
+      "head_closeup": "Same Mara Venn identity: head and neck, nearly front facing, eyes and eyelids clearly defined, sharp nose bridge, visible lips and jaw, even neutral lighting, both ears and full hairline visible."
+    }
+  },
+  "references": [],
+  "parts": [
+    {
+      "id": "body",
+      "label": "Body / primary silhouette",
+      "kind": "mesh",
+      "parent": null,
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "Reconstruct a full-body A-pose with coherent proportions and practical sci-fi outfit silhouette.",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Correct proportions and complete silhouette",
+        "Inspect the original shape before any reduction"
+      ],
+      "notes": "Keep the main body independent of experiments on smaller parts."
+    },
+    {
+      "id": "head",
+      "label": "Head and face",
+      "kind": "mesh",
+      "parent": "body",
+      "attachment": "neck (planned; not automatically merged)",
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "Reconstruct isolated head-and-neck geometry with clearly shaped eye sockets, eyelids, nose, lips, ears, and jaw while preserving Mara's identity.",
+        "texture": "Natural skin, consistent eye shape, facial expression, and hairline; no hair texture bleeding across the eyes."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Eyes and eyelids readable in solid shading",
+        "Nose, mouth, ears and jaw clearly formed",
+        "Recognizable expression and facial silhouette",
+        "Inspect front and profile geometry before texture painting"
+      ],
+      "notes": "Generate separately when full-body reconstruction loses facial anatomy."
+    },
+    {
+      "id": "hair",
+      "label": "Hair / head covering",
+      "kind": "region",
+      "parent": "head",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "Chestnut-brown hair pulled back, with clean hairline and consistent silhouette.",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Hairline does not obscure eyes"
+      ],
+      "notes": "Region or separate mesh: choose during implementation."
+    },
+    {
+      "id": "outfit",
+      "label": "Clothing and surface materials",
+      "kind": "region",
+      "parent": "body",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": "Forest-green and charcoal engineering jumpsuit, practical seams, reinforced details, modest wear."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Material boundaries are clear",
+        "Textures do not bleed across UV islands"
+      ],
+      "notes": "A region need not be a separate mesh."
+    },
+    {
+      "id": "hands",
+      "label": "Hands / gloves",
+      "kind": "region",
+      "parent": "body",
+      "attachment": null,
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Finger count and joint silhouettes are plausible"
+      ],
+      "notes": "Can later become an independent mesh if needed."
+    },
+    {
+      "id": "equipment",
+      "label": "Equipment / accessories",
+      "kind": "attachment",
+      "parent": "body",
+      "attachment": "to be defined",
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "Separate small tool pouches and equipment attached at the belt, no handheld items.",
+        "texture": ""
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null
+      },
+      "quality_gates": [
+        "Accessories do not intersect the body unexpectedly"
+      ],
+      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now."
+    }
+  ],
+  "assembly": {
+    "units": "meters",
+    "up_axis": "+Z",
+    "forward_axis": "-Y",
+    "rest_pose": "A-pose",
+    "rigging_required": false,
+    "notes": "Head-to-neck alignment is not yet automated. Approval of components precedes assembly."
+  },
+  "provenance": {
+    "creator": "Example adapted from the original Mara Venn prompt supplied by the project creator",
+    "license": "",
+    "notes": "No copyrighted image assets are included with this public example."
+  },
+  "notes": [
+    "This is a consumer example; AI3D itself remains project-independent.",
+    "Reference images and generated GLBs are intentionally not bundled with this source card."
+  ]
+}
