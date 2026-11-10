@@ -1,4 +1,4 @@
-# Space Nova — Local AI Asset Pipeline (v1)
+# Legacy Space Nova Example Pipeline
 
 A working command-line orchestrator for the tools **already installed** on the user's Pop!_OS laptop:
 
@@ -8,13 +8,23 @@ A working command-line orchestrator for the tools **already installed** on the u
 
 This is **not** a rigging or animation solution. It also **does not automatically repair missing facial topology, face identity, or texture seams**; these require review of the intermediate GLBs. Full automatic humanoid retopology and rigging are separate projects.
 
-## Install
+## Running the example
+
+Run from an AI3D checkout. No ZIP extraction or additional installation is
+required for the lightweight driver itself:
 
 ```bash
-mkdir -p ~/ai3d/space_nova_pipeline
-unzip ~/Downloads/space_nova_pipeline_v1.zip -d ~/ai3d/space_nova_pipeline
-python3 ~/ai3d/space_nova_pipeline/space_nova_pipeline.py --help
+cd ~/ai3d
+python3 space_nova_pipeline/space_nova_pipeline.py --help
 ```
+
+The default output root is now `~/ai3d/outputs/`: each named run is stored
+under `outputs/<name>/`, including logs and stage manifests. Use
+`--output-dir PATH` to override it; the old `--workdir PATH` flag remains an
+alias for compatibility. Existing `assets/` and `pipeline_runs/` are untouched.
+
+Paths in the Mara examples below refer to **experimental local inputs**;
+substitute your own image or GLB paths when using this public toolkit.
 
 The script does not install packages or edit your Hunyuan, Paint3D, Blender, Qwen, or Space Nova repositories.
 
@@ -25,19 +35,19 @@ This tests the final **material-preserving** optimizer without any AI inference:
 ```bash
 python3 ~/ai3d/space_nova_pipeline/space_nova_pipeline.py \
   --name mara_existing \
-  --painted-mesh ~/ai3d/outputs/mara_venn_textured_40k.glb \
+  --painted-mesh ~/ai3d/assets/mara/05_painted.glb \
   --game-faces 15000
 ```
 
-Output: `~/ai3d/pipeline_runs/mara_existing/06_game.glb`. Import it into Blender and activate **Material Preview** (`Z`, then `M`). The GLB's embedded base-color texture should still be present. Logs and `report.json` are in that run folder.
+Output: `~/ai3d/outputs/mara_existing/06_game.glb`. Import it into Blender and activate **Material Preview** (`Z`, then `M`). The GLB's embedded base-color texture should still be present. Logs and `report.json` are in that run folder.
 
 ## B. Repaint Mara using existing geometry (recommended next controlled experiment)
 
 ```bash
 python3 ~/ai3d/space_nova_pipeline/space_nova_pipeline.py \
   --name mara_repaint \
-  --image ~/ai3d/images/mara_venn_cutout.png \
-  --shape-mesh ~/ai3d/outputs/mara_venn.glb \
+  --image /path/to/reference.png \
+  --shape-mesh ~/ai3d/assets/mara/03_shape.glb \
   --paint-faces 40000 \
   --game-faces 15000 \
   --category humanoid \
@@ -45,14 +55,14 @@ python3 ~/ai3d/space_nova_pipeline/space_nova_pipeline.py \
   --stop-after paint
 ```
 
-Inspect `~/ai3d/pipeline_runs/mara_repaint/05_painted.glb` from front/side/back before final optimization. If happy with the paint stage, rerun the same command with **`--resume`**, changing only `--stop-after game`. The script will reuse previous steps if their inputs/settings are unchanged.
+Inspect `~/ai3d/outputs/mara_repaint/05_painted.glb` from front/side/back before final optimization. If happy with the paint stage, rerun the same command with **`--resume`**, changing only `--stop-after game`. The script will reuse previous steps if their inputs/settings are unchanged.
 
 ## C. From an existing image, including fresh geometry generation
 
 ```bash
 python3 ~/ai3d/space_nova_pipeline/space_nova_pipeline.py \
   --name mara_fresh \
-  --image ~/ai3d/images/mara_venn_cutout.png \
+  --image /path/to/reference.png \
   --paint-faces 40000 \
   --game-faces 15000 \
   --category humanoid \
@@ -88,7 +98,7 @@ Review `01_reference.png` before continuing with `--resume --stop-after cutout`,
 - `--no-finalize` retains the painted GLB unchanged if final decimation introduces texture artifacts.
 - `--category humanoid` uses Paint3D's documented category tuning.
 
-The driver defaults to `~/ai3d/Hunyuan3D-2`, `~/ai3d/AiGameKit`, and `blender` on PATH. Logs are saved per stage.
+The driver locates Hunyuan3D-2 and AiGameKit relative to this checkout, and uses `blender` on PATH. Logs are saved under `outputs/<name>/logs/` by default.
 
 ## Quality gates: why they're essential
 

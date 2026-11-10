@@ -13,7 +13,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
@@ -27,9 +26,10 @@ from ai3d.common import ensure_file, resolve
 from ai3d.export.validation import readable_glb
 from ai3d.pipeline_runner import Runner
 from ai3d.optimization.blender import build_finalize_command
+from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
 
 HOME = Path.home()
-AI3D = HOME / "ai3d"
+AI3D = PROJECT_ROOT
 QWEN = HOME / "models/Qwen-Image-2512"
 STAGES = ("reference", "cutout", "shape", "paint-mesh", "paint", "game")
 
@@ -41,7 +41,7 @@ def positive(value: str) -> int:
     return out
 
 
-def arguments() -> argparse.Namespace:
+def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Local Space Nova asset factory: reference -> cutout -> Hunyuan -> Paint3D -> textured GLB"
     )
@@ -52,7 +52,9 @@ def arguments() -> argparse.Namespace:
     p.add_argument("--enable-qwen", action="store_true", help="Explicitly opt in to Qwen generation (large memory use)")
     p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB instead of Hunyuan")
     p.add_argument("--painted-mesh", type=Path, help="Reuse an existing fully painted GLB; skips generation and Paint3D")
-    p.add_argument("--workdir", type=Path, default=AI3D / "pipeline_runs")
+    p.add_argument("--output-dir", "--workdir", dest="workdir", type=Path,
+                   default=DEFAULT_OUTPUT_ROOT,
+                   help="Root for all generated run files (default: <ai3d>/outputs)")
     p.add_argument("--hunyuan", type=Path, default=AI3D / "Hunyuan3D-2")
     p.add_argument("--aigamekit", type=Path, default=AI3D / "AiGameKit")
     p.add_argument("--blender", default="blender")
@@ -77,7 +79,7 @@ def arguments() -> argparse.Namespace:
     p.add_argument("--qwen-ram", default="10G", help="systemd MemoryMax for optional Qwen stage")
     p.add_argument("--qwen-swap", default="1G", help="systemd MemorySwapMax for optional Qwen stage")
     p.add_argument("--no-finalize", action="store_true", help="Use full painted GLB as final; skip polygon reduction")
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
 def should_stop(args, stage):
@@ -86,8 +88,6 @@ def should_stop(args, stage):
 
 def main():
     a = arguments()
-    if not re.fullmatch(r"[A-Za-z0-9_-]+", a.name):
-        raise RuntimeError("--name must contain letters, numbers, hyphens, underscores only")
     if a.force and a.resume:
         raise RuntimeError("Choose either --force or --resume, not both")
     if a.prompt_file and not a.enable_qwen:
@@ -99,7 +99,7 @@ def main():
     if a.shape_mesh and a.painted_mesh:
         raise RuntimeError("Choose either --shape-mesh or --painted-mesh")
 
-    home = resolve(a.workdir) / a.name
+    home = run_directory(a.name, a.workdir)
     if not a.dry_run:
         home.mkdir(parents=True, exist_ok=True)
     h = resolve(a.hunyuan)

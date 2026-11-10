@@ -13,6 +13,35 @@ A project-agnostic, local-first toolkit for generating and preparing 3D assets.
 - `space_nova_pipeline/`: legacy integration, now using AI3D components
 - `doctor.sh` and `install.sh`: existing dependency checks and cautious bootstrap
 
+## Output policy
+
+AI3D has **one default generated-file root**: `outputs/` beside this README.
+Every named run is self-contained, so intermediate meshes, textures, logs,
+stage manifests, reports and the final GLB are written under
+`outputs/<asset_name>/`. For example:
+
+```text
+outputs/
+└── example_character/
+    ├── 01_reference.png
+    ├── 02_cutout.png
+    ├── 03_shape.glb
+    ├── 04_paint_mesh.glb
+    ├── 05_painted.glb
+    ├── 06_game.glb
+    ├── logs/
+    ├── .stages/
+    └── report.json
+```
+
+The legacy pipeline accepts `--output-dir PATH` to override the root, and
+still accepts `--workdir PATH` as an alias for older commands. A project
+checkout can be relocated without changing the default output location.
+
+**Existing `assets/` and `pipeline_runs/` directories are legacy data.**
+They are not moved, removed, or read as default output locations. They remain
+Git-ignored, and existing assets may be supplied explicitly as inputs.
+
 ## Migration status
 
 **Phase 1:** extracted filesystem helpers, GLB structural validation,

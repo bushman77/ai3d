@@ -12,6 +12,7 @@
 /assets/
 /images/
 /outputs/
+# Legacy data still ignored; new generated runs use /outputs/.
 /pipeline_runs/
 /diagnostics/
 /backups/
