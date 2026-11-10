@@ -1,12 +1,16 @@
 # Tests
 
-Run the standard-library tests without installing PyTorch, Blender, or AI models:
+Run the Python standard-library tests without installing PyTorch, Blender,
+or AI model weights:
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-`test_glb_validation.py` covers structural GLB metadata and negative cases.
-`test_pipeline_runner.py` covers stage execution, resume, force and dry-run
-behavior. GPU inference and Blender integration tests remain separate future
-work.
+- `test_glb_validation.py`: GLB structural metadata and negative cases
+- `test_pipeline_runner.py`: stage execution, resume, force and dry-run
+- `test_blender_optimization.py`: command construction, argument validation,
+  triangle counting and legacy wrapper routing (no Blender required)
+
+Live Blender glTF import/decimation/export and GPU inference remain separate,
+hardware-dependent integration tests.

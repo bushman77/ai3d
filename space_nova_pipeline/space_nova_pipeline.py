@@ -26,6 +26,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from ai3d.common import ensure_file, resolve
 from ai3d.export.validation import readable_glb
 from ai3d.pipeline_runner import Runner
+from ai3d.optimization.blender import build_finalize_command
 
 HOME = Path.home()
 AI3D = HOME / "ai3d"
@@ -104,6 +105,7 @@ def main():
     h = resolve(a.hunyuan)
     kit = resolve(a.aigamekit)
     bpy_script = Path(__file__).resolve().with_name("space_nova_blender_finalize.py")
+    bpy_impl = PROJECT_ROOT / "ai3d/optimization/blender_finalize.py"
     runner = Runner(home, a.resume, a.force, a.dry_run)
     config = vars(a).copy()
     config = {k: str(v) if isinstance(v, Path) else v for k, v in config.items()}
@@ -243,11 +245,10 @@ print('Alpha range:', out.getchannel('A').getextrema(), 'Size:', out.size)
         runner.run("game", [painted], [game], {"copy": True}, lambda: runner.copy(painted, game))
     else:
         ensure_file(bpy_script, "Textured Blender finalizer")
+        ensure_file(bpy_impl, "AI3D Blender optimization backend")
         blender = shutil.which(a.blender) or a.blender
-        cmd = [blender, "--background", "--factory-startup", "--python-exit-code", "1",
-               "--python", str(bpy_script), "--", "--input", str(painted),
-               "--output", str(game), "--target-faces", str(a.game_faces)]
-        runner.run("game", [painted, bpy_script], [game], {"faces": a.game_faces},
+        cmd = build_finalize_command(blender, bpy_script, painted, game, a.game_faces)
+        runner.run("game", [painted, bpy_script, bpy_impl], [game], {"faces": a.game_faces},
                    lambda: runner.command("game", cmd))
 
     if not a.dry_run:
