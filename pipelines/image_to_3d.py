@@ -29,6 +29,7 @@ from ai3d.image.qwen import build_qwen_command, DEFAULT_SD_CLI, DEFAULT_MODEL_DI
 from ai3d.image.background import build_cutout_command
 from ai3d.geometry.hunyuan import build_shape_command, build_prepaint_command
 from ai3d.textures.paint3d import build_texture_command
+from ai3d.textures.diagnostics import paint_debug_environment, expected_debug_images
 
 AI3D = PROJECT_ROOT
 STAGES = ("reference", "cutout", "shape", "paint-mesh", "paint", "game")
@@ -73,6 +74,8 @@ def arguments(argv: list[str] | None = None, *, prog: str | None = None) -> argp
     p.add_argument("--render-size", type=positive, default=512)
     p.add_argument("--texture-size", type=positive, default=1024)
     p.add_argument("--bake-exp", type=positive, default=6)
+    p.add_argument("--paint-debug", action="store_true",
+                   help="Save Paint3D per-view and UV bake diagnostic images under outputs/<name>/paint_debug")
     p.add_argument("--stop-after", choices=STAGES, default="game", help="Stop at quality gate")
     p.add_argument("--resume", action="store_true", help="Skip stages only when inputs/options match recorded stage manifest")
     p.add_argument("--force", action="store_true", help="Rebuild all requested stages (overwriting only run outputs)")
@@ -102,6 +105,8 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         raise RuntimeError("Provide --image, --prompt-file with --enable-qwen, or --painted-mesh")
     if a.shape_mesh and a.painted_mesh:
         raise RuntimeError("Choose either --shape-mesh or --painted-mesh")
+    if a.paint_debug and a.painted_mesh:
+        raise RuntimeError("--paint-debug requires a new Paint3D run; --painted-mesh skips painting")
 
     home = run_directory(a.name, a.workdir)
     if not a.dry_run:
@@ -218,10 +223,13 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         )
         env = os.environ.copy()
         env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-        runner.run("paint", [paint_mesh, cutout], [painted],
+        env = paint_debug_environment(env, home, enabled=a.paint_debug)
+        outputs = [painted, *expected_debug_images(home)] if a.paint_debug else [painted]
+        runner.run("paint", [paint_mesh, cutout], outputs,
                    {"quality": a.quality, "views": a.max_views,
                     "view_res": a.view_resolution, "render": a.render_size,
-                    "texture": a.texture_size, "bake_exp": a.bake_exp, "category": a.category},
+                    "texture": a.texture_size, "bake_exp": a.bake_exp,
+                    "category": a.category, "paint_debug": a.paint_debug},
                    lambda: runner.command("paint", cmd, cwd=kit, env=env))
 
     if not a.dry_run:

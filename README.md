@@ -58,6 +58,46 @@ Preview from front, side and back before treating it as production-ready.
 The built-in finalizer currently only targets static unrigged meshes.
 Animated or armature-bearing exports are not supported by this test.
 
+## Debugging texture baking and individual views
+
+The mesh exists **before** texturing. Paint3D unwraps UVs, generates and
+enhances selected views, projects them onto the texture atlas, then fills
+uncovered texels by inpainting. Enable the upstream debug hook through AI3D
+to inspect these phases without modifying third-party source files:
+
+```bash
+python3 -m ai3d generate \\
+  --name texture_diagnostics \\
+  --image /path/to/reference.png \\
+  --shape-mesh /path/to/untextured_mesh.glb \\
+  --paint-debug --stop-after paint
+```
+
+This **runs Paint3D inference**, not just a metadata check. It saves debug
+images under `outputs/texture_diagnostics/paint_debug/`, including:
+
+- `ref.png`: resized reference image actually used by the paint model
+- `albedo_*.png` and `enhanced_*.png`: per-camera colors before baking
+- `tex_baked.png`: UV atlas immediately after multiview projection
+- `tex_trust.png`: coverage/trust mask of texels actually baked from views
+- `tex_inpainted.png`: final atlas after filling missing texture areas
+
+If a face is already malformed in `albedo_*.png`, examine reference
+framing and generated views. If the views look good but `tex_baked.png`
+doesn't, investigate UV projection and bake visibility. If `tex_baked.png`
+looks good but `tex_inpainted.png` doesn't, investigate coverage and
+inpainting. These files are generated only when `--paint-debug` is enabled.
+
+The original Paint3D implementation resizes the reference to 512 x 512 before
+creating views; a small full-body face can lose important pixels. The default
+AI3D fast profile uses just two views and small render settings, which favor
+6 GB GPU memory over fine detail. Make controlled single-variable changes
+after reviewing the debug images.
+
+`--paint-debug` requires running Paint3D; it cannot be combined with
+`--painted-mesh`, which skips painting. All artifacts remain in the single
+`outputs/` root. Existing experimental assets remain untouched.
+
 ## Project layout
 
 - `ai3d/`: reusable Python modules, including GLB structural validation,
@@ -139,6 +179,10 @@ CUDA environments, or runtime assets were changed.
 Blender round-trip validation. Real Blender execution is only possible on a
 machine with Blender and a suitable textured GLB; CI covers command routing,
 path safety, reports, and validation logic with a mocked subprocess.
+
+**Phase 6:** optional `--paint-debug` exposes Paint3D's own selected
+multiview images, UV bake mask and intermediate atlases. Unit tests verify
+the environment and output contract without launching inference.
 
 ## Run tests
 

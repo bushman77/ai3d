@@ -20,3 +20,9 @@ hardware-dependent integration tests.
 
 Real Blender GLB round trips must be run separately against a local textured
 static GLB. A passing metadata check does not imply visually correct textures.
+
+- `test_paint_diagnostics.py`: debug opt-in flag, output isolation,
+  inherited-environment protection and compatibility guards
+
+The real Paint3D debug capture requires a GPU-equipped installation and a
+reference image plus untextured mesh; no inference is launched in CI.
