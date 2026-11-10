@@ -1,0 +1,90 @@
+# Space Nova AI3D — repository root: ~/ai3d
+# Track OUR pipeline code, setup scripts, documentation and small test sources.
+# Preserve the existing runtime installation locally; do not vendor engines.
+
+# Third-party Git checkouts. These are installed separately at pinned revisions.
+# Excluding them also avoids accidentally adding embedded Git repositories.
+/AiGameKit/
+/Hunyuan3D-2/
+
+# AI weights, generated characters and inference output (root-level runtime data).
+/models/
+/assets/
+/images/
+/outputs/
+/pipeline_runs/
+/diagnostics/
+/backups/
+/archives/
+
+# Large downloaded model weights anywhere in our own source tree.
+*.gguf
+*.ggml
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.engine
+
+# Generated geometry, Blender autosaves and rendered texture intermediates.
+# Intentional small fixtures can be force-added later with `git add -f`.
+*.glb
+*.gltf
+*.fbx
+*.obj
+*.ply
+*.stl
+*.usd
+*.usdz
+*.blend
+*.blend[0-9]
+*.exr
+
+# Python virtual environments, bytecode, package builds and test caches.
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node / external build caches (if used for glTF verification tools).
+node_modules/
+.npm/
+.cache/
+
+# Runtime logs, partial results, and pipeline stage-key caches.
+*.log
+*.tmp
+*.temp
+*.partial.*
+*.stagekey
+*.stagekey.tmp
+
+# Local environment and credentials. Commit sample config instead.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Editor and OS housekeeping.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
