@@ -27,10 +27,12 @@ from ai3d.export.validation import readable_glb
 from ai3d.pipeline_runner import Runner
 from ai3d.optimization.blender import build_finalize_command
 from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
+from ai3d.image.qwen import build_qwen_command, DEFAULT_SD_CLI, DEFAULT_MODEL_DIR
+from ai3d.image.background import build_cutout_command
+from ai3d.geometry.hunyuan import build_shape_command, build_prepaint_command
+from ai3d.textures.paint3d import build_texture_command
 
-HOME = Path.home()
 AI3D = PROJECT_ROOT
-QWEN = HOME / "models/Qwen-Image-2512"
 STAGES = ("reference", "cutout", "shape", "paint-mesh", "paint", "game")
 
 
@@ -50,9 +52,13 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     inp.add_argument("--image", type=Path, help="Existing reference PNG/JPEG (recommended)")
     inp.add_argument("--prompt-file", type=Path, help="Qwen prompt.txt, requires --enable-qwen")
     p.add_argument("--enable-qwen", action="store_true", help="Explicitly opt in to Qwen generation (large memory use)")
+    p.add_argument("--sd-cli", type=Path, default=DEFAULT_SD_CLI,
+                   help="Path to a CUDA-capable stable-diffusion.cpp sd-cli executable")
+    p.add_argument("--qwen-model-dir", type=Path, default=DEFAULT_MODEL_DIR,
+                   help="Directory containing Qwen image diffusion, LLM and VAE weights")
     p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB instead of Hunyuan")
     p.add_argument("--painted-mesh", type=Path, help="Reuse an existing fully painted GLB; skips generation and Paint3D")
-    p.add_argument("--output-dir", "--workdir", dest="workdir", type=Path,
+    p.add_argument("--output-dir", "--workdir", dest="workdir", metavar="PATH", type=Path,
                    default=DEFAULT_OUTPUT_ROOT,
                    help="Root for all generated run files (default: <ai3d>/outputs)")
     p.add_argument("--hunyuan", type=Path, default=AI3D / "Hunyuan3D-2")
@@ -127,23 +133,29 @@ def main():
         prompt = resolve(a.prompt_file)
         ensure_file(prompt, "Qwen prompt")
         reference = home / "01_reference.png"
-        cli = HOME / "ai-image/stable-diffusion.cpp/build/bin/sd-cli"
+        cli = resolve(a.sd_cli)
+        weights = resolve(a.qwen_model_dir)
         ensure_file(cli, "sd-cli")
         if not shutil.which("systemd-run"):
             raise RuntimeError("systemd-run required for guarded Qwen. Use --image instead")
-        qwen_cmd = ["systemd-run", "--user", "--scope", "-p", f"MemoryMax={a.qwen_ram}",
-                    "-p", f"MemorySwapMax={a.qwen_swap}", str(cli),
-                    "--diffusion-model", str(QWEN / "qwen-image-2512-Q3_K_M.gguf"),
-                    "--llm", str(QWEN / "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf"),
-                    "--vae", str(QWEN / "qwen_image_vae.safetensors"),
-                    "--backend", "cuda0", "--params-backend", "disk", "--max-vram", "-1",
-                    "--diffusion-fa", "--cfg-scale", "2.5", "--sampling-method", "euler",
-                    "--flow-shift", "3", "--steps", str(a.qwen_steps), "-t", "4",
-                    "-W", str(a.qwen_width), "-H", str(a.qwen_height),
-                    "--seed", "42", "-p", prompt.read_text(), "-o", str(reference)]
-        runner.run("reference", [prompt, cli], [reference],
-                   {"qwen": [a.qwen_width, a.qwen_height, a.qwen_steps, a.qwen_ram, a.qwen_swap]},
-                   lambda: runner.command("reference", qwen_cmd, cwd=cli.parent))
+        qwen_cmd = build_qwen_command(
+            cli, weights, prompt.read_text(), reference,
+            width=a.qwen_width, height=a.qwen_height, steps=a.qwen_steps,
+            ram_limit=a.qwen_ram, swap_limit=a.qwen_swap,
+        )
+        model_files = [
+            weights / name for name in (
+                "qwen-image-2512-Q3_K_M.gguf",
+                "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+                "qwen_image_vae.safetensors",
+            )
+        ]
+        runner.run(
+            "reference", [prompt, cli, *model_files], [reference],
+            {"qwen": [a.qwen_width, a.qwen_height, a.qwen_steps, a.qwen_ram, a.qwen_swap],
+             "sd_cli": str(cli), "models": str(weights)},
+            lambda: runner.command("reference", qwen_cmd, cwd=cli.parent),
+        )
 
     if reference:
         if should_stop(a, "reference"):
@@ -151,23 +163,7 @@ def main():
             return
         cutout = home / "02_cutout.png"
         hy_python = h / ".venv/bin/python"
-        # A tiny inline helper avoids adding another heavy dependency to the host Python.
-        script = """from pathlib import Path
-from PIL import Image
-from hy3dgen.rembg import BackgroundRemover
-import sys
-im = Image.open(sys.argv[1])
-alpha = im.convert('RGBA').getchannel('A')
-if alpha.getextrema()[0] < 250 or sys.argv[3] == 'skip':
-    out = im.convert('RGBA')
-    print('Using existing alpha / bypassing cutout')
-else:
-    print('Removing opaque background...')
-    out = BackgroundRemover()(im.convert('RGB'))
-out.save(sys.argv[2])
-print('Alpha range:', out.getchannel('A').getextrema(), 'Size:', out.size)
-"""
-        cmd = [str(hy_python), "-c", script, str(reference), str(cutout), "skip" if a.no_cutout else "auto"]
+        cmd = build_cutout_command(hy_python, reference, cutout, skip=a.no_cutout)
         runner.run("cutout", [reference, hy_python], [cutout], {"skip": a.no_cutout},
                    lambda: runner.command("cutout", cmd, cwd=h))
         if should_stop(a, "cutout"):
@@ -191,8 +187,7 @@ print('Alpha range:', out.getchannel('A').getextrema(), 'Size:', out.size)
             hy_python = h / ".venv/bin/python"
             script = h / "first_mesh.py"
             ensure_file(script, "Hunyuan wrapper first_mesh.py")
-            cmd = [str(hy_python), str(script), "--input", str(cutout),
-                   "--output", str(raw), "--steps", str(a.shape_steps)]
+            cmd = build_shape_command(hy_python, script, cutout, raw, steps=a.shape_steps)
             env = os.environ.copy()
             env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
             runner.run("shape", [cutout, script], [raw], {"steps": a.shape_steps},
@@ -207,9 +202,7 @@ print('Alpha range:', out.getchannel('A').getextrema(), 'Size:', out.size)
         geometry_script = h / "optimize_mesh.py"
         ensure_file(geometry_script, "Existing geometry-only optimizer")
         blender = shutil.which(a.blender) or a.blender
-        cmd = [blender, "--background", "--factory-startup", "--python-exit-code", "1",
-               "--python", str(geometry_script), "--", "--input", str(raw),
-               "--target-faces", str(a.paint_faces), "--output", str(paint_mesh)]
+        cmd = build_prepaint_command(blender, geometry_script, raw, paint_mesh, target_faces=a.paint_faces)
         runner.run("paint-mesh", [raw, geometry_script], [paint_mesh], {"faces": a.paint_faces},
                    lambda: runner.command("paint-mesh", cmd))
         if not a.dry_run:
@@ -220,13 +213,12 @@ print('Alpha range:', out.getchannel('A').getextrema(), 'Size:', out.size)
 
         paint_python = kit / "Paint3D/.venv/bin/python"
         ensure_file(paint_python, "Paint3D Python")
-        cmd = [str(paint_python), "-m", "paint3d", "texture", str(paint_mesh),
-               "-i", str(cutout), "-o", str(painted), "--quality", a.quality,
-               "--max-views", str(a.max_views), "--view-resolution", str(a.view_resolution),
-               "--render-size", str(a.render_size), "--texture-size", str(a.texture_size),
-               "--bake-exp", str(a.bake_exp), "--no-vramd", "--profile"]
-        if a.category != "none":
-            cmd += ["--category", a.category]
+        cmd = build_texture_command(
+            paint_python, paint_mesh, cutout, painted,
+            quality=a.quality, category=a.category, max_views=a.max_views,
+            view_resolution=a.view_resolution, render_size=a.render_size,
+            texture_size=a.texture_size, bake_exp=a.bake_exp,
+        )
         env = os.environ.copy()
         env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
         runner.run("paint", [paint_mesh, cutout], [painted],

@@ -63,6 +63,16 @@ settings, not content hashes. The extracted Blender implementation is now
 included as a stage dependency, so a resume may rerun final optimization once
 after upgrading. Inference stages are unaffected.
 
+**Phase 3:** pure subprocess command builders now live under
+`ai3d/image/`, `ai3d/geometry/`, and `ai3d/textures/` for Qwen image
+generation, Hunyuan background removal and shape/prepaint processing, and
+Paint3D texture inference. Each heavyweight backend still executes in its
+existing isolated runtime. No models are downloaded or imported by the host
+Python test suite.
+
+The legacy CLI also accepts optional `--sd-cli` and `--qwen-model-dir`
+overrides, with the original known-working local defaults preserved.
+
 ## Run tests
 
 ```bash
