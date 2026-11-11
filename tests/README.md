@@ -31,3 +31,7 @@ reference image plus untextured mesh; no inference is launched in CI.
   cycles, reference IDs, non-overwriting persistence and CLI validation.
 - `test_character_reference.py`: Qwen per-part prompt isolation, CLI dry run,
   safe output policy, resume caching and generated metadata with mocked image inference.
+
+- `test_character_batch.py`: sequential character generation, per-part
+  stages/settings, region safety, non-overwriting runs, dry-run and
+  preservation of Qwen's reference cache when reused in the 3D pipeline.

@@ -329,6 +329,20 @@
                 "null"
               ],
               "minimum": 1
+            },
+            "reference_width": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "reference_height": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
             }
           }
         },

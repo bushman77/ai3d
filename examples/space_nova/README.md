@@ -31,3 +31,25 @@ The part-specific prompt deliberately excludes the full-body master prompt.
 The resulting text-to-image reference may not perfectly match the original
 Mara image; do not infer identity preservation. Hunyuan and Paint3D are not
 launched by this command.
+
+## Generate all Mara components, without losing completed experiments
+
+Use a **fresh prefix** to keep the known-good individual head and existing
+full-body experiments untouched:
+
+```bash
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --dry-run
+
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --stop-after reference
+```
+
+Inspect the six images before advancing the components to shape, paint or game.
+To avoid generating the head again, add `--skip head` to **all** batch
+commands, then continue using the existing approved head GLB separately.
+To experiment with separate hair, outfit and hand meshes, add
+`--include-regions` intentionally; otherwise these remain reference-only.
+Part geometry and painted assets are not automatically assembled.

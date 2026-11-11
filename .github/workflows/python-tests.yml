@@ -28,4 +28,5 @@ jobs:
           python -m ai3d character validate ai3d/characters/template.json
           python -m ai3d character validate examples/space_nova/characters/mara_venn.json
           python -m ai3d character reference examples/space_nova/characters/mara_venn.json --part head --dry-run >/dev/null
+          python -m ai3d character generate examples/space_nova/characters/mara_venn.json --all --dry-run >/dev/null
           python space_nova_pipeline/space_nova_pipeline.py --help >/dev/null

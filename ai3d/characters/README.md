@@ -124,8 +124,80 @@ previous source image for image-conditioned identity preservation is a
 future workflow; do not confuse a newly generated head reference with a crop
 of the original character.
 
-Only the **reference-image stage** is implemented here. Automated per-part
-geometry, attachment fitting, rigging and full assembly remain future work.
+## Multi-part generation from a character card
+
+The `character generate` command drives each selected part **serially** to
+avoid multiple GPU processes competing for the same 6 GB graphics card.
+It reuses the existing Qwen reference, Hunyuan shape, Paint3D texture and
+Blender finalization stages. Each part gets an independent
+`outputs/<prefix>_<part>_<view>/` folder with logs and stage caches.
+
+**Preview every part without touching the GPU or filesystem:**
+
+```bash
+cd ~/ai3d
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --dry-run
+```
+
+**Produce every component's reference image first:**
+
+```bash
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --stop-after reference
+```
+
+Inspect the images and correct prompts before expensive 3D generation.
+Then continue from the **same run prefix**:
+
+```bash
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --stop-after shape --resume
+```
+
+Then use `--stop-after paint --resume` and finally
+`--stop-after game --resume` for approved parts. For debug UV atlases,
+add `--paint-debug` to the paint stage.
+
+With `--all`, the **mesh** and **attachment** components progress to
+the selected stage. A logical **region** (for example clothing or hair)
+generates its reference PNG but does not become a separate mesh by default.
+Use `--include-regions` to explicitly experiment with independent geometry
+for every region. Such regions may contain additional geometry, require
+manual separation, or be incompatible with automatic assembly.
+
+Useful controls:
+
+- `--part head` (repeat to select several parts) instead of `--all`
+- `--skip head` to preserve an already-approved head from a previous run
+- `--run-prefix mara_components_v1` to isolate new experiments from old runs
+- `--resume` to reuse unchanged stages and continue an interrupted pipeline
+- `--force` for **explicit** regeneration of outputs belonging to that prefix
+- `--qwen-width`, `--qwen-height`, `--qwen-steps`, `--shape-steps`,
+  `--paint-faces`, `--game-faces`, `--view-resolution`,
+  `--texture-size` and `--quality` for defaults across selected parts
+
+Individual card parts may override `generation.reference_width`,
+`generation.reference_height`, `generation.shape_steps`,
+`generation.target_triangles` (used for the **prepaint** triangle count),
+and `generation.view_resolution`. A body reference can therefore be tall
+while the head reference remains square. Unset values use CLI defaults.
+
+Re-running `character generate` without `--resume` or `--force` refuses
+to touch existing run directories. A batch preflight checks **all selected
+parts before launching inference**. Only the Qwen reference and model-stage
+processes use CUDA; `--dry-run` only displays the proposed work.
+
+**Important limitations:** this does **not** transfer a mesh from one
+part to another, align attachment points, merge neck seams, rig limbs or
+guarantee identical character identity across independently sampled Qwen
+references. Outputs are separate testable GLBs, not one assembled game
+character. Quality approval and assembly are separate future features.
+
+Automated attachment fitting, rigging and full assembly remain future work.
 
 A complete consumer-specific example is at
 `examples/space_nova/characters/mara_venn.json`. It shows how to specify

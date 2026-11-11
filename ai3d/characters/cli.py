@@ -43,6 +43,44 @@ def main(argv: list[str] | None = None) -> int:
     reference.add_argument("--resume", action="store_true", help="Reuse matching existing image")
     reference.add_argument("--force", action="store_true", help="Explicitly overwrite existing image")
 
+    generate = sub.add_parser(
+        "generate", help="Generate every selected character part sequentially"
+    )
+    generate.add_argument("card", type=Path, help="Existing character card JSON")
+    selection = generate.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--all", action="store_true", help="Process every part")
+    selection.add_argument("--part", action="append", dest="parts", help="Part ID; repeat for multiple")
+    generate.add_argument("--skip", action="append", default=[], help="Skip a part, e.g. an already approved head")
+    generate.add_argument("--include-regions", action="store_true",
+                          help="Also reconstruct region parts as experimental standalone meshes")
+    generate.add_argument("--stop-after", choices=("reference", "shape", "paint", "game"),
+                          default="reference", help="Maximum stage to run (default: reference only)")
+    generate.add_argument("--run-prefix", help="Name prefix for independently saved output runs")
+    generate.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    generate.add_argument("--sd-cli", type=Path, default=DEFAULT_SD_CLI)
+    generate.add_argument("--qwen-model-dir", type=Path, default=DEFAULT_MODEL_DIR)
+    generate.add_argument("--hunyuan", type=Path)
+    generate.add_argument("--aigamekit", type=Path)
+    generate.add_argument("--blender", default="blender")
+    generate.add_argument("--qwen-width", type=int, default=384)
+    generate.add_argument("--qwen-height", type=int, default=384)
+    generate.add_argument("--qwen-steps", type=int, default=12)
+    generate.add_argument("--qwen-ram", default="10G")
+    generate.add_argument("--qwen-swap", default="1G")
+    generate.add_argument("--shape-steps", type=int, default=20)
+    generate.add_argument("--paint-faces", type=int, default=40000)
+    generate.add_argument("--game-faces", type=int, default=15000)
+    generate.add_argument("--view-resolution", type=int, default=256)
+    generate.add_argument("--texture-size", type=int, default=1024)
+    generate.add_argument("--render-size", type=int, default=512)
+    generate.add_argument("--quality", choices=("fast", "low", "medium", "high", "highest"), default="fast")
+    generate.add_argument("--max-views", type=int, default=2)
+    generate.add_argument("--paint-debug", action="store_true")
+    action = generate.add_mutually_exclusive_group()
+    action.add_argument("--resume", action="store_true", help="Reuse unchanged outputs and continue interrupted runs")
+    action.add_argument("--force", action="store_true", help="Explicitly rebuild and overwrite matching run outputs")
+    generate.add_argument("--dry-run", action="store_true", help="Plan only; do not launch Qwen or write files")
+
     args = parser.parse_args(argv)
 
     if args.action == "init":
@@ -74,6 +112,30 @@ def main(argv: list[str] | None = None) -> int:
                 width=args.width, height=args.height, steps=args.steps,
                 ram_limit=args.ram, swap_limit=args.swap,
                 dry_run=args.dry_run, resume=args.resume, force=args.force,
+            )
+        except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+    elif args.action == "generate":
+        from .batch import generate_character
+
+        try:
+            definition = load_card(args.card)
+            generate_character(
+                definition, args.card,
+                all_parts=args.all, part_ids=args.parts, skip=args.skip,
+                include_regions=args.include_regions, stop_after=args.stop_after,
+                run_prefix=args.run_prefix, output_dir=args.output_dir,
+                sd_cli=args.sd_cli, qwen_model_dir=args.qwen_model_dir,
+                hunyuan=args.hunyuan, aigamekit=args.aigamekit, blender=args.blender,
+                qwen_width=args.qwen_width, qwen_height=args.qwen_height,
+                qwen_steps=args.qwen_steps, qwen_ram=args.qwen_ram,
+                qwen_swap=args.qwen_swap, shape_steps=args.shape_steps,
+                paint_faces=args.paint_faces, game_faces=args.game_faces,
+                view_resolution=args.view_resolution, texture_size=args.texture_size,
+                render_size=args.render_size, quality=args.quality,
+                max_views=args.max_views, paint_debug=args.paint_debug,
+                resume=args.resume, force=args.force, dry_run=args.dry_run,
             )
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)

@@ -168,7 +168,7 @@ def validate_card(card: object) -> list[str]:
                 for k in ("geometry_backend", "texture_backend"):
                     if gen.get(k) is not None and not _nonempty(gen[k]):
                         errors.append(f"{tag}.generation.{k} must be string or null")
-                for k in ("shape_steps", "target_triangles", "view_resolution"):
+                for k in ("shape_steps", "target_triangles", "view_resolution", "reference_width", "reference_height"):
                     val = gen.get(k)
                     if val is not None and (type(val) is not int or val < 1):
                         errors.append(f"{tag}.generation.{k} must be positive or null")

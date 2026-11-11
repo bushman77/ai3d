@@ -116,8 +116,9 @@ The reusable template and JSON Schema are in `ai3d/characters/`. See
 [the card format guide](ai3d/characters/README.md) and the
 [Mara Venn example](examples/space_nova/characters/mara_venn.json).
 
-**Per-part Qwen reference-image generation is implemented.** Shape generation,
-head-to-body alignment, and assembly are future work. The card maintains
+**Card-driven per-part Qwen, Hunyuan and Paint3D generation is implemented**
+with sequential batch processing and resumable intermediate stages.
+Head-to-body alignment, and assembly are future work. The card maintains
 persistent design identity and per-part prompts independently of generated
 images and meshes.
 
@@ -258,3 +259,21 @@ it does not set up every model or Python environment.
 
 Use `SD_ROOT`/`SD_CLI` shell overrides or the generation command's
 `--sd-cli` argument when pointing AI3D at a different executable.
+
+## Generate all character components
+
+```bash
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --all --run-prefix mara_components_v1 --dry-run
+```
+
+After checking the plan, remove `--dry-run`, use
+`--stop-after reference` to produce every component's input image,
+and inspect them. Continue with `--stop-after shape --resume`,
+`--stop-after paint --resume`, and `--stop-after game --resume`.
+Only mesh and attachment parts proceed beyond reference by default;
+`--include-regions` opts into experimental standalone mesh generation for
+hair, outfit and hands. The generator does not assemble, align or rig parts.
+
+See [character-card batch workflow](ai3d/characters/README.md).

@@ -129,8 +129,14 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         image_in = resolve(a.image)
         ensure_file(image_in, "Reference image")
         reference = home / ("01_reference" + image_in.suffix.lower())
-        runner.run("reference", [image_in], [reference], {"copy": True},
-                   lambda: runner.copy(image_in, reference))
+        if image_in == reference.resolve():
+            # A character part's Qwen stage already wrote this file in-place.
+            # Do not replace its reference-stage cache stamp with a copy stamp:
+            # doing so would needlessly rerun Qwen on the next --resume.
+            print(f"[REUSE] reference already in run: {reference}", flush=True)
+        else:
+            runner.run("reference", [image_in], [reference], {"copy": True},
+                       lambda: runner.copy(image_in, reference))
     elif a.prompt_file:
         prompt = resolve(a.prompt_file)
         ensure_file(prompt, "Qwen prompt")

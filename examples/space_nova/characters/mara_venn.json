@@ -74,7 +74,9 @@
         "texture_backend": null,
         "shape_steps": null,
         "target_triangles": null,
-        "view_resolution": null
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 576
       },
       "quality_gates": [
         "Correct proportions and complete silhouette",
@@ -99,9 +101,11 @@
       "generation": {
         "geometry_backend": null,
         "texture_backend": null,
-        "shape_steps": null,
-        "target_triangles": null,
-        "view_resolution": null
+        "shape_steps": 50,
+        "target_triangles": 80000,
+        "view_resolution": 384,
+        "reference_width": 384,
+        "reference_height": 384
       },
       "quality_gates": [
         "Eyes and eyelids readable in solid shading",
@@ -130,7 +134,9 @@
         "texture_backend": null,
         "shape_steps": null,
         "target_triangles": null,
-        "view_resolution": null
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 384
       },
       "quality_gates": [
         "Hairline does not obscure eyes"
@@ -156,7 +162,9 @@
         "texture_backend": null,
         "shape_steps": null,
         "target_triangles": null,
-        "view_resolution": null
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 576
       },
       "quality_gates": [
         "Material boundaries are clear",
@@ -183,7 +191,9 @@
         "texture_backend": null,
         "shape_steps": null,
         "target_triangles": null,
-        "view_resolution": null
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 384
       },
       "quality_gates": [
         "Finger count and joint silhouettes are plausible"
@@ -209,7 +219,9 @@
         "texture_backend": null,
         "shape_steps": null,
         "target_triangles": null,
-        "view_resolution": null
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 384
       },
       "quality_gates": [
         "Accessories do not intersect the body unexpectedly"
