@@ -138,7 +138,7 @@ fi
 
 if (( THIGH_PROTOTYPE )); then
   (( ! DIAGNOSE )) || die "Choose either --diagnose or --thigh-prototype"
-  [[ "$THIGH_INSET" =~ ^(0(\\.[0-9]+)?|\\.[0-9]+)$ ]] || die "Invalid --thigh-inset"
+  [[ "$THIGH_INSET" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]] || die "Invalid --thigh-inset"
   # Fitting is Mara-only; the Python generator validates range more strictly.
   source_scene="$OUTPUT_DIR/$ASSEMBLY/hole_in_thigh_exposed.blend"
   [[ -s "$source_scene" ]] || die "Missing experimental scene: $source_scene"
