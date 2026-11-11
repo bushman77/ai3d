@@ -327,3 +327,24 @@ The preview remains two independent meshes, with no neck-seam
 welding, automatic fitting, rigging or production export.
 
 See [assembly guide and safety details](ai3d/characters/README.md).
+
+## Stage all generated character parts safely
+
+The body/head assembly can now stage **all** card parts without changing
+existing fitting and cuts. Example:
+
+```bash
+python3 -m ai3d character stage \
+  outputs/mara_assembly_v1/assembly.json \
+  examples/space_nova/characters/mara_venn.json --all
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+```
+
+New hair/outfit/hands/equipment GLBs are imported into hidden Blender
+collections and excluded from the comparison GLB until explicitly
+activated, to avoid duplicate geometry. Use
+`python3 -m ai3d character component --help` for visibility/export
+controls. Existing geometry remains unmodified. See the
+[full-character staging guide](ai3d/characters/README.md).

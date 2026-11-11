@@ -1,4 +1,4 @@
-"""Blender background script: create a non-destructive two-part comparison scene.
+"""Blender background script: create a non-destructive multi-part assembly scene.
 
 Invoked via:
   blender --background --factory-startup --python-exit-code 1 \
@@ -127,8 +127,8 @@ def main():
     opts = arguments()
     manifest_path = opts.manifest.expanduser().resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("manifest_version") != 1 or len(manifest.get("parts", [])) != 2:
-        raise RuntimeError("Expected a v1 two-part assembly manifest")
+    if manifest.get("manifest_version") != 1 or len(manifest.get("parts", [])) < 2:
+        raise RuntimeError("Expected a v1 assembly manifest with at least two parts")
     if manifest.get("preview_layout") not in ("side_by_side", "overlay"):
         raise RuntimeError("Unknown preview_layout")
 
@@ -145,6 +145,16 @@ def main():
         import_component(scene_root, part, i)
         for i, part in enumerate(manifest["parts"])
     ]
+    # Each additional region is deliberately staged, not composited into the
+    # full-body mesh. The source body already contains hands/outfit/hair/gear.
+    # Preserve old manifests that lacked visibility/export flags.
+    for spec, result in zip(manifest["parts"], results):
+        result["visible"] = spec.get("visible", True)
+        result["include_in_preview"] = spec.get("include_in_preview", True)
+        result["collection"] = result["control"].users_collection[0]
+        result["imported_objects"] = list(result["collection"].objects)
+        if not isinstance(result["visible"], bool) or not isinstance(result["include_in_preview"], bool):
+            raise RuntimeError(f"Bad visibility/export flags for {result['id']}")
 
     stage_offsets = {part["id"]: [0.0, 0.0, 0.0] for part in manifest["parts"]}
     if manifest["preview_layout"] == "side_by_side":
@@ -183,7 +193,17 @@ def main():
     for result in results:
         result["preview_bounds"] = world_bounds(result["meshes"])
 
-    scene_bounds = view_setup(results)
+    # Stage hidden parts *after* bounds and bisect calculations; they remain
+    # available as named, individually selectable Blender collections.
+    for result in results:
+        if not result["visible"]:
+            for obj in result["imported_objects"]:
+                obj.hide_set(True)
+                obj.hide_render = True
+    visible_parts = [r for r in results if r["visible"]]
+    if not visible_parts:
+        raise RuntimeError("No visible component to frame in Blender")
+    scene_bounds = view_setup(visible_parts)
     bpy.ops.object.select_all(action="DESELECT")
     results[0]["control"].select_set(True)
     bpy.context.view_layer.objects.active = results[0]["control"]
@@ -201,6 +221,9 @@ def main():
             "imported_object_count": item["imported_object_count"],
             "mesh_count": item["mesh_count"],
             "triangles": item["triangles"],  # Retain legacy report field.
+            "visible": item["visible"],
+            "include_in_preview": item["include_in_preview"],
+            "status": manifest["parts"][i].get("status", "unfitted"),
             "triangles_before": item["triangles"],
             "triangles_after": sum(
                 len(poly.vertices) - 2 for obj in item["meshes"]
@@ -210,7 +233,7 @@ def main():
             "bounds_with_user_transform": item["original_bounds_after_transform"],
             "staging_offset": stage_offsets[item["id"]],
             "preview_bounds": item["preview_bounds"],
-        } for item in results],
+        } for i, item in enumerate(results)],
         "warnings": [
             "Preview only: meshes remain separate, with no head-to-body fit.",
             "Side-by-side offsets are display-only and are not fitted attachment transforms.",
@@ -228,18 +251,36 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
 
     measurements.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    # A preview GLB has two independently selectable mesh groups and original
-    # materials. It is NOT a fused or production-quality character.
+    # The GLB contains only explicitly enabled components; staged parts
+    # remain available in preview.blend but cannot silently duplicate the
+    # body on export. All exported meshes remain separate objects.
+    included = [r for r in results if r["include_in_preview"]]
+    if not included:
+        raise RuntimeError("No components enabled for comparison GLB export")
     # The cut grid is an editor-only visual. Temporarily remove its collection
     # before exporting the comparison GLB, then restore it for the .blend file.
     scene_root.children.unlink(guides)
+    # Explicit exporter selection is safer than relying on hide_viewport and
+    # hide_render behavior, which varies across Blender/glTF versions.
+    for part in results:
+        for obj in part["imported_objects"]:
+            if part["include_in_preview"]:
+                obj.hide_set(False)
+            obj.select_set(part["include_in_preview"])
     try:
         bpy.ops.export_scene.gltf(
             filepath=str(glb), export_format="GLB",
-            export_cameras=False, export_lights=False,
+            use_selection=True, export_cameras=False, export_lights=False,
         )
     finally:
         scene_root.children.link(guides)
+        for part in results:
+            if not part["visible"]:
+                for obj in part["imported_objects"]:
+                    obj.hide_set(True)
+        bpy.ops.object.select_all(action="DESELECT")
+        results[0]["control"].select_set(True)
+        bpy.context.view_layer.objects.active = results[0]["control"]
     bpy.ops.file.pack_all()
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
     print(f"AI3D assembly preview saved: {blend}")

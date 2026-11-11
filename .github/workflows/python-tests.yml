@@ -31,4 +31,7 @@ jobs:
           python -m ai3d character generate examples/space_nova/characters/mara_venn.json --all --dry-run >/dev/null
           python -m ai3d character assemble examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_assembly_smoke --dry-run >/dev/null
           python -m ai3d character cut --help >/dev/null
+          python -m ai3d character stage --help >/dev/null
+          python -m ai3d character component --help >/dev/null
+          python -m ai3d character assemble examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_all_parts_smoke --all-parts --dry-run >/dev/null
           python space_nova_pipeline/space_nova_pipeline.py --help >/dev/null

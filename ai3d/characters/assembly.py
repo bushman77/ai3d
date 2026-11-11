@@ -43,6 +43,7 @@ def build_assembly_plan(
     attach: str = "head",
     source_stage: str = "painted",
     layout: str = "side_by_side",
+    include_all_parts: bool = False,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
 ) -> dict:
     """Return a side-effect-free manifest describing two existing GLB sources."""
@@ -54,8 +55,12 @@ def build_assembly_plan(
         raise RuntimeError(f"Unsupported preview layout: {layout}")
     output = run_directory(name, output_root)
     components = []
-    for part_id in (base, attach):
+    selection = [base, attach]
+    if include_all_parts:
+        selection.extend(part["id"] for part in card["parts"] if part["id"] not in selection)
+    for part_id in selection:
         part = _part(card, part_id)
+        active = part_id in (base, attach)
         view = part.get("reference_view") or "front"
         asset = run_directory(f"{run_prefix}_{part_id}_{view}", output_root)
         glb = asset / FILE_BY_STAGE[source_stage]
@@ -66,7 +71,9 @@ def build_assembly_plan(
             "source": str(glb),
             "parent_part": None if part_id == base else base,
             "intended_attachment": part.get("attachment"),
-            "status": "unfitted",
+            "status": "unfitted" if active else "staged_unfitted",
+            "visible": active,
+            "include_in_preview": active,
             "cut": default_cut(keep="below" if part_id == base else "above"),
             "transform": {
                 "position": [0.0, 0.0, 0.0],
@@ -94,6 +101,7 @@ def build_assembly_plan(
         },
         "notes": [
             "This is a non-destructive comparison of independent meshes.",
+            "Regions and accessories are staged but hidden until fitted, to avoid duplicate body geometry.",
             "Cut-plane operations are off by default; guide and apply modes are opt-in.",
             "No automatic head alignment, neck seam welding, joining, or rigging.",
             "side_by_side applies a temporary display offset, recorded in measurements.json.",
@@ -113,8 +121,8 @@ def validate_manifest(manifest: object, output: Path) -> list[str]:
     if manifest.get("preview_layout") not in LAYOUTS:
         errors.append("preview_layout must be side_by_side or overlay")
     parts = manifest.get("parts")
-    if not isinstance(parts, list) or len(parts) != 2:
-        errors.append("parts must contain exactly two components")
+    if not isinstance(parts, list) or len(parts) < 2:
+        errors.append("parts must contain at least two components")
     else:
         seen = set()
         for i, part in enumerate(parts):
@@ -127,6 +135,9 @@ def validate_manifest(manifest: object, output: Path) -> list[str]:
                 errors.append(f"{label}.id must be distinct and nonempty")
             else:
                 seen.add(part_id)
+            for flag in ("visible", "include_in_preview"):
+                if flag in part and type(part[flag]) is not bool:
+                    errors.append(f"{label}.{flag} must be a boolean")
             if not isinstance(part.get("source"), str) or not part["source"]:
                 errors.append(f"{label}.source must be an existing GLB path")
             transform = part.get("transform")
@@ -186,6 +197,7 @@ def assemble_preview(
     source_stage: str = "painted",
     layout: str = "side_by_side",
     output_root: Path = DEFAULT_OUTPUT_ROOT,
+    include_all_parts: bool = False,
     blender: str = "blender",
     dry_run: bool = False,
     rebuild: bool = False,
@@ -223,7 +235,8 @@ def assemble_preview(
             )
         manifest = build_assembly_plan(
             card, name=name, run_prefix=run_prefix, base=base, attach=attach,
-            source_stage=source_stage, layout=layout, output_root=output_root,
+            source_stage=source_stage, layout=layout,
+            include_all_parts=include_all_parts, output_root=output_root,
         )
     problems = validate_manifest(manifest, folder)
     if problems:
@@ -233,7 +246,8 @@ def assemble_preview(
     for part in manifest["parts"]:
         present = "FOUND" if Path(part["source"]).is_file() else "MISSING"
         cut = part.get("cut", {})
-        print(f"  {part['id']}: {part['source']} [{present}]; cut={cut.get('mode', 'off')}")
+        print(f"  {part['id']}: {part['source']} [{present}]; cut={cut.get('mode', 'off')}; "
+              f"visible={part.get('visible', True)}; export={part.get('include_in_preview', True)}")
     if dry_run:
         print("Dry run: no Blender process and no output files created.")
         return manifest
@@ -341,4 +355,129 @@ def configure_cut(
         if os.path.exists(temp):
             os.unlink(temp)
     print("Updated manifest. Run 'character assemble ... --rebuild' to see the result.")
+    return manifest
+
+def stage_components(
+    manifest_path: Path,
+    card_path: Path,
+    *,
+    part_ids: list[str] | None = None,
+    all_parts: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Stage additional generated components in an existing assembly.
+
+    Do not reset head fitting, existing cuts, or the assembly's original
+    GLB references. Newly staged meshes are hidden and excluded from the
+    preview GLB, because region models often duplicate original geometry.
+    """
+    manifest_path = Path(manifest_path).expanduser()
+    if manifest_path.name != "assembly.json" or manifest_path.is_symlink():
+        raise RuntimeError("Expected a regular assembly.json")
+    if not manifest_path.is_file():
+        raise RuntimeError(f"Assembly manifest not found: {manifest_path}")
+    card = load_card(Path(card_path).expanduser())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("character_id") != card["id"]:
+        raise RuntimeError("Assembly belongs to a different character card")
+    if all_parts == bool(part_ids):
+        raise RuntimeError("Select either --all or at least one --part")
+    existing = {part["id"] for part in manifest["parts"]}
+    target = ({p["id"] for p in card["parts"]} if all_parts else set(part_ids))
+    missing = target - {p["id"] for p in card["parts"]}
+    if missing:
+        raise RuntimeError("Unknown character parts: " + ", ".join(sorted(missing)))
+    new_parts = [p for p in card["parts"] if p["id"] in target and p["id"] not in existing]
+    if not new_parts:
+        print("All requested parts are already staged; nothing changed.")
+        return manifest
+    folder = manifest_path.parent.resolve()
+    root = folder.parent
+    for part in new_parts:
+        view = part.get("reference_view") or "front"
+        run_name = f"{manifest['run_prefix']}_{part['id']}_{view}"
+        source = run_directory(run_name, root) / FILE_BY_STAGE[manifest["source_stage"]]
+        state = "FOUND" if source.is_file() and source.stat().st_size > 0 else "MISSING"
+        print(f"  Stage {part['id']}: {source} [{state}] (hidden, excluded from GLB)")
+        if not dry_run and state == "MISSING":
+            raise RuntimeError(f"Missing component GLB: {source}")
+        manifest["parts"].append({
+            "id": part["id"],
+            "label": part["label"],
+            "card_kind": part["kind"],
+            "source": str(source),
+            "parent_part": part.get("parent"),
+            "intended_attachment": part.get("attachment"),
+            "status": "staged_unfitted",
+            "visible": False,
+            "include_in_preview": False,
+            "cut": default_cut(keep="above"),
+            "transform": {
+                "position": [0.0, 0.0, 0.0],
+                "rotation_deg": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0],
+            },
+        })
+    errors = validate_manifest(manifest, folder)
+    if errors:
+        raise RuntimeError("Invalid staged assembly:\n  - " + "\n  - ".join(errors))
+    if dry_run:
+        print("Dry run: assembly.json unchanged.")
+        return manifest
+    # Atomic replace without opening/overwriting any generated GLBs.
+    fd, temp = tempfile.mkstemp(prefix=".assembly-stage-", suffix=".tmp", dir=folder)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, allow_nan=False)
+            handle.write("\n")
+        os.replace(temp, manifest_path)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
+    print("Staged components in assembly.json. Run 'character assemble ... --rebuild'.")
+    return manifest
+
+
+def set_component_visibility(
+    manifest_path: Path,
+    *,
+    part_id: str,
+    visible: bool | None = None,
+    include_in_preview: bool | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """Opt a staged component in/out of the Blender view and comparison GLB."""
+    manifest_path = Path(manifest_path).expanduser()
+    if manifest_path.name != "assembly.json" or manifest_path.is_symlink():
+        raise RuntimeError("Expected a regular assembly.json")
+    if not manifest_path.is_file():
+        raise RuntimeError(f"Assembly manifest not found: {manifest_path}")
+    if visible is None and include_in_preview is None:
+        raise RuntimeError("Specify --show/--hide or --export/--no-export")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    matches = [part for part in manifest.get("parts", []) if part.get("id") == part_id]
+    if len(matches) != 1:
+        raise RuntimeError(f"Unknown or ambiguous component: {part_id}")
+    part = matches[0]
+    if visible is not None:
+        part["visible"] = visible
+    if include_in_preview is not None:
+        part["include_in_preview"] = include_in_preview
+    errors = validate_manifest(manifest, manifest_path.parent.resolve())
+    if errors:
+        raise RuntimeError("Invalid component settings:\n  - " + "\n  - ".join(errors))
+    print(f"Component {part_id}: visible={part.get('visible', True)}, "
+          f"include_in_preview={part.get('include_in_preview', True)}")
+    if dry_run:
+        return manifest
+    fd, temp = tempfile.mkstemp(prefix=".assembly-component-", suffix=".tmp",
+                                dir=manifest_path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, allow_nan=False)
+            handle.write("\n")
+        os.replace(temp, manifest_path)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
     return manifest

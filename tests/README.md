@@ -43,3 +43,7 @@ reference image plus untextured mesh; no inference is launched in CI.
 - `test_character_assembly.py` additionally exercises configurable
   cut modes, backwards-compatible v1 manifests, invalid plane/kept-side
   rejection, editing without Blender, and reversible working-copy contracts.
+
+- `test_character_assembly.py`: full-card staging, old-fit preservation,
+  per-component visibility/export flags, missing-source preflight, and
+  six-component mocked Blender rebuild.

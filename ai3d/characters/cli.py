@@ -95,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
                           default="painted", help="Use higher-detail 05_painted.glb by default")
     assembly.add_argument("--layout", choices=("side_by_side", "overlay"),
                           default="side_by_side", help="Side-by-side preview or overlapping origins")
+    assembly.add_argument("--all-parts", action="store_true",
+                          help="Stage all card parts; extras stay hidden and excluded from preview GLB")
     assembly.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
     assembly.add_argument("--blender", default="blender")
     assembly.add_argument("--dry-run", action="store_true",
@@ -114,6 +116,29 @@ def main(argv: list[str] | None = None) -> int:
                      help="Which side of the plane to retain")
     cut.add_argument("--dry-run", action="store_true",
                      help="Validate and preview manifest edit without writing")
+
+    stage = sub.add_parser(
+        "stage", help="Stage more generated parts in an existing assembly without refitting"
+    )
+    stage.add_argument("manifest", type=Path, help="Existing assembly.json")
+    stage.add_argument("card", type=Path, help="Source character card JSON")
+    choose = stage.add_mutually_exclusive_group(required=True)
+    choose.add_argument("--all", action="store_true", help="Stage every missing part in card order")
+    choose.add_argument("--part", dest="parts", action="append", help="Stage one component; repeat")
+    stage.add_argument("--dry-run", action="store_true", help="Plan without writing")
+
+    component = sub.add_parser(
+        "component", help="Toggle a staged part's Blender visibility and GLB inclusion"
+    )
+    component.add_argument("manifest", type=Path, help="Existing assembly.json")
+    component.add_argument("--part", required=True, help="Part ID")
+    vis = component.add_mutually_exclusive_group()
+    vis.add_argument("--show", action="store_true", help="Show component in Blender")
+    vis.add_argument("--hide", action="store_true", help="Hide component in Blender")
+    exp = component.add_mutually_exclusive_group()
+    exp.add_argument("--export", action="store_true", help="Include component in preview GLB")
+    exp.add_argument("--no-export", action="store_true", help="Exclude component from preview GLB")
+    component.add_argument("--dry-run", action="store_true", help="Plan without writing")
 
     args = parser.parse_args(argv)
 
@@ -184,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                 source_stage=args.source_stage, layout=args.layout,
                 output_root=args.output_dir, blender=args.blender,
                 dry_run=args.dry_run, rebuild=args.rebuild,
+                include_all_parts=args.all_parts,
             )
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -195,6 +221,30 @@ def main(argv: list[str] | None = None) -> int:
             configure_cut(
                 args.manifest, part_id=args.part, mode=args.mode,
                 plane_z=args.z, keep=args.keep, dry_run=args.dry_run,
+            )
+        except (RuntimeError, OSError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+    elif args.action == "stage":
+        from .assembly import stage_components
+
+        try:
+            stage_components(
+                args.manifest, args.card, part_ids=args.parts,
+                all_parts=args.all, dry_run=args.dry_run,
+            )
+        except (RuntimeError, OSError, ValueError, KeyError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+    elif args.action == "component":
+        from .assembly import set_component_visibility
+
+        try:
+            set_component_visibility(
+                args.manifest, part_id=args.part,
+                visible=True if args.show else False if args.hide else None,
+                include_in_preview=True if args.export else False if args.no_export else None,
+                dry_run=args.dry_run,
             )
         except (RuntimeError, OSError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)

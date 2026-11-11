@@ -383,5 +383,133 @@ class AssemblyTests(unittest.TestCase):
         self.assertNotIn("bpy.ops.object.join(", script)
 
 
+    def test_all_part_plan_stages_remaining_card_components_hidden(self):
+        plan = self.plan(include_all_parts=True)
+        self.assertEqual(
+            [p["id"] for p in plan["parts"]],
+            ["body", "head", "hair", "outfit", "hands", "equipment"],
+        )
+        self.assertTrue(all(p["visible"] and p["include_in_preview"]
+                            for p in plan["parts"][:2]))
+        self.assertTrue(all(not p["visible"] and not p["include_in_preview"]
+                            for p in plan["parts"][2:]))
+        self.assertEqual(
+            validate_manifest(plan, self.root / "mara_assembly_v1"), [],
+        )
+
+    def test_staging_all_preserves_head_transform_cut_and_source(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        data = json.loads(path.read_text())
+        data["parts"][1]["transform"]["position"] = [-0.0047, 0.0038, 0.7907]
+        data["parts"][1]["transform"]["scale"] = [0.2, 0.2, 0.2]
+        data["parts"][0]["cut"].update(mode="apply", plane_z=0.65)
+        data["parts"][1]["cut"].update(mode="apply", plane_z=0.61)
+        path.write_text(json.dumps(data))
+        for part in self.card["parts"][2:]:
+            target = self.root / (
+                f"mara_components_v1_{part['id']}_{part['reference_view']}"
+            ) / "05_painted.glb"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"fixture")
+        stage_components(path, MARA, all_parts=True)
+        result = json.loads(path.read_text())
+        self.assertEqual(len(result["parts"]), 6)
+        self.assertEqual(result["parts"][1], data["parts"][1])
+        self.assertEqual(result["parts"][0], data["parts"][0])
+        self.assertEqual([p["id"] for p in result["parts"][2:]],
+                         ["hair", "outfit", "hands", "equipment"])
+        self.assertTrue(all(not p["include_in_preview"] and not p["visible"]
+                            for p in result["parts"][2:]))
+
+    def test_stage_missing_mesh_is_non_mutating(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        before = path.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "Missing component GLB"):
+            stage_components(path, MARA, all_parts=True)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_stage_dry_run_does_not_require_mesh_or_write(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        before = path.read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            stage_components(path, MARA, all_parts=True, dry_run=True)
+        self.assertIn("MISSING", out.getvalue())
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_stage_rejects_other_character_without_modifying(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        other = self.root / "other.json"
+        other.write_text(json.dumps({**self.card, "id": "someone_else"}))
+        before = path.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "different character"):
+            stage_components(path, other, all_parts=True)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_stage_idempotent(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        before = path.read_bytes()
+        stage_components(path, MARA, part_ids=["head", "body"])
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_visibility_can_toggle_independently_from_export(self):
+        from ai3d.characters.assembly import set_component_visibility
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        set_component_visibility(path, part_id="head", visible=False)
+        result = json.loads(path.read_text())
+        self.assertFalse(result["parts"][1]["visible"])
+        self.assertTrue(result["parts"][1]["include_in_preview"])
+        set_component_visibility(path, part_id="head", include_in_preview=False)
+        result = json.loads(path.read_text())
+        self.assertFalse(result["parts"][1]["include_in_preview"])
+
+    def test_visibility_invalid_fields_rejected(self):
+        from ai3d.characters.assembly import set_component_visibility
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        before = path.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "Specify"):
+            set_component_visibility(path, part_id="body")
+        with self.assertRaisesRegex(RuntimeError, "Unknown"):
+            set_component_visibility(path, part_id="other", visible=True)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_visibility_and_export_flags_require_booleans(self):
+        data = self.plan(include_all_parts=True)
+        data["parts"][2]["include_in_preview"] = "true"
+        errors = validate_manifest(data, self.root / "mara_assembly_v1")
+        self.assertTrue(any("include_in_preview" in err for err in errors))
+
+    def test_staged_components_can_rebuild_with_independent_sources(self):
+        from ai3d.characters.assembly import stage_components
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        for part in self.card["parts"][2:]:
+            target = self.root / f"mara_components_v1_{part['id']}_{part['reference_view']}" / "05_painted.glb"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"fixture")
+        stage_components(path, MARA, all_parts=True)
+        with patch("ai3d.characters.assembly.readable_glb") as valid:
+            with patch.object(Runner, "command", autospec=True, side_effect=self.fake_blender):
+                assemble_preview(MARA, rebuild=True, **self.options)
+        self.assertEqual(valid.call_count, 6)
+
+    def test_stage_and_component_command_help(self):
+        for subcommand in ("stage", "component"):
+            command = [sys.executable, "-m", "ai3d", "character", subcommand, "--help"]
+            result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

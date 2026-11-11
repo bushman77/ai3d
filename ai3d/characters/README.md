@@ -380,3 +380,92 @@ open, and no contour matching, watertightness guarantee, seam welding,
 rigging, or part joining is performed. Do not use the cut GLB as a
 finished game character. Later milestones will handle landmark-guided
 cutting and seam processing.
+
+## Full-character component staging (next assembly milestone)
+
+The full-body source already includes a rough head, suit, gloves, hair,
+boots, and accessories. Importing all independent generated meshes on top
+would duplicate those objects. AI3D therefore separates **staged references**
+from **visible fitted geometry**.
+
+To extend the existing fitted Mara scene without losing head transforms or
+neck-cut settings:
+
+```bash
+cd ~/ai3d
+python3 -m ai3d character stage \
+  outputs/mara_assembly_v1/assembly.json \
+  examples/space_nova/characters/mara_venn.json --all --dry-run
+python3 -m ai3d character stage \
+  outputs/mara_assembly_v1/assembly.json \
+  examples/space_nova/characters/mara_venn.json --all
+```
+
+The additional `hair`, `outfit`, `hands`, `equipment` sources are imported
+into **independent Blender collections** but default to:
+
+```json
+"visible": false,
+"include_in_preview": false,
+"status": "staged_unfitted"
+```
+
+This is intentional: separate Qwen/Hunyuan reconstructions do not have
+matching component scale or alignment, and some are regions rather than
+objects that can be cleanly fused. The body and head remain visible and
+exported by default. Previously approved body/head fitting and cuts are
+preserved exactly.
+
+The existing cut guides can now be made real working-copy cuts by explicitly
+changing `guide` to `apply`, retaining the heights:
+
+```bash
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json \
+  --part body --mode apply --z 0.65 --keep below
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json \
+  --part head --mode apply --z 0.61 --keep above
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+blender outputs/mara_assembly_v1/preview.blend
+```
+
+These cut heights are human-selected trial settings, not detected
+landmarks. Review the result before further processing: the neckline may
+still contain gaps or material overlaps.
+
+To inspect one of the extra meshes against the current body, enable it
+**visually only**, keeping it out of the exported comparison GLB:
+
+```bash
+python3 -m ai3d character component \
+  outputs/mara_assembly_v1/assembly.json \
+  --part equipment --show
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+```
+
+You can use `--hide`, `--export`, or `--no-export` in the
+`character component` command. Export inclusion is **separate** from
+display visibility. Include extra geometry in `preview.glb` only after
+you have scaled and positioned it correctly in `assembly.json`; this
+comparison GLB is not production-ready.
+
+New assemblies can also stage all parts immediately:
+
+```bash
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 \
+  --name mara_assembly_full_v1 --all-parts
+```
+
+**Important:** This milestone does not automatically fit hair, gloves or
+uniform from close-up reconstructions. It does not weld the neck seam,
+resolve interpenetrating surfaces, remove redundant garment geometry,
+retopologize or rig the resulting character. Those are separate geometry
+production steps, not a property of importing more GLBs. The output scene
+is a useful preserved, adjustable workstation for the remaining work.
