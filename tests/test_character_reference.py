@@ -72,19 +72,20 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertEqual(view, "front")
         prompt = compose_reference_prompt(self.card, part, view)
         self.assertIn("A-pose", prompt)
-        self.assertIn("no cropped body parts", prompt.lower())
+        self.assertIn("no cropped feet", prompt.lower())
 
-    def test_mara_body_revision_two_has_clean_feminine_reference(self):
+    def test_mara_body_revision_three_excludes_baked_equipment(self):
         part, view = select_part_and_view(self.card, "body")
         prompt = compose_reference_prompt(self.card, part, view)
-        self.assertEqual(self.card["revision"], 2)
+        self.assertEqual(self.card["revision"], 3)
         self.assertIn("natural bust", self.card["prompts"]["master"])
-        self.assertIn("feminine silhouette", prompt)
-        self.assertIn("waist belt only", prompt)
-        self.assertIn("No cropped body parts", prompt)
+        self.assertIn("athletic feminine anatomy", prompt)
+        self.assertIn("uninterrupted", prompt)
+        self.assertIn("No utility belt", prompt)
+        self.assertIn("No missing fabric", prompt)
+        self.assertIn("No cropped feet", prompt)
         self.assertNotIn("camera at chest height", prompt.lower())
         self.assertNotIn("camera at chest height", self.card["prompts"]["master"].lower())
-        self.assertIn("no chest-mounted device", prompt.lower())
         self.assertEqual(validate_card(self.card), [])
 
     def test_missing_dedicated_reference_prompt_rejected(self):
