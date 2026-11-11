@@ -54,14 +54,16 @@ class AutoFitTest(unittest.TestCase):
     def load(self):
         return json.loads(self.manifest.read_text())
 
-    def test_fit_includes_head_and_equipment_but_stages_regions(self):
+    def test_fit_includes_head_and_stages_equipment_and_regions(self):
         self.assertTrue(fit_manifest(self.manifest, self.measurements))
         result = self.load()
         parts = {p["id"]: p for p in result["parts"]}
         self.assertEqual(parts["head"]["transform"]["scale"], [0.4] * 3)
         self.assertEqual(parts["head"]["transform"]["position"][2], 0.8)
         self.assertAlmostEqual(parts["body"]["cut"]["plane_z"], 0.66)
-        self.assertTrue(parts["equipment"]["include_in_preview"])
+        self.assertFalse(parts["equipment"]["include_in_preview"])
+        self.assertFalse(parts["equipment"]["visible"])
+        self.assertEqual(parts["equipment"]["status"], "staged_for_attachment_review")
         for ident in ("hair", "hands", "outfit"):
             self.assertFalse(parts[ident]["include_in_preview"])
             self.assertEqual(parts[ident]["status"], "staged_for_manual_replacement")

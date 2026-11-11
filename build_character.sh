@@ -31,6 +31,7 @@ THIGH_REVIEW=0
 THIGH_OUTPUT=""
 THIGH_INSET="0.0"
 THIGH_METHOD="guided"
+BODY_ONLY=0
 
 usage() {
   cat <<'HELP'
@@ -46,6 +47,7 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
   --body-shape GLB       Reuse existing body geometry instead of Hunyuan
   --body-image PNG       Matching reference for --body-shape
   --fresh-body           Generate the body from the card, don't auto-reuse Mara
+  --body-only            Stop after new Qwen body reference + Hunyuan shape
   --quality PRESET       Paint3D quality: fast|low|medium|high|highest
   --game-faces NUMBER    Target for combined static GLB (default: 60000)
   --refit                Recalculate heuristic assembly transforms
@@ -97,6 +99,7 @@ while (($#)); do
       esac
       shift 2;;
     --fresh-body) BODY_AUTO=0; shift;;
+    --body-only) BODY_ONLY=1; BODY_AUTO=0; shift;;
     --diagnose) DIAGNOSE=1; shift;;
     --thigh-prototype) THIGH_PROTOTYPE=1; shift;;
     --thigh-review) THIGH_PROTOTYPE=1; THIGH_REVIEW=1; shift;;
@@ -195,6 +198,9 @@ if (( BODY_AUTO )) && [[ -z "$BODY_SHAPE" && "$CARD" == examples/space_nova/char
     BODY_IMAGE="$candidate/01_reference.png"
   fi
 fi
+if (( BODY_ONLY )) && [[ -n "$BODY_SHAPE" || -n "$BODY_IMAGE" ]]; then
+  die "--body-only must produce new geometry; use existing ai3d generate --image if reusing an image"
+fi
 if [[ -n "$BODY_SHAPE" ]]; then
   [[ -s "$BODY_SHAPE" ]] || die "Body shape missing/empty: $BODY_SHAPE"
   if [[ -z "$BODY_IMAGE" ]]; then
@@ -215,6 +221,20 @@ COMMON=(--output-dir "$OUTPUT_DIR" --blender "$BLENDER")
 ACTION=(--resume)
 if (( FORCE )); then ACTION=(--force); fi
 if (( DRY_RUN )); then ACTION+=(--dry-run); fi
+
+if (( BODY_ONLY )); then
+  printf '\n[BODY SHAPE] Qwen clean body reference -> Hunyuan shape; pause before painting\n'
+  "$PYTHON" -m ai3d character generate "$CARD" \
+    --part body --stop-after shape \
+    --run-prefix "$PREFIX" "${COMMON[@]}" "${ACTION[@]}"
+  if (( DRY_RUN )); then
+    printf '\nBODY SHAPE DRY RUN: no output was generated.\n'
+  else
+    printf '\nBODY SHAPE STAGE FINISHED: %s\n' "$OUTPUT_DIR/${PREFIX}_body_front/"
+  fi
+  printf 'Inspect 01_reference.png and 03_shape.glb before any painting or assembly.\n'
+  exit 0
+fi
 
 printf '\n[1/4] Generate / texture / optimize primary body\n'
 if [[ -n "$BODY_SHAPE" ]]; then

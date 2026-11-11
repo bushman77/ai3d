@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import tempfile
 
-FIT_VERSION = 1
+FIT_VERSION = 2
 
 
 def _bounds(report: dict, part_id: str) -> dict:
@@ -123,8 +123,11 @@ def fit_manifest(manifest_path: Path, measurements_path: Path, *, refit: bool = 
     if "equipment" in parts:
         _place(parts["equipment"], raw["equipment"], size_by_axis=(0, 0.27 * h),
                target_center=[cx, cy - 0.04 * h, base + 0.56 * h])
-        parts["equipment"]["visible"] = True
-        parts["equipment"]["include_in_preview"] = True
+        # Fitting is only a placement suggestion. Duplicated accessories in
+        # generated body meshes must never be exported without review.
+        parts["equipment"]["visible"] = False
+        parts["equipment"]["include_in_preview"] = False
+        parts["equipment"]["status"] = "staged_for_attachment_review"
 
     # Region references, not guaranteed replacements. Keep in scene but
     # exclude from export to avoid duplicate hands/hair/clothing.
@@ -150,6 +153,7 @@ def fit_manifest(manifest_path: Path, measurements_path: Path, *, refit: bool = 
             "Bounds-derived positions are approximate and not anatomical landmarks.",
             "Neck cuts create unsealed boundaries; inspect contours and materials.",
             "Regions are staged, not exported, to avoid duplicate body geometry.",
+            "Equipment is staged but excluded from export pending clearance review.",
             "No rig, skinning, animation, retopology, or seam welding is performed.",
         ],
     }
