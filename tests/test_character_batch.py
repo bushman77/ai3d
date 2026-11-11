@@ -169,7 +169,7 @@ class CharacterBatchTests(unittest.TestCase):
             ("reference", "outfit"),
             ("reference", "hands"),
             ("reference", "equipment"),
-            ("pipeline", "mara_venn_equipment_three_quarter"),
+            ("pipeline", "mara_venn_equipment_equipment_closeup"),
         ])
 
     def test_user_part_settings_override_global_defaults(self):
@@ -196,6 +196,23 @@ class CharacterBatchTests(unittest.TestCase):
         self.assertEqual(captured[captured.index("--paint-faces") + 1], "75000")
         self.assertEqual(captured[captured.index("--view-resolution") + 1], "384")
         self.assertIn("--resume", captured)
+
+    def test_component_specific_prompts_avoid_facial_identity_on_equipment(self):
+        from ai3d.characters.reference import compose_reference_prompt, select_part_and_view
+        part, view = select_part_and_view(self.card, "equipment")
+        prompt = compose_reference_prompt(self.card, part, view)
+        self.assertIn("utility belt", prompt.lower())
+        self.assertIn("no person", prompt.lower())
+        self.assertNotIn("Identity cues:", prompt)
+        self.assertNotIn("three-quarter view showing face", prompt)
+
+    def test_gloves_and_equipment_use_dedicated_views(self):
+        plan = self.plan(all_parts=True)
+        mapping = {item["part_id"]: item["view"] for item in plan}
+        self.assertEqual(mapping["hands"], "hands_closeup")
+        self.assertEqual(mapping["equipment"], "equipment_closeup")
+        self.assertEqual(mapping["outfit"], "outfit_closeup")
+        self.assertEqual(mapping["hair"], "hair_closeup")
 
     def test_force_and_resume_conflict(self):
         with self.assertRaisesRegex(RuntimeError, "either --resume or --force"):

@@ -31,7 +31,11 @@
       "three_quarter": "",
       "side": "",
       "back": "",
-      "head_closeup": ""
+      "head_closeup": "",
+      "hair_closeup": "",
+      "outfit_closeup": "",
+      "hands_closeup": "",
+      "equipment_closeup": ""
     }
   },
   "references": [],
@@ -120,7 +124,7 @@
         "Hairline does not obscure eyes"
       ],
       "notes": "Region or separate mesh: choose during implementation.",
-      "reference_view": "head_closeup"
+      "reference_view": "hair_closeup"
     },
     {
       "id": "outfit",
@@ -149,7 +153,7 @@
         "Textures do not bleed across UV islands"
       ],
       "notes": "A region need not be a separate mesh.",
-      "reference_view": "front"
+      "reference_view": "outfit_closeup"
     },
     {
       "id": "hands",
@@ -177,7 +181,7 @@
         "Finger count and joint silhouettes are plausible"
       ],
       "notes": "Can later become an independent mesh if needed.",
-      "reference_view": "front"
+      "reference_view": "hands_closeup"
     },
     {
       "id": "equipment",
@@ -205,7 +209,7 @@
         "Accessories do not intersect the body unexpectedly"
       ],
       "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now.",
-      "reference_view": "three_quarter"
+      "reference_view": "equipment_closeup"
     }
   ],
   "assembly": {

@@ -51,7 +51,11 @@
       "three_quarter": "Slight three-quarter view showing face, outfit and silhouette without occlusion.",
       "side": "Clean orthographic side view with identical face and hairstyle.",
       "back": "Straight back view consistent with other references.",
-      "head_closeup": "Same Mara Venn identity: head and neck, nearly front facing, eyes and eyelids clearly defined, sharp nose bridge, visible lips and jaw, even neutral lighting, both ears and full hairline visible."
+      "head_closeup": "Same Mara Venn identity: head and neck, nearly front facing, eyes and eyelids clearly defined, sharp nose bridge, visible lips and jaw, even neutral lighting, both ears and full hairline visible.",
+      "hair_closeup": "Tight detail reference focused exclusively on the head's hairstyle and hairline; hair fully visible, clean neutral backdrop, no full body or clothing details.",
+      "outfit_closeup": "Studio product-style reference focused on the engineer's fitted forest-green and charcoal-gray jumpsuit, high collar, reinforced material seams and fit; avoid full character facial portrait.",
+      "hands_closeup": "Detailed close-up of only the gloved hands in a relaxed open pose, all fingers clearly visible, uniform studio lighting, no face, no torso.",
+      "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait."
     }
   },
   "references": [],
@@ -142,7 +146,7 @@
         "Hairline does not obscure eyes"
       ],
       "notes": "Region or separate mesh: choose during implementation.",
-      "reference_view": "head_closeup"
+      "reference_view": "hair_closeup"
     },
     {
       "id": "outfit",
@@ -155,7 +159,7 @@
         "geometry": "",
         "texture": "Forest-green and charcoal engineering jumpsuit, practical seams, reinforced details, modest wear.",
         "reference": "Detailed reference of the forest-green and charcoal-gray engineering jumpsuit showing seams, reinforced material boundaries, high collar, fitted torso and practical industrial design. Avoid dramatic lighting and occlusion.",
-        "negative": ""
+        "negative": "No face, no full person, no duplicate clothing, no unrelated props, no text, no watermark, no kiosk."
       },
       "generation": {
         "geometry_backend": null,
@@ -171,7 +175,7 @@
         "Textures do not bleed across UV islands"
       ],
       "notes": "A region need not be a separate mesh.",
-      "reference_view": "front"
+      "reference_view": "outfit_closeup"
     },
     {
       "id": "hands",
@@ -199,7 +203,7 @@
         "Finger count and joint silhouettes are plausible"
       ],
       "notes": "Can later become an independent mesh if needed.",
-      "reference_view": "front"
+      "reference_view": "hands_closeup"
     },
     {
       "id": "equipment",
@@ -227,7 +231,7 @@
         "Accessories do not intersect the body unexpectedly"
       ],
       "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now.",
-      "reference_view": "three_quarter"
+      "reference_view": "equipment_closeup"
     }
   ],
   "assembly": {

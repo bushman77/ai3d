@@ -62,10 +62,13 @@ def compose_reference_prompt(card: dict, part: dict, view: str) -> str:
     ):
         if isinstance(value, str) and value.strip():
             lines.append(f"{label}: {value.strip()}.")
-    if ident.get("personality_traits"):
-        lines.append("Personality: " + ", ".join(ident["personality_traits"]) + ".")
-    if appearance.get("recognition_traits"):
-        lines.append("Identity cues: " + "; ".join(appearance["recognition_traits"]) + ".")
+    # Face/personality cues can make isolated tools or garments sprout a
+    # person. Apply facial identity constraints only to facial/primary meshes.
+    if part["kind"] == "mesh" or part.get("parent") == "head":
+        if ident.get("personality_traits"):
+            lines.append("Personality: " + ", ".join(ident["personality_traits"]) + ".")
+        if appearance.get("recognition_traits"):
+            lines.append("Identity cues: " + "; ".join(appearance["recognition_traits"]) + ".")
     lines.extend([
         "Component reference: " + specific,
         "View: " + card["prompts"]["reference_views"][view].strip(),
