@@ -31,7 +31,7 @@ class CharacterBatchTests(unittest.TestCase):
     def plan(self, **opts):
         return build_plan(self.card, output_dir=self.root, **opts)
 
-    def run(self, **opts):
+    def preview(self, **opts):
         args = dict(
             output_dir=self.root,
             sd_cli=Path("/fake/sd-cli"),
@@ -113,7 +113,7 @@ class CharacterBatchTests(unittest.TestCase):
             build_plan(card, part_ids=["head"], stop_after="paint", output_dir=self.root)
 
     def test_dry_run_prints_plan_and_creates_no_files(self):
-        plan, output = self.run(all_parts=True, stop_after="game")
+        plan, output = self.preview(all_parts=True, stop_after="game")
         self.assertEqual(len(plan), 6)
         self.assertIn("Region parts produce references only", output)
         self.assertIn("Dry run completed", output)
@@ -123,12 +123,12 @@ class CharacterBatchTests(unittest.TestCase):
         (self.root / "mara_venn_head_head_closeup").mkdir(parents=True)
         with patch("ai3d.characters.batch.run_reference") as mocked:
             with self.assertRaisesRegex(RuntimeError, "already exists"):
-                self.run(all_parts=True, dry_run=False)
+                self.preview(all_parts=True, dry_run=False)
             mocked.assert_not_called()
 
     def test_existing_outputs_are_allowed_with_resume(self):
         (self.root / "mara_venn_head_head_closeup").mkdir(parents=True)
-        plan, _ = self.run(part_ids=["head"], resume=True)
+        plan, _ = self.preview(part_ids=["head"], resume=True)
         self.assertEqual(len(plan), 1)
 
     def test_symlinked_output_run_is_refused(self):
@@ -137,11 +137,11 @@ class CharacterBatchTests(unittest.TestCase):
         self.root.mkdir()
         (self.root / "mara_venn_head_head_closeup").symlink_to(external, target_is_directory=True)
         with self.assertRaisesRegex(RuntimeError, "symlink"):
-            self.run(part_ids=["head"])
+            self.preview(part_ids=["head"])
 
     def test_dry_run_does_not_call_full_pipeline(self):
         with patch("pipelines.image_to_3d.main") as pipeline:
-            self.run(all_parts=True, stop_after="game")
+            self.preview(all_parts=True, stop_after="game")
         pipeline.assert_not_called()
 
     def test_generates_parts_sequentially_and_passes_settings(self):
@@ -216,11 +216,11 @@ class CharacterBatchTests(unittest.TestCase):
 
     def test_force_and_resume_conflict(self):
         with self.assertRaisesRegex(RuntimeError, "either --resume or --force"):
-            self.run(part_ids=["head"], resume=True, force=True)
+            self.preview(part_ids=["head"], resume=True, force=True)
 
     def test_invalid_positive_options_rejected(self):
         with self.assertRaisesRegex(RuntimeError, "positive"):
-            self.run(part_ids=["head"], qwen_width=-1)
+            self.preview(part_ids=["head"], qwen_width=-1)
 
     def test_cli_help_includes_all_and_parts(self):
         result = subprocess.run(
