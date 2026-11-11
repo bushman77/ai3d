@@ -4,7 +4,7 @@
   "name": "Mara Venn",
   "category": "humanoid",
   "project": "space_nova",
-  "revision": 1,
+  "revision": 2,
   "identity": {
     "role": "Spaceport repair engineer",
     "species": "human",
@@ -44,8 +44,8 @@
     ]
   },
   "prompts": {
-    "master": "Full-body character reference for a stylized science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she's the smartest technician in the room. Keep her attractive but believable, capable and clearly recognizable, with realistic human proportions and a memorable silhouette. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit with restrained metallic details, reinforced seams, practical utility belt, subtle repair-tool attachments, work gloves and sturdy dark industrial boots. Her clothes show mild signs of working around spacecraft, but she is unusually meticulous and tidy. No helmet, no bulky backpack, no tools held in her hands. Character is standing upright in a relaxed A-pose, arms slightly away from the torso, hands open and visible, legs separated slightly, feet fully visible. Entire character in frame from top of head to soles of boots, generous margins on all sides. Single character only, front three-quarter view, camera at chest height, accurate anatomy and symmetrical limbs. Soft even studio lighting, clean light-gray seamless background, no ground props, no scenery, no shadows obscuring the feet. High-quality stylized realistic 3D game character concept art, clearly separated clothing materials, crisp facial features and costume details, suitable as a reference image for image-to-3D mesh reconstruction.",
-    "negative": "No text, no labels, no watermark, no collage, no extra people, no cropped body parts, no additional limbs or fingers, no exaggerated caricature, no dramatic action pose, no kiosk.",
+    "master": "Full-body character reference for a stylized-realistic science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she is the smartest technician in the room. Keep her attractive but believable, capable and recognizable, with anatomically realistic adult female proportions: natural bust definition, a gently defined waist, proportionate hips and an athletic, practical silhouette. No exaggerated anatomy. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit that follows her natural shape, with properly fitted torso panels, restrained metallic details and reinforced seams. Her chest area is unobstructed jumpsuit fabric and seams only. A practical utility belt at her waist holds compact repair tools and small pouches exclusively at the hips, not on her chest. She wears fitted work gloves and sturdy dark industrial boots. Her outfit shows mild signs of working around spacecraft, but she is unusually meticulous and tidy. Standing upright in a relaxed, symmetrical A-pose, arms slightly away from the torso, hands open and visible, legs separated slightly, feet fully visible. Entire character in frame from top of head to soles of boots with generous margins on all sides. One character only, straight-on frontal full-body studio view with minimal perspective distortion and accurate, symmetrical anatomy. Soft even studio lighting, clean light-gray seamless background, no scenery or shadows obscuring the feet. High-quality stylized-realistic 3D game character concept art, clearly separated clothing materials, crisp costume and facial details, suitable as a reference image for image-to-3D mesh reconstruction.",
+    "negative": "No text, labels, watermark, collage, extra people, cropped body parts, missing feet, extra limbs or fingers, exaggerated caricature, dramatic action pose, kiosk, helmet, bulky backpack, tools held in hands, camera, chest-mounted camera, chest device, camera strap, chest harness, cross-body strap, pendant, necklace, hanging badge, chest ornament, chest armor, bulky chest equipment, or random objects covering the jumpsuit torso.",
     "reference_views": {
       "front": "Neutral front view with upright A-pose and all body parts fully visible.",
       "three_quarter": "Slight three-quarter view showing face, outfit and silhouette without occlusion.",
@@ -68,10 +68,10 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
-        "geometry": "Reconstruct a full-body A-pose with coherent proportions and practical sci-fi outfit silhouette.",
+        "geometry": "Reconstruct a complete, upright female A-pose body with natural bust, waist and hip silhouette beneath a properly fitted functional engineering jumpsuit; preserve hands, boots, belt and symmetrical limb proportions. The chest contains fabric and seams only, no protruding accessories.",
         "texture": "",
-        "reference": "Entire character standing upright in a relaxed A-pose, complete figure from head to feet with generous margins. Forest-green and charcoal engineering jumpsuit, reinforced seams, clean equipment belt, sturdy industrial boots. Camera at chest height, accurate human proportions, arms slightly separated, open hands fully visible, realistic hands and fingers. Studio lighting and clean light gray background. Only one character; include all limbs.",
-        "negative": ""
+        "reference": "Full-body reference of Mara Venn, an adult human female repair engineer, for reconstructing a complete 3D body in a relaxed, symmetrical A-pose. Show a natural adult feminine silhouette under practical fitted clothing: believable bust shape, clearly but gently defined waist, proportionate hips and athletic, anatomically accurate arms and legs. Keep the chest clearly contoured by the jumpsuit fabric alone; no chest props. Fitted forest-green and charcoal-gray engineering jumpsuit with reinforced seams, correctly shaped chest and waist panels, gloves, durable dark boots, and a tidy utility belt carrying compact tools and pouches exclusively on the hips. Preserve a tidy engineer look, not bulky armor. Straight-on frontal, full-body studio reference with minimal perspective distortion. One character, upright, arms slightly separated from torso, open hands and individual fingers visible, legs slightly apart, entire figure including head and both feet fully in frame with generous margins. Clear front-facing silhouette, symmetric human anatomy, soft neutral studio lighting and plain light-gray background. The head need not have close-up facial detail; prioritize body proportions and clean outfit geometry.",
+        "negative": "No cropped body parts, no missing feet, no extra people or extra limbs, no exaggerated bust or anatomy, no masculine torso, no oversized shoulder armor, no camera, no chest-mounted device, no camera strap, no necklace, no chest harness, no cross-body straps, no pendant, no chest badge, no bulky chest plate, no dangling chest gear, no handheld tools, no backpack, no kiosk, no scenery, no watermark or text. Place all small equipment on the waist belt only."
       },
       "generation": {
         "geometry_backend": null,
@@ -84,7 +84,10 @@
       },
       "quality_gates": [
         "Correct proportions and complete silhouette",
-        "Inspect the original shape before any reduction"
+        "Inspect the original shape before any reduction",
+        "Natural adult feminine bust/waist/hip silhouette in 2D reference and gray mesh",
+        "No camera, chest device, strap, or protruding chest accessory",
+        "Only proceed to texturing after body geometry and outfit silhouette are approved"
       ],
       "notes": "Keep the main body independent of experiments on smaller parts.",
       "reference_view": "front"
