@@ -35,3 +35,7 @@ reference image plus untextured mesh; no inference is launched in CI.
 - `test_character_batch.py`: sequential character generation, per-part
   stages/settings, region safety, non-overwriting runs, dry-run and
   preservation of Qwen's reference cache when reused in the 3D pipeline.
+
+- `test_character_assembly.py`: two-part preview plans, part and GLB
+  selection, safe output policy, editable manifests, explicit rebuild,
+  mocked Blender command execution and source-preservation checks.

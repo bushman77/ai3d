@@ -81,6 +81,27 @@ def main(argv: list[str] | None = None) -> int:
     action.add_argument("--force", action="store_true", help="Explicitly rebuild and overwrite matching run outputs")
     generate.add_argument("--dry-run", action="store_true", help="Plan only; do not launch Qwen or write files")
 
+    assembly = sub.add_parser(
+        "assemble", help="Build an editable two-part Blender comparison preview"
+    )
+    assembly.add_argument("card", type=Path, help="Character card JSON")
+    assembly.add_argument("--run-prefix", required=True,
+                          help="Prefix used for the existing component GLB output folders")
+    assembly.add_argument("--name", required=True,
+                          help="New output folder name inside outputs/")
+    assembly.add_argument("--base", default="body", help="Base part ID (default: body)")
+    assembly.add_argument("--attach", default="head", help="Part to compare (default: head)")
+    assembly.add_argument("--source-stage", choices=("painted", "game"),
+                          default="painted", help="Use higher-detail 05_painted.glb by default")
+    assembly.add_argument("--layout", choices=("side_by_side", "overlay"),
+                          default="side_by_side", help="Side-by-side preview or overlapping origins")
+    assembly.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    assembly.add_argument("--blender", default="blender")
+    assembly.add_argument("--dry-run", action="store_true",
+                          help="Show source paths and layout without writing or launching Blender")
+    assembly.add_argument("--rebuild", action="store_true",
+                          help="Reuse edited assembly.json and explicitly regenerate preview files")
+
     args = parser.parse_args(argv)
 
     if args.action == "init":
@@ -136,6 +157,20 @@ def main(argv: list[str] | None = None) -> int:
                 render_size=args.render_size, quality=args.quality,
                 max_views=args.max_views, paint_debug=args.paint_debug,
                 resume=args.resume, force=args.force, dry_run=args.dry_run,
+            )
+        except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+    elif args.action == "assemble":
+        from .assembly import assemble_preview
+
+        try:
+            assemble_preview(
+                args.card, name=args.name, run_prefix=args.run_prefix,
+                base=args.base, attach=args.attach,
+                source_stage=args.source_stage, layout=args.layout,
+                output_root=args.output_dir, blender=args.blender,
+                dry_run=args.dry_run, rebuild=args.rebuild,
             )
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)

@@ -13,7 +13,7 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     root = argparse.ArgumentParser(
         prog="ai3d",
-        description="AI3D: generate, inspect and validate local 3D assets",
+        description="AI3D: local 3D assets, character cards, and Blender previews",
     )
     root.add_argument(
         "command", nargs="?", choices=("generate", "inspect", "validate-blender", "character"),

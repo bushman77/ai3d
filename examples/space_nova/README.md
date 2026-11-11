@@ -53,3 +53,19 @@ commands, then continue using the existing approved head GLB separately.
 To experiment with separate hair, outfit and hand meshes, add
 `--include-regions` intentionally; otherwise these remain reference-only.
 Part geometry and painted assets are not automatically assembled.
+
+## Mara's Blender body + head comparison scene
+
+```bash
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1
+blender outputs/mara_assembly_v1/preview.blend
+```
+
+This imports `mara_components_v1_body_front/05_painted.glb` and
+`mara_components_v1_head_head_closeup/05_painted.glb` into separate
+Blender collections. The default side-by-side staging reveals the relative
+scale and geometry; it does not align the head or remove duplicated parts.
+Save edits to `outputs/mara_assembly_v1/assembly.json` and rerun with
+`--rebuild` to experiment with transforms non-destructively.

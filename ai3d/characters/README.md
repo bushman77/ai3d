@@ -203,3 +203,91 @@ A complete consumer-specific example is at
 `examples/space_nova/characters/mara_venn.json`. It shows how to specify
 separate full-body and head-focused prompts without introducing game-specific
 requirements into the AI3D core.
+
+
+## Non-destructive two-part Blender assembly preview
+
+The first assembly milestone creates a **comparison and alignment workspace**,
+not a finished character. It imports independently generated component GLBs
+into separate named collections and parents their original glTF hierarchies to
+individual control empties, retaining all original source files and materials.
+
+The default starts with the **full-detail painted body and head**, not the
+15K-triangle final exports:
+
+```bash
+cd ~/ai3d
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 \
+  --name mara_assembly_v1 \
+  --dry-run
+```
+
+Check that both paths report FOUND, then create the scene:
+
+```bash
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 \
+  --name mara_assembly_v1
+```
+
+The command uses the already-installed Blender executable, not the Hunyuan
+or Qwen Python environments. It does **not** launch a GPU inference stage.
+
+```text
+outputs/mara_assembly_v1/
+├── assembly.json         # Editable scene and transform specification
+├── preview.blend         # Non-destructive Blender scene
+├── preview.glb           # Comparison GLB (separate mesh objects, NOT game-ready)
+├── measurements.json     # Per-part bounds, triangle counts, staging offsets
+└── logs/
+    └── assembly-preview.log
+```
+
+The initial layout is `side_by_side` so an unaligned head does not
+obscure the full-body mesh. Blender computes a temporary horizontal offset
+and records it in `measurements.json`. That offset is **not** an anatomical
+attachment fit. Open the `.blend` file, expand the `AI3D_COMPONENTS`
+collection, and inspect the `AI3D_body_CONTROL` and `AI3D_head_CONTROL`
+objects. Switch to Material Preview for textured inspection.
+
+To experiment with fitting, edit `assembly.json` (with Vim, for example):
+set `preview_layout` to `overlay`, then adjust the head component's
+`transform.position`, `transform.rotation_deg` and
+`transform.scale` (three numeric elements each). Explicitly rebuild:
+
+```bash
+vim outputs/mara_assembly_v1/assembly.json
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 \
+  --name mara_assembly_v1 --rebuild
+```
+
+`--rebuild` keeps the edited manifest and regenerates only the preview
+scene, comparison GLB and measurements. It does not edit the card or source
+meshes. Without `--rebuild`, existing assembly output directories are
+refused, including ones containing earlier experiments.
+
+Options:
+- `--base body --attach head` (default) selects any two distinct IDs from
+  the card; `--base body --attach equipment` is also supported
+- `--source-stage painted` (default) imports `05_painted.glb`;
+  `--source-stage game` imports the optimized `06_game.glb`
+- `--layout side_by_side` (default) or `--layout overlay` selects the
+  initial display arrangement; edited layouts persist on `--rebuild`
+- `--output-dir` and `--blender` override the normal output root and
+  Blender executable
+
+The initial manifest records source paths and SHA-256 checksums, while
+measurements capture imported triangle counts and world-space bounds.
+The comparison GLB is **not a fused character mesh**, and the script never
+performs mesh cutting, head replacement, seam welding, rigging or retopology.
+Two overlapping heads are expected if you switch to `overlay` before
+removing the body's original head in a later explicit editing stage.
+
+CI tests command routing, safety checks, manifests, transforms and Blender
+script syntax with mock Blender execution. The actual Blender import/export
+must be validated locally on real generated GLBs.

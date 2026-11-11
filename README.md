@@ -118,7 +118,10 @@ The reusable template and JSON Schema are in `ai3d/characters/`. See
 
 **Card-driven per-part Qwen, Hunyuan and Paint3D generation is implemented**
 with sequential batch processing and resumable intermediate stages.
-Head-to-body alignment, and assembly are future work. The card maintains
+A non-destructive **two-part Blender assembly preview** is available through
+`python3 -m ai3d character assemble`. It creates an editable scene and
+manifest, but automatic body-part replacement, head-to-neck fitting and
+final assembly are future work. The card maintains
 persistent design identity and per-part prompts independently of generated
 images and meshes.
 
@@ -277,3 +280,24 @@ Only mesh and attachment parts proceed beyond reference by default;
 hair, outfit and hands. The generator does not assemble, align or rig parts.
 
 See [character-card batch workflow](ai3d/characters/README.md).
+
+## Preview body + head in Blender
+
+```bash
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --dry-run
+# Once the two source GLBs exist, run without --dry-run:
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1
+blender outputs/mara_assembly_v1/preview.blend
+```
+
+The command imports the full-detail painted body and head, each under its
+own control object and collection. Default side-by-side placement is a
+visual comparison, **not an alignment**. The manifest at
+`outputs/mara_assembly_v1/assembly.json` can be edited and replayed
+explicitly with `--rebuild`; the original GLBs are never modified.
+
+See [the assembly preview guide](ai3d/characters/README.md).
