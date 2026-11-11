@@ -1,0 +1,19 @@
+Full-body character reference for a stylized-realistic science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility.
+
+Mara has a recognizable feminine silhouette with realistic adult female anatomy, natural bust definition, a gently defined waist, proportionate hips, and an athletic but believable physique. Her proportions are anatomically accurate, neither exaggerated nor cartoonish.
+
+She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin, and one subtly arched eyebrow. Her expression is confident, aloof, snobbish, and faintly unimpressed, as though she is the smartest technician in the room.
+
+She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit. The jumpsuit follows her natural body shape, with properly fitted chest and waist panels, reinforced seams, practical stitching, and restrained metallic details. The chest area is completely unobstructed, showing only the jumpsuit fabric and its seams.
+
+A practical utility belt sits around her hips, holding small tool pouches and compact repair equipment exclusively at the waist. She wears fitted work gloves and sturdy dark industrial boots. Her clothing shows subtle signs of regular engineering work but remains unusually neat and meticulously maintained.
+
+She stands upright in a relaxed, symmetrical A-pose, arms slightly separated from the torso, hands open and fully visible, legs slightly apart, and feet completely visible.
+
+Straight-on frontal character reference, entire figure visible from the top of her head to the soles of her boots, with generous margins on every side. Neutral full-body studio composition with minimal perspective distortion, soft even lighting, and a clean light-gray seamless background.
+
+High-quality stylized-realistic 3D game character concept art, accurate human anatomy, clearly defined feminine silhouette, clean clothing contours, coherent proportions, and crisp costume details. Suitable for image-to-3D mesh reconstruction.
+
+**Negative prompt:**
+
+No cameras, no chest-mounted equipment, no circular chest objects, no chest harness, no cross-body straps, no necklaces, no pendants, no hanging devices, no chest badges, no bulky armor, no backpack, no handheld tools, no exaggerated anatomy, no masculine body proportions, no extra limbs, no extra fingers, no cropped feet, no additional characters, no kiosk, no scenery, no watermark, no labels, no text.
