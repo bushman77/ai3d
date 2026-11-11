@@ -18,6 +18,8 @@ jobs:
       - name: Compile and test (no AI dependencies)
         run: |
           python -m compileall -q ai3d space_nova_pipeline tests
+          bash -n build_character.sh
+          ./build_character.sh --help >/dev/null
           python -m unittest discover -s tests -v
           python -m ai3d --help >/dev/null
           python -m ai3d generate --help >/dev/null
