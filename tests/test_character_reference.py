@@ -72,21 +72,27 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertEqual(view, "front")
         prompt = compose_reference_prompt(self.card, part, view)
         self.assertIn("A-pose", prompt)
-        self.assertIn("no cropped feet", prompt.lower())
+        self.assertIn("entire body", prompt.lower())
+        self.assertNotIn("avoid:", prompt.lower())
 
-    def test_mara_body_revision_three_excludes_baked_equipment(self):
+    def test_mara_body_revision_four_has_visual_only_clean_reference(self):
         part, view = select_part_and_view(self.card, "body")
         prompt = compose_reference_prompt(self.card, part, view)
-        self.assertEqual(self.card["revision"], 3)
+        self.assertEqual(self.card["revision"], 4)
+        self.assertEqual(part["generation"]["reference_mode"], "visual_only")
         self.assertIn("natural bust", self.card["prompts"]["master"])
-        self.assertIn("athletic feminine anatomy", prompt)
-        self.assertIn("uninterrupted", prompt)
-        self.assertIn("No utility belt", prompt)
-        self.assertIn("No missing fabric", prompt)
-        self.assertIn("No cropped feet", prompt)
-        self.assertNotIn("camera at chest height", prompt.lower())
-        self.assertNotIn("camera at chest height", self.card["prompts"]["master"].lower())
+        self.assertIn("athletic feminine", prompt)
+        self.assertIn("continuous", prompt)
+        self.assertIn("jumpsuit", prompt)
+        self.assertNotIn("Avoid:", prompt)
+        self.assertNotIn("repair engineer", prompt)
+        self.assertNotIn("utility belt", prompt)
         self.assertEqual(validate_card(self.card), [])
+
+    def test_invalid_reference_mode_is_rejected(self):
+        altered = deepcopy(self.card)
+        altered["parts"][0]["generation"]["reference_mode"] = "unrecognized"
+        self.assertTrue(any("reference_mode" in error for error in validate_card(altered)))
 
     def test_missing_dedicated_reference_prompt_rejected(self):
         card = new_card("any_character")

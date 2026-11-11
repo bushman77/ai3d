@@ -17,23 +17,46 @@ attachment system has been approved.
   `outputs/`, a new reference must be generated.
 - No model weights or `.venv` files need to be deleted.
 
-## First run: Qwen reference then Hunyuan shape, stop
+## 2026-11-11 clean-body v1 visual checkpoint failed
 
-After clearing `outputs/`, close Blender and run from repository root:
+The first reference (mara_clean_v1) still generated waist equipment, thigh
+holders, gloves and boots. The text-to-image input included an inline list
+naming those unwanted items, and occupation/personality context, despite
+the negating words. The v4 body card now uses "reference_mode": "visual_only"
+which sends only the plain visual body reference plus camera directions.
+It does not change the design brief or instructions for the head/equipment.
+
+Do NOT reconstruct the rejected v1 reference. Generate a fresh v2 reference
+with a distinct prefix to compare:
 
 ```bash
 cd ~/ai3d
 git pull --ff-only
-./build_character.sh --body-only --dry-run --prefix mara_clean_v1
-./build_character.sh --body-only --prefix mara_clean_v1
+python3 -m ai3d character generate \
+  examples/space_nova/characters/mara_venn.json \
+  --part body --stop-after reference \
+  --run-prefix mara_clean_v2 --resume
+xdg-open outputs/mara_clean_v2_body_front/01_reference.png
+```
+
+Only after this new reference passes visual review should you run
+`./build_character.sh --body-only --prefix mara_clean_v2`.
+
+## First run: Qwen reference then Hunyuan shape, stop
+
+For a verified v2 reference, the body-only command is:
+
+```bash
+cd ~/ai3d
+./build_character.sh --body-only --prefix mara_clean_v2
 ```
 
 The script pauses after the Hunyuan shape stage without Paint3D, independent
 component generation, assembly, or final GLB export.
 
 Review:
-- `outputs/mara_clean_v1_body_front/01_reference.png`
-- `outputs/mara_clean_v1_body_front/03_shape.glb`
+- `outputs/mara_clean_v2_body_front/01_reference.png`
+- `outputs/mara_clean_v2_body_front/03_shape.glb`
 
 The Qwen reference must have a clear A-pose, uninterrupted green jumpsuit
 fabric at waist/thighs, and no embedded equipment or separate props.
@@ -57,7 +80,7 @@ geometry specifications only after the reference has been visually accepted.
 4. Paint and export only after body geometry and component alignment are
    accepted, then optimize and run visual regression checks.
 
-The existing `--fresh-body --prefix mara_clean_v1` full-build invocation
+The existing `--fresh-body --prefix mara_clean_v2` full-build invocation
 can resume from the first checkpoint, but should be postponed until the
 component separation work is implemented and visually checked.
 Current `autofit.py` excludes the combined equipment mesh from export

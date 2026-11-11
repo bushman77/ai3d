@@ -309,6 +309,10 @@
             "texture_backend": {
               "$ref": "#/$defs/backend"
             },
+            "reference_mode": {
+              "type": ["string", "null"],
+              "enum": ["contextual", "visual_only", null]
+            },
             "shape_steps": {
               "type": [
                 "integer",

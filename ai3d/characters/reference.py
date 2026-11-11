@@ -47,6 +47,18 @@ def compose_reference_prompt(card: dict, part: dict, view: str) -> str:
         raise RuntimeError(
             f"Part {part['id']!r} needs a dedicated prompts.reference string"
         )
+    # A visual-only reference deliberately excludes role, personality and
+    # inline "Avoid: ..." lists. Some text-to-image backends render objects
+    # named in negated phrases; keep such constraints in the source card for
+    # review rather than feeding their nouns to a positive-only prompt.
+    if part.get("generation", {}).get("reference_mode") == "visual_only":
+        return "\n".join([
+            "Clean studio visual reference for 3D reconstruction.",
+            specific,
+            "View: " + card["prompts"]["reference_views"][view].strip(),
+            "",
+        ])
+
     ident, appearance = card["identity"], card["appearance"]
     negative = prompts.get("negative", "").strip() or card["prompts"]["negative"].strip()
     lines = [

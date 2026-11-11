@@ -21,10 +21,13 @@ class MaraCleanBodyContractTest(unittest.TestCase):
         self.assertIn("a-pose", positive)
         self.assertEqual(view, "front")
         combined = compose_reference_prompt(card, body, view).lower()
-        self.assertIn("no utility belt", combined)
-        self.assertIn("no missing fabric", combined)
-        self.assertIn("single-character studio reference", combined)
-        self.assertIn("adult human", positive)
+        self.assertIn("clean studio visual reference", combined)
+        self.assertIn("continuous", combined)
+        self.assertNotIn("avoid:", combined)
+        self.assertNotIn("spaceport repair engineer", combined)
+        for disallowed in ("belt", "holster", "pouch", "tool", "camera", "badge", "boots", "gloves"):
+            self.assertNotIn(disallowed, combined)
+        self.assertIn("adult woman", positive)
 
     def test_design_brief_still_preserves_full_equipment_identity(self):
         card = load_card(CARD)

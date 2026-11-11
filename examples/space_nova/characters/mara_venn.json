@@ -4,7 +4,7 @@
   "name": "Mara Venn",
   "category": "humanoid",
   "project": "space_nova",
-  "revision": 3,
+  "revision": 4,
   "identity": {
     "role": "Spaceport repair engineer",
     "species": "human",
@@ -70,7 +70,7 @@
       "prompts": {
         "geometry": "Reconstruct a complete symmetric A-pose character in a fitted continuous engineering jumpsuit, with anatomically consistent waist, hips, thighs, arms, hands and feet. No equipment or separate props. The clothing surface must remain present underneath all future accessories. Prioritize unobstructed geometry, clean shoulders and legs, and continuous fitted fabric.",
         "texture": "Fitted forest-green and charcoal-gray jumpsuit with subtle panel seams, natural fabric folds and mild material variation. Smooth continuous material at waist and thighs; no equipment silhouettes or random pale/white blotches.",
-        "reference": "Full-body studio reference of Mara Venn, adult human female spaceport engineer, for reconstruction of a complete clean base body. Preserve her established identity: believable athletic feminine anatomy with a natural bust and waist, proportionate hips, a recognizable face with chestnut hair tied back. She wears ONLY a close-fitting forest-green and charcoal-gray engineering jumpsuit covering the torso, hips, arms and legs. The jumpsuit fabric continues uninterrupted around the full waist, both hips and both thighs; no accessories obscure or replace those surfaces. Show leg shape, shoulders, elbows and knees clearly with a restrained number of surface-level cloth seams, panel boundaries and realistic fabric tension and folds. Include natural uncovered open hands with clearly separated fingers and simple integrated foot coverings so the anatomy is complete; detailed gloves and boots will be generated independently later. Relaxed symmetric A-pose: arms approximately 30 degrees from the torso, fingers visible, legs separated slightly and feet parallel. Single complete character centered on a light-gray plain studio background, orthographic straight-on FRONT view, no dramatic lighting, minimal perspective, entire head to toes visible with margins on all sides. Focus on a coherent high-quality uninterrupted base mesh, clean anatomy and smooth transitions, not decorative props. The supplied master concept describes a fully dressed final Mara, but this reference depicts the clean BASE BODY ONLY.",
+        "reference": "Full-body studio model sheet of one adult woman with a believable athletic feminine build, natural bust, gently defined waist, proportionate hips and limbs, and chestnut-brown hair smoothly pulled back from a recognizable expressive face. She wears a single close-fitting forest-green and charcoal-gray one-piece fabric jumpsuit covering her shoulders, neck, chest, entire abdomen, waist, hips, thighs, knees, shins and ankles. The fitted garment has broad continuous smooth fabric panels at the abdomen, waist, hips, outer thighs and inner thighs. Subtle stitched panel transitions follow the body surface, with gentle fabric folds at elbows and knees. Plain continuous fabric sleeves extend to the wrists. Her uncovered hands have five distinct relaxed fingers each, and her feet have closely fitted simple fabric foot coverings with a smooth silhouette. The garment fabric is clearly visible across every side of the torso and legs. Upright symmetrical A-pose with straight relaxed fingers, arms about 30 degrees away from the torso, legs slightly apart and feet facing forward. Entire body centered and completely visible from hair crown to toes with generous clear margin. Orthographic straight-on front view, even diffuse neutral studio lighting, light gray background, precise anatomical contour, clean crisp silhouette, consistent stylized-realistic 3D game character concept rendering. Prioritize natural human anatomy and continuous green fabric surfaces.",
         "negative": "No utility belt, waist belt, holsters, thigh rigs, pouches, tools, weapons, gadgets, repair equipment, pockets that project outward, separate gloves, separate boots, bulky armor, camera, chest device, straps, pendant, badge, necklace or any hanging objects. No missing fabric underneath the waist or thigh. No cropped feet or head, missing/extra limbs, extra fingers, distorted anatomy, crossed limbs, scenery, labels, text or watermark."
       },
       "generation": {
@@ -80,7 +80,8 @@
         "target_triangles": null,
         "view_resolution": null,
         "reference_width": 384,
-        "reference_height": 576
+        "reference_height": 576,
+        "reference_mode": "visual_only"
       },
       "quality_gates": [
         "No utility belt, pouches, holsters, tools or raised accessories in the Qwen reference",
@@ -89,7 +90,7 @@
         "Inspect untextured Hunyuan shape for embedded props, large holes and intersecting surfaces BEFORE painting",
         "Only approve body for later detailed outfit, gloves, boots and equipment attachment after visual review"
       ],
-      "notes": "Clean base-body geometry only. Original finished-character prompt remains preserved in prompt.txt; all equipment is separately generated and must never be baked into this body reference.",
+      "notes": "Clean base-body geometry only. Positive-only visual reference mode deliberately omits occupation, personality and avoid-lists from Qwen's text prompt to reduce gear contamination. The full Mara design brief and equipment remain separate.",
       "reference_view": "front"
     },
     {

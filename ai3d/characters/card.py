@@ -165,6 +165,8 @@ def validate_card(card: object) -> list[str]:
             if not isinstance(gen, dict):
                 errors.append(f"{tag}.generation must be an object")
             else:
+                if gen.get("reference_mode") not in (None, "contextual", "visual_only"):
+                    errors.append(f"{tag}.generation.reference_mode must be contextual or visual_only")
                 for k in ("geometry_backend", "texture_backend"):
                     if gen.get(k) is not None and not _nonempty(gen[k]):
                         errors.append(f"{tag}.generation.{k} must be string or null")
