@@ -16,6 +16,13 @@ import sys
 import bpy
 from mathutils import Vector
 
+# Blender is launched from the caller's current directory, which need not be
+# the repository root. Add the source root before importing our Blender tools.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from ai3d.assembly.blender_cutting import guide_plane, bisect_part_world_z
+
 
 def arguments():
     parser = argparse.ArgumentParser()
@@ -27,7 +34,7 @@ def arguments():
 def world_bounds(mesh_objects):
     points = [
         obj.matrix_world @ Vector(corner)
-        for obj in mesh_objects for corner in obj.bound_box
+        for obj in mesh_objects if len(obj.data.polygons) for corner in obj.bound_box
     ]
     if not points:
         raise RuntimeError("Imported source contains no mesh bounding boxes")
@@ -149,6 +156,30 @@ def main():
         stage_offsets[results[1]["id"]] = [float(delta), 0.0, 0.0]
         bpy.context.view_layer.update()
 
+    # Three cut states: 'off' changes nothing; 'guide' draws an editable
+    # plane visualization; 'apply' bisects only Blender's imported mesh copies.
+    # Each stage can be reversed by changing the manifest to 'off' and rebuild.
+    guides = bpy.data.collections.new("AI3D_CUT_GUIDES")
+    scene_root.children.link(guides)
+    cut_results = {}
+    for spec, result in zip(manifest["parts"], results):
+        cut = spec.get("cut") or {"mode": "off"}
+        mode = cut.get("mode", "off")
+        if mode not in ("off", "guide", "apply"):
+            raise RuntimeError(f"Invalid cut mode on {result['id']}: {mode}")
+        report = {"mode": mode}
+        if mode != "off":
+            height = float(cut["plane_z"])
+            if cut.get("show_guide", True):
+                guide_plane(
+                    guides, result["id"],
+                    result["original_bounds_after_transform"], height
+                )
+            report.update({"plane_z": height, "keep": cut["keep"]})
+            if mode == "apply":
+                report.update(bisect_part_world_z(result, height, cut["keep"]))
+        cut_results[result["id"]] = report
+
     for result in results:
         result["preview_bounds"] = world_bounds(result["meshes"])
 
@@ -169,7 +200,13 @@ def main():
             "control_object": item["control"].name,
             "imported_object_count": item["imported_object_count"],
             "mesh_count": item["mesh_count"],
-            "triangles": item["triangles"],
+            "triangles": item["triangles"],  # Retain legacy report field.
+            "triangles_before": item["triangles"],
+            "triangles_after": sum(
+                len(poly.vertices) - 2 for obj in item["meshes"]
+                for poly in obj.data.polygons if len(poly.vertices) >= 3
+            ),
+            "cut": cut_results[item["id"]],
             "bounds_with_user_transform": item["original_bounds_after_transform"],
             "staging_offset": stage_offsets[item["id"]],
             "preview_bounds": item["preview_bounds"],
@@ -178,7 +215,9 @@ def main():
             "Preview only: meshes remain separate, with no head-to-body fit.",
             "Side-by-side offsets are display-only and are not fitted attachment transforms.",
             "Original generated source GLBs are unchanged.",
-            "No cutting, neck-bridging, merging, automatic rigging or production export.",
+            "Cutting is optional and applies only to imported working meshes.",
+            "Cut planes do NOT cap holes, stitch neck seams, replace parts, or rig the character.",
+            "This is not a production character export.",
         ],
     }
 
@@ -191,10 +230,16 @@ def main():
     measurements.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     # A preview GLB has two independently selectable mesh groups and original
     # materials. It is NOT a fused or production-quality character.
-    bpy.ops.export_scene.gltf(
-        filepath=str(glb), export_format="GLB",
-        export_cameras=False, export_lights=False,
-    )
+    # The cut grid is an editor-only visual. Temporarily remove its collection
+    # before exporting the comparison GLB, then restore it for the .blend file.
+    scene_root.children.unlink(guides)
+    try:
+        bpy.ops.export_scene.gltf(
+            filepath=str(glb), export_format="GLB",
+            export_cameras=False, export_lights=False,
+        )
+    finally:
+        scene_root.children.link(guides)
     bpy.ops.file.pack_all()
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
     print(f"AI3D assembly preview saved: {blend}")

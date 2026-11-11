@@ -39,3 +39,7 @@ reference image plus untextured mesh; no inference is launched in CI.
 - `test_character_assembly.py`: two-part preview plans, part and GLB
   selection, safe output policy, editable manifests, explicit rebuild,
   mocked Blender command execution and source-preservation checks.
+
+- `test_character_assembly.py` additionally exercises configurable
+  cut modes, backwards-compatible v1 manifests, invalid plane/kept-side
+  rejection, editing without Blender, and reversible working-copy contracts.

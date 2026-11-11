@@ -9,9 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import shutil
+import tempfile
 
+from ai3d.assembly.cutting import default_cut, validate_cut
 from ai3d.characters.card import load_card
 from ai3d.export.validation import readable_glb
 from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
@@ -64,6 +67,7 @@ def build_assembly_plan(
             "parent_part": None if part_id == base else base,
             "intended_attachment": part.get("attachment"),
             "status": "unfitted",
+            "cut": default_cut(keep="below" if part_id == base else "above"),
             "transform": {
                 "position": [0.0, 0.0, 0.0],
                 "rotation_deg": [0.0, 0.0, 0.0],
@@ -90,7 +94,8 @@ def build_assembly_plan(
         },
         "notes": [
             "This is a non-destructive comparison of independent meshes.",
-            "The head is NOT cut into the body, aligned, joined, or rigged.",
+            "Cut-plane operations are off by default; guide and apply modes are opt-in.",
+            "No automatic head alignment, neck seam welding, joining, or rigging.",
             "side_by_side applies a temporary display offset, recorded in measurements.json.",
             "Edit parts[*].transform, switch preview_layout to overlay, then use --rebuild.",
             "preview.glb is NOT a production assembled character asset.",
@@ -128,6 +133,10 @@ def validate_manifest(manifest: object, output: Path) -> list[str]:
             if not isinstance(transform, dict):
                 errors.append(f"{label}.transform must be an object")
                 continue
+            # Old v1 assembly manifests remain valid without a cut section;
+            # a user may add the section via 'character cut' later.
+            if "cut" in part:
+                errors.extend(validate_cut(part["cut"], f"{label}.cut"))
             for key in ("position", "rotation_deg", "scale"):
                 vec = transform.get(key)
                 if (not isinstance(vec, list) or len(vec) != 3 or
@@ -223,7 +232,8 @@ def assemble_preview(
     print(f"Output: {folder}")
     for part in manifest["parts"]:
         present = "FOUND" if Path(part["source"]).is_file() else "MISSING"
-        print(f"  {part['id']}: {part['source']} [{present}]")
+        cut = part.get("cut", {})
+        print(f"  {part['id']}: {part['source']} [{present}]; cut={cut.get('mode', 'off')}")
     if dry_run:
         print("Dry run: no Blender process and no output files created.")
         return manifest
@@ -264,5 +274,71 @@ def assemble_preview(
     print("Preview Blender scene: " + manifest["output"]["blend"])
     print("Preview multi-object GLB: " + manifest["output"]["glb"])
     print("Measurements: " + manifest["output"]["measurements"])
-    print("Original components unchanged. No fitting, cutting, joining or rigging performed.")
+    print("Original component GLBs unchanged. Guide/apply mode affects assembly copies only.")
+    print("No automatic fitting, joining, neck seam welding, or rigging performed.")
+    return manifest
+
+
+def configure_cut(
+    manifest_path: Path, *,
+    part_id: str,
+    mode: str,
+    plane_z: float | None = None,
+    keep: str | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """Edit one assembly manifest's cut settings, never running Blender.
+
+    Previous v1 manifests without cut keys are supported. This is explicitly
+    separate from --rebuild, so editing a guide never accidentally applies a
+    destructive operation. The only mutated file is the assembly manifest.
+    """
+    manifest_path = Path(manifest_path).expanduser()
+    if manifest_path.name != "assembly.json" or manifest_path.is_symlink():
+        raise RuntimeError("Expected a regular assembly.json file")
+    if not manifest_path.is_file():
+        raise RuntimeError(f"Assembly manifest not found: {manifest_path}")
+    folder = manifest_path.parent.resolve()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    matching = [p for p in manifest.get("parts", []) if p.get("id") == part_id]
+    if len(matching) != 1:
+        raise RuntimeError(f"Assembly has no unique component {part_id!r}")
+    part = matching[0]
+    cut = dict(part.get("cut") or default_cut(
+        keep="below" if part_id == manifest.get("base_part") else "above"
+    ))
+    if mode not in ("off", "guide", "apply"):
+        raise RuntimeError("--mode must be off, guide, or apply")
+    if mode != "off" and plane_z is None:
+        raise RuntimeError("For guide/apply, specify an explicit --z plane height")
+    cut["mode"] = mode
+    if plane_z is not None:
+        cut["plane_z"] = plane_z
+    if keep is not None:
+        cut["keep"] = keep
+    cut.setdefault("show_guide", True)
+    part["cut"] = cut
+    errors = validate_manifest(manifest, folder)
+    if errors:
+        raise RuntimeError("Invalid cut configuration:\n  - " + "\n  - ".join(errors))
+    print(
+        f"Cut for {part_id}: mode={cut['mode']}, "
+        f"world Z={cut['plane_z']}, keep={cut['keep']}"
+    )
+    if dry_run:
+        print("Dry run; existing assembly.json unchanged.")
+        return manifest
+
+    # A short-lived temporary file in the same folder makes replacement
+    # atomic, and preserves the original on validation/serialization errors.
+    fd, temp = tempfile.mkstemp(prefix=".assembly-cut-", suffix=".tmp", dir=folder)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            json.dump(manifest, file, indent=2, allow_nan=False)
+            file.write("\n")
+        os.replace(temp, manifest_path)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
+    print("Updated manifest. Run 'character assemble ... --rebuild' to see the result.")
     return manifest

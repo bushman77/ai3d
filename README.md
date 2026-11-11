@@ -301,3 +301,29 @@ visual comparison, **not an alignment**. The manifest at
 explicitly with `--rebuild`; the original GLBs are never modified.
 
 See [the assembly preview guide](ai3d/characters/README.md).
+
+## Reversible character cut-plane preview (Phase 1)
+
+`python3 -m ai3d character cut` adds adjustable cut guides to the
+existing Blender assembly manifest. Modes are `off` (default),
+`guide` (visual-only), and `apply` (working-copy mesh bisect).
+The cutting plane is horizontal at a specified world-space Z; source
+component GLBs are never edited. Rebuilding with mode `off` restores
+the original geometry.
+
+```bash
+python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
+  --part body --mode guide --z 0.76 --keep below
+python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
+  --part head --mode guide --z 0.68 --keep above
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+```
+
+Inspect both guides in Blender before requesting `--mode apply`.
+These heights are only starting points for visual inspection.
+The preview remains two independent meshes, with no neck-seam
+welding, automatic fitting, rigging or production export.
+
+See [assembly guide and safety details](ai3d/characters/README.md).

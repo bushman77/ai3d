@@ -236,5 +236,152 @@ class AssemblyTests(unittest.TestCase):
         self.assertFalse(self.root.exists())
 
 
+    def test_new_assembly_has_disabled_cut_config_for_each_part(self):
+        data = self.plan()
+        self.assertEqual(data["parts"][0]["cut"]["mode"], "off")
+        self.assertEqual(data["parts"][0]["cut"]["keep"], "below")
+        self.assertEqual(data["parts"][1]["cut"]["keep"], "above")
+        self.assertEqual(validate_manifest(data, self.root / "mara_assembly_v1"), [])
+
+    def test_old_v1_manifest_without_cut_fields_still_valid(self):
+        data = self.plan()
+        for part in data["parts"]:
+            part.pop("cut")
+        self.assertEqual(validate_manifest(data, self.root / "mara_assembly_v1"), [])
+
+    def test_guide_and_apply_are_valid_only_with_numeric_finite_z(self):
+        data = self.plan()
+        cut = data["parts"][0]["cut"]
+        cut.update(mode="guide", plane_z=0.75)
+        self.assertEqual(validate_manifest(data, self.root / "mara_assembly_v1"), [])
+        cut.update(mode="apply", plane_z=0.75)
+        self.assertEqual(validate_manifest(data, self.root / "mara_assembly_v1"), [])
+        for value in (float("nan"), float("inf"), "0.75", None, True):
+            with self.subTest(z=value):
+                cut["plane_z"] = value
+                self.assertTrue(any("plane_z" in err for err in validate_manifest(
+                    data, self.root / "mara_assembly_v1"
+                )))
+        cut["plane_z"] = 0.75
+        cut["mode"] = "delete_everything"
+        self.assertTrue(any(".mode" in err for err in validate_manifest(
+            data, self.root / "mara_assembly_v1"
+        )))
+
+    def test_bad_keep_side_and_guide_toggle_rejected(self):
+        data = self.plan()
+        cut = data["parts"][0]["cut"]
+        cut["keep"] = "all"
+        self.assertTrue(any(".keep" in err for err in validate_manifest(
+            data, self.root / "mara_assembly_v1"
+        )))
+        cut["keep"] = "below"
+        cut["show_guide"] = "no"
+        self.assertTrue(any("show_guide" in err for err in validate_manifest(
+            data, self.root / "mara_assembly_v1"
+        )))
+
+    def test_configure_cut_requires_explicit_z_for_guide_apply(self):
+        from ai3d.characters.assembly import configure_cut
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        original = path.read_bytes()
+        for mode in ("guide", "apply"):
+            with self.subTest(mode=mode), self.assertRaisesRegex(RuntimeError, "explicit --z"):
+                configure_cut(path, part_id="body", mode=mode)
+            self.assertEqual(original, path.read_bytes())
+
+    def test_guide_preview_does_not_touch_source_or_assembly_manifest(self):
+        from ai3d.characters.assembly import configure_cut
+        data = self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        before = path.read_bytes()
+        configure_cut(path, part_id="body", mode="guide", plane_z=0.76, dry_run=True)
+        self.assertEqual(before, path.read_bytes())
+        for part in data["parts"]:
+            self.assertEqual(Path(part["source"]).read_bytes(),
+                             b"fake-glb:" + part["id"].encode())
+
+    def test_update_cut_then_rebuild_keeps_unchanged_source_models(self):
+        from ai3d.characters.assembly import configure_cut
+        data = self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        configure_cut(path, part_id="body", mode="guide", plane_z=0.76)
+        configure_cut(path, part_id="head", mode="guide", plane_z=0.68)
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved["parts"][0]["cut"]["mode"], "guide")
+        self.assertEqual(saved["parts"][1]["cut"]["plane_z"], 0.68)
+        with patch("ai3d.characters.assembly.readable_glb"):
+            with patch.object(Runner, "command", autospec=True, side_effect=self.fake_blender):
+                assemble_preview(MARA, rebuild=True, **self.options)
+        for part in data["parts"]:
+            self.assertEqual(Path(part["source"]).read_bytes(),
+                             b"fake-glb:" + part["id"].encode())
+
+    def test_apply_can_revert_to_off_by_editing_manifest(self):
+        from ai3d.characters.assembly import configure_cut
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        configure_cut(path, part_id="body", mode="apply", plane_z=0.75)
+        assert json.loads(path.read_text())["parts"][0]["cut"]["mode"] == "apply"
+        configure_cut(path, part_id="body", mode="off")
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved["parts"][0]["cut"]["mode"], "off")
+        self.assertEqual(saved["parts"][0]["cut"]["plane_z"], 0.75)
+
+    def test_old_manifest_is_automatically_extended_when_cut_is_configured(self):
+        from ai3d.characters.assembly import configure_cut
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        data = json.loads(path.read_text())
+        data["parts"][0].pop("cut")
+        path.write_text(json.dumps(data))
+        configure_cut(path, part_id="body", mode="guide", plane_z=0.75)
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved["parts"][0]["cut"]["keep"], "below")
+
+    def test_cut_command_cli_supports_dry_run_and_validation(self):
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        unchanged = path.read_bytes()
+        cmd = [
+            sys.executable, "-m", "ai3d", "character", "cut",
+            str(path), "--part", "body", "--mode", "guide", "--z", "0.75",
+        ]
+        preview = subprocess.run(
+            [*cmd, "--dry-run"], cwd=ROOT, capture_output=True, text=True
+        )
+        self.assertEqual(preview.returncode, 0, preview.stderr)
+        self.assertEqual(unchanged, path.read_bytes())
+        applied = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved["parts"][0]["cut"]["mode"], "guide")
+        self.assertEqual(saved["parts"][0]["cut"]["plane_z"], 0.75)
+
+    def test_cut_cli_rejects_apply_without_z(self):
+        self.create_preview()
+        path = self.root / "mara_assembly_v1/assembly.json"
+        cmd = [
+            sys.executable, "-m", "ai3d", "character", "cut",
+            str(path), "--part", "body", "--mode", "apply",
+        ]
+        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("explicit --z", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_blender_cut_helpers_are_syntactically_valid_and_copy_meshes(self):
+        helper = ROOT / "ai3d/assembly/blender_cutting.py"
+        script = SCRIPT.read_text(encoding="utf-8")
+        cut_code = helper.read_text(encoding="utf-8")
+        ast.parse(cut_code)
+        ast.parse(script)
+        self.assertIn("mesh = obj.data.copy()", cut_code)
+        self.assertIn("bmesh.ops.bisect_plane(", cut_code)
+        self.assertIn("scene_root.children.unlink(guides)", script)
+        self.assertNotIn("bpy.ops.object.join(", script)
+
+
 if __name__ == "__main__":
     unittest.main()

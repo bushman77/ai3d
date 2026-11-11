@@ -1,4 +1,4 @@
-"""CLI for creating and validating project-independent character cards."""
+"""CLI for reusable cards, generation and reversible Blender previews."""
 
 import argparse
 from pathlib import Path
@@ -102,6 +102,19 @@ def main(argv: list[str] | None = None) -> int:
     assembly.add_argument("--rebuild", action="store_true",
                           help="Reuse edited assembly.json and explicitly regenerate preview files")
 
+    cut = sub.add_parser(
+        "cut", help="Configure a reversible assembly cut plane without running Blender"
+    )
+    cut.add_argument("manifest", type=Path, help="Existing outputs/<assembly>/assembly.json")
+    cut.add_argument("--part", required=True, help="Part ID, e.g. body or head")
+    cut.add_argument("--mode", choices=("off", "guide", "apply"), required=True,
+                     help="off=untouched; guide=plane visualization; apply=trim working copy")
+    cut.add_argument("--z", type=float, help="Horizontal world-space Z cutting height")
+    cut.add_argument("--keep", choices=("above", "below"),
+                     help="Which side of the plane to retain")
+    cut.add_argument("--dry-run", action="store_true",
+                     help="Validate and preview manifest edit without writing")
+
     args = parser.parse_args(argv)
 
     if args.action == "init":
@@ -173,6 +186,17 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run, rebuild=args.rebuild,
             )
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+    elif args.action == "cut":
+        from .assembly import configure_cut
+
+        try:
+            configure_cut(
+                args.manifest, part_id=args.part, mode=args.mode,
+                plane_z=args.z, keep=args.keep, dry_run=args.dry_run,
+            )
+        except (RuntimeError, OSError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
     return 0

@@ -291,3 +291,92 @@ removing the body's original head in a later explicit editing stage.
 CI tests command routing, safety checks, manifests, transforms and Blender
 script syntax with mock Blender execution. The actual Blender import/export
 must be validated locally on real generated GLBs.
+
+## Cut-plane guides and reversible working-mesh trimming (Phase 1)
+
+A character assembly can now describe a horizontal world-space Blender
+cutting plane **per imported component**. No cutting occurs by default.
+An additive `parts[*].cut` entry is available in new `assembly.json`
+manifests and can be added to older v1 manifests using the CLI:
+
+```json
+"cut": {
+  "mode": "off",
+  "plane_z": 0.0,
+  "keep": "below",
+  "show_guide": true
+}
+```
+
+Modes:
+- `off`: leave mesh untouched and show no cut grid
+- `guide`: show an orange cut grid in the Blender scene; **do not trim**
+- `apply`: bisect **copied Blender mesh datablocks only** at that Z height;
+  retain `below` for a body or `above` for an independently generated
+  replacement head. Source GLBs are never modified.
+
+The first version supports **horizontal Z planes only**, in the scene's
+existing world-unit coordinate space. Height values are not normalized by
+the component's local dimensions. Adjustments use the current component
+transforms already saved in `assembly.json`. The guide may be shown in
+both `guide` and `apply` modes and is excluded from the comparison GLB.
+
+### Example: Mara body and head
+
+With an existing `outputs/mara_assembly_v1/assembly.json` (including
+your approved head scaling/positioning), set up **guides first**.
+These numbers are initial *illustrative trial heights* based on the
+approximately two-unit-tall body, **not measured anatomical landmarks**:
+
+```bash
+cd ~/ai3d
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json \
+  --part body --mode guide --z 0.76 --keep below
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json \
+  --part head --mode guide --z 0.68 --keep above
+
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+
+blender outputs/mara_assembly_v1/preview.blend
+```
+
+Inspect **front and right orthographic views**. Adjust heights by
+rerunning the `character cut` commands in `guide` mode. The body must
+retain the uniform/collar; the replacement head should keep the facial
+and sufficient neck geometry without redundant shoulder pieces.
+
+Only after inspecting the guides, explicitly switch a part to
+`--mode apply` using the same `--z` and `--keep` flags, then rebuild.
+`apply` trims *within the assembly scene*; the exported `preview.glb`
+still has separate open-ended meshes and is **not a joined or welded
+production character**.
+
+To undo cutting without altering any source files:
+
+```bash
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json --part body --mode off
+python3 -m ai3d character cut \
+  outputs/mara_assembly_v1/assembly.json --part head --mode off
+python3 -m ai3d character assemble \
+  examples/space_nova/characters/mara_venn.json \
+  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+```
+
+The rebuild **reimports original GLBs**, so returning to `off`
+restores original geometry in the assembly. The report
+`measurements.json` tracks original and remaining triangle counts,
+cut plane Z, kept side, and boundary-edge counts. The guide geometry is
+stored only in the editable Blender file, not the comparison GLB.
+
+Important limitations: a horizontal cut may remove hair, collars or
+clothing that cross the selected plane; it cannot semantically identify
+which polygons belong to a face or neck. The mesh boundaries remain
+open, and no contour matching, watertightness guarantee, seam welding,
+rigging, or part joining is performed. Do not use the cut GLB as a
+finished game character. Later milestones will handle landmark-guided
+cutting and seam processing.
