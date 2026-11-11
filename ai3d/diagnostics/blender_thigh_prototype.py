@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from ai3d.diagnostics.thigh_underlay import build_mara_underlay
+from ai3d.diagnostics.guided_thigh_patch import build_mesh_guided_thigh_patch
 
 
 def parse_args():
@@ -31,6 +32,7 @@ def parse_args():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--object", default="Mesh")
     parser.add_argument("--inset", type=float, default=0.0)
+    parser.add_argument("--method", choices=("guided", "stations"), default="guided")
     parser.add_argument("--overwrite", action="store_true")
     args = sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     return parser.parse_args(args)
@@ -65,14 +67,28 @@ def main():
            for i in range(4) for j in range(4)):
         raise RuntimeError("Body world transform differs from measured identity transform")
 
-    vertices, faces = build_mara_underlay(inset=args.inset)
-    if bpy.data.objects.get("AI3D_Thigh_Underlay_TEST"):
-        raise RuntimeError("This scene already contains a test underlay")
-    mesh = bpy.data.meshes.new("AI3D_thigh_underlay_test_mesh")
+    if args.method == "guided":
+        # Original body polygons, not the detached holster meshes. The
+        # geometry function identifies substantial leg-spanning islands.
+        points = [tuple(body.matrix_world @ vert.co) for vert in body.data.vertices]
+        source_faces = [tuple(poly.vertices) for poly in body.data.polygons]
+        vertices, faces, diagnostics = build_mesh_guided_thigh_patch(
+            points, source_faces, inset=args.inset
+        )
+        object_name = "AI3D_Thigh_GuidedPatch_TEST"
+        mesh_name = "AI3D_thigh_guided_patch_test_mesh"
+    else:
+        vertices, faces = build_mara_underlay(inset=args.inset)
+        diagnostics = {"method": "fixed_station_closed_underlay"}
+        object_name = "AI3D_Thigh_Underlay_TEST"
+        mesh_name = "AI3D_thigh_underlay_test_mesh"
+    if bpy.data.objects.get(object_name):
+        raise RuntimeError(f"This scene already contains {object_name}")
+    mesh = bpy.data.meshes.new(mesh_name)
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
 
-    patch = bpy.data.objects.new("AI3D_Thigh_Underlay_TEST", mesh)
+    patch = bpy.data.objects.new(object_name, mesh)
     group = bpy.data.collections.new("AI3D_THIGH_REPAIR_PROTOTYPE")
     bpy.context.scene.collection.children.link(group)
     group.objects.link(patch)
@@ -88,7 +104,9 @@ def main():
 
     patch["prototype_only"] = True
     patch["source_scene"] = str(source)
-    patch["fit_reason"] = "underlay for missing negative-X thigh surface; no mesh weld"
+    patch["fit_reason"] = "experimental negative-X thigh underlay; no mesh weld"
+    patch["fitting_method"] = args.method
+    patch["fitting_metadata_json"] = json.dumps(diagnostics, sort_keys=True)
     patch["inset"] = args.inset
 
     # New file only. Existing body, head, clothing, selections, sources and
@@ -100,9 +118,13 @@ def main():
     print("\nAI3D MARA THIGH UNDERLAY PROTOTYPE", flush=True)
     print(f"  Original (unchanged): {source}", flush=True)
     print(f"  Preview scene: {output}", flush=True)
-    print(f"  Object: {patch.name}", flush=True)
+    print(f"  Object: {patch.name} (method={args.method})", flush=True)
+    if args.method == "guided":
+        print(f"  Support islands: {diagnostics['source_islands']}", flush=True)
+        print(f"  Supported rings front/rear: {diagnostics['front_supported_rings']}/{diagnostics['rear_supported_rings']}", flush=True)
     print(f"  Prototype vertices: {len(vertices)}; faces: {len(faces)}", flush=True)
-    print("  NOT approved for gameplay; inspect the side profile and old holster geometry.", flush=True)
+    print("  NOT approved for gameplay. Mesh-guided patch is OPEN, not joined or textured.", flush=True)
+    print("  Check front, side and 3/4 views, old holster fragments and edge gaps.", flush=True)
 
 
 if __name__ == "__main__":

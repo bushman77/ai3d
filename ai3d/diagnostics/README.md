@@ -52,12 +52,15 @@ python3 -m unittest discover -s tests -p test_topology_analysis.py -v
 
 The Blender adapter still requires a local runtime test on a real .blend file.
 
-## Mara-specific thigh underlay prototype (non-destructive)
+## Mara-specific thigh prototype (non-destructive)
 
-This experimental construction uses fitted stations from the uploaded
-Mara preview and exposed-thigh scenes. The shell is watertight **on its own**
-but does not weld to clothing, has no UV texture, and does not erase remaining
-holster surfaces. It is not yet suitable for game export.
+The default `--thigh-prototype` now uses a **mesh-guided open side panel**,
+not the original fixed-radius cylinder. It samples the surviving front and
+rear leg-surface islands in the experimental Mara mesh, excluding short
+equipment fragments. It only spans the measured thigh height where the
+original geometry supplies sufficient samples. Its outward X extent is
+limited to 0.004 units beyond the observed contour. Missing front/rear
+support aborts generation rather than guessing a replacement.
 
 ```bash
 cd ~/ai3d
@@ -65,22 +68,37 @@ git pull --ff-only
 ./build_character.sh --thigh-prototype
 ```
 
-That command loads only
-`outputs/mara_complete_v1_assembly/hole_in_thigh_exposed.blend`
-and saves a separate scene:
-`outputs/mara_complete_v1_assembly/thigh_underlay_prototype.blend`.
+Input: `outputs/mara_complete_v1_assembly/hole_in_thigh_exposed.blend`.
+New output: `outputs/mara_complete_v1_assembly/thigh_guided_prototype.blend`.
+**Neither the input nor the previous fixed-station preview is overwritten.**
 
-Open the new file in Blender. The diagnostic cyan object appears in
-`AI3D_THIGH_REPAIR_PROTOTYPE` as `AI3D_Thigh_Underlay_TEST`. Inspect
-front, side and 3/4 views with the material/color visible. Adjusting
-the underlay is experimental: use `--thigh-inset 0.006` to shrink its
-cross-section slightly, plus `--force` to replace an existing prototype.
+Open the result in Blender and inspect the cyan
+`AI3D_Thigh_GuidedPatch_TEST` object under
+`AI3D_THIGH_REPAIR_PROTOTYPE`, from the front, side and three-quarter
+views. The panel has OPEN front/rear and top/bottom boundaries. It is not
+welded to the original clothing and may still show seams, interference
+with remaining holster pieces or exposed texture transitions. It is
+**NOT APPROVED for static/game export**. The scene saves metadata on the
+test object describing sampled contours and source-island counts.
 
-The script explicitly checks the experimental Mara body vertex/face counts
-(20,633/33,129) and identity transform before fitting; it rejects other
-source meshes instead of applying inappropriate proportions.
+The older closed-cylinder experiment is still available explicitly:
 
-Known limitation: the uploaded scene still has protruding holster-like
-geometry; a shell alone cannot remove that. Later milestones must verify
-remaining islands, fit surface curvature, handle seam materials/UVs,
-and test a separate game export before approving the result.
+```bash
+./build_character.sh --thigh-prototype --thigh-method stations
+```
+
+Its output remains `thigh_underlay_prototype.blend`. Existing prototype
+outputs are never overwritten implicitly. The `--force` option explicitly
+permits rebuilding an output; `--thigh-inset 0.006` nudges the guided
+panel inward along +X (or shrinks the old station-based shell's radii).
+The saved .blend source is always preserved.
+
+The Blender adapter also checks that this exact experimental body still
+has 20,633 vertices and 33,129 polygons, with an identity world transform,
+before fitting. These guards reduce accidental fitting to another model,
+but do not establish watertightness, texture quality or anatomical accuracy.
+
+Unit tests check the contour generation, exclusion of short equipment
+islands, refusal to guess with missing surface support, and inset behavior.
+The shell remains a prototype until a Blender visual review and a separate
+topology/texture/occlusion validation pass.

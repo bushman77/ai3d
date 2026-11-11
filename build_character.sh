@@ -29,6 +29,7 @@ DIAGNOSE_SIDE="negative-x"
 THIGH_PROTOTYPE=0
 THIGH_OUTPUT=""
 THIGH_INSET="0.0"
+THIGH_METHOD="guided"
 
 usage() {
   cat <<'HELP'
@@ -54,9 +55,10 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
   --diagnose-object NAME Mesh object to inspect (default: Mesh)
   --diagnose-side SIDE   negative-x|positive-x|both (default: negative-x)
   --diagnose-report FILE Destination .json (default: beside .blend)
-  --thigh-prototype      Create a separate, diagnostic thigh-underlay .blend
-  --thigh-output FILE    Prototype .blend path (default: beside experimental scene)
-  --thigh-inset FLOAT    Underlay radius adjustment (0.0 to <0.03; default: 0)
+  --thigh-prototype      Create a separate, diagnostic thigh preview .blend
+  --thigh-method METHOD  guided|stations (default: guided mesh-driven side panel)
+  --thigh-output FILE    Prototype .blend path (method-specific, beside source)
+  --thigh-inset FLOAT    guided: move patch inward +X; stations: shrink radius
   -h, --help             Show this help
 
 If present, outputs/mara_body_shape50/{01_reference.png,03_shape.glb}
@@ -72,7 +74,7 @@ need_value() { [[ $# -ge 2 && -n "$2" ]] || die "Missing value after $1"; }
 
 while (($#)); do
   case "$1" in
-    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset)
+    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset|--thigh-method)
       need_value "$@"
       case "$1" in
         --card) CARD="$2";;
@@ -89,6 +91,7 @@ while (($#)); do
         --diagnose-report) DIAGNOSE_REPORT="$2"; DIAGNOSE=1;;
         --thigh-output) THIGH_OUTPUT="$2"; THIGH_PROTOTYPE=1;;
         --thigh-inset) THIGH_INSET="$2"; THIGH_PROTOTYPE=1;;
+        --thigh-method) THIGH_METHOD="$2"; THIGH_PROTOTYPE=1;;
       esac
       shift 2;;
     --fresh-body) BODY_AUTO=0; shift;;
@@ -139,15 +142,21 @@ fi
 if (( THIGH_PROTOTYPE )); then
   (( ! DIAGNOSE )) || die "Choose either --diagnose or --thigh-prototype"
   [[ "$THIGH_INSET" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]] || die "Invalid --thigh-inset"
+  case "$THIGH_METHOD" in guided|stations) ;; *) die "Invalid --thigh-method";; esac
   # Fitting is Mara-only; the Python generator validates range more strictly.
   source_scene="$OUTPUT_DIR/$ASSEMBLY/hole_in_thigh_exposed.blend"
   [[ -s "$source_scene" ]] || die "Missing experimental scene: $source_scene"
-  THIGH_OUTPUT="${THIGH_OUTPUT:-$OUTPUT_DIR/$ASSEMBLY/thigh_underlay_prototype.blend}"
+  if [[ "$THIGH_METHOD" == guided ]]; then
+    default_thigh_file="thigh_guided_prototype.blend"
+  else
+    default_thigh_file="thigh_underlay_prototype.blend"
+  fi
+  THIGH_OUTPUT="${THIGH_OUTPUT:-$OUTPUT_DIR/$ASSEMBLY/$default_thigh_file}"
   [[ "$THIGH_OUTPUT" == *.blend ]] || die "Prototype output must be .blend"
   command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
   proto_cmd=("$BLENDER" --background "$source_scene" --python-exit-code 1
      --python "$ROOT/ai3d/diagnostics/blender_thigh_prototype.py" --
-     --output "$THIGH_OUTPUT" --inset "$THIGH_INSET")
+     --output "$THIGH_OUTPUT" --inset "$THIGH_INSET" --method "$THIGH_METHOD")
   if (( FORCE )); then proto_cmd+=(--overwrite); fi
   if (( DRY_RUN )); then
      printf 'Would create separate prototype:'
