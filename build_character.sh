@@ -21,6 +21,11 @@ GAME_FACES=60000
 DRY_RUN=0
 FORCE=0
 REFIT=0
+DIAGNOSE=0
+DIAGNOSE_BLEND=""
+DIAGNOSE_REPORT=""
+DIAGNOSE_OBJECT="Mesh"
+DIAGNOSE_SIDE="negative-x"
 
 usage() {
   cat <<'HELP'
@@ -41,6 +46,11 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
   --refit                Recalculate heuristic assembly transforms
   --force                Regenerate component stages in the selected run prefix
   --dry-run              Print planned inference commands; write nothing
+  --diagnose             Analyze saved thigh-hole scene; no rebuild/inference
+  --diagnose-blend FILE  Source .blend (default: saved hole_in_thigh_exposed.blend)
+  --diagnose-object NAME Mesh object to inspect (default: Mesh)
+  --diagnose-side SIDE   negative-x|positive-x|both (default: negative-x)
+  --diagnose-report FILE Destination .json (default: beside .blend)
   -h, --help             Show this help
 
 If present, outputs/mara_body_shape50/{01_reference.png,03_shape.glb}
@@ -56,7 +66,7 @@ need_value() { [[ $# -ge 2 && -n "$2" ]] || die "Missing value after $1"; }
 
 while (($#)); do
   case "$1" in
-    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces)
+    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report)
       need_value "$@"
       case "$1" in
         --card) CARD="$2";;
@@ -67,9 +77,14 @@ while (($#)); do
         --body-image) BODY_IMAGE="$2";;
         --quality) QUALITY="$2";;
         --game-faces) GAME_FACES="$2";;
+        --diagnose-blend) DIAGNOSE_BLEND="$2"; DIAGNOSE=1;;
+        --diagnose-object) DIAGNOSE_OBJECT="$2"; DIAGNOSE=1;;
+        --diagnose-side) DIAGNOSE_SIDE="$2"; DIAGNOSE=1;;
+        --diagnose-report) DIAGNOSE_REPORT="$2"; DIAGNOSE=1;;
       esac
       shift 2;;
     --fresh-body) BODY_AUTO=0; shift;;
+    --diagnose) DIAGNOSE=1; shift;;
     --refit) REFIT=1; shift;;
     --force) FORCE=1; REFIT=1; shift;;
     --dry-run) DRY_RUN=1; shift;;
@@ -83,6 +98,35 @@ ASSEMBLY="${ASSEMBLY:-${PREFIX}_assembly}"
 [[ "$ASSEMBLY" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --assembly"
 [[ "$GAME_FACES" =~ ^[0-9]+$ ]] && ((10#$GAME_FACES >= 100)) || die "--game-faces must be at least 100"
 case "$QUALITY" in fast|low|medium|high|highest) ;; *) die "Invalid --quality";; esac
+# Diagnostic mode is deliberately separate from the expensive build.
+# Never validate/generate/fit/export while only inspecting a saved .blend file.
+if (( DIAGNOSE )); then
+  case "$DIAGNOSE_SIDE" in negative-x|positive-x|both) ;; *) die "Invalid --diagnose-side";; esac
+  [[ -n "$DIAGNOSE_OBJECT" ]] || die "Empty --diagnose-object"
+  DIAGNOSE_BLEND="${DIAGNOSE_BLEND:-$OUTPUT_DIR/$ASSEMBLY/hole_in_thigh_exposed.blend}"
+  [[ -s "$DIAGNOSE_BLEND" ]] || die "Diagnostic scene missing or empty: $DIAGNOSE_BLEND"
+  [[ "$DIAGNOSE_BLEND" == *.blend ]] || die "Diagnostic scene must be .blend"
+  if [[ -z "$DIAGNOSE_REPORT" ]]; then
+    scene_name="$(basename -- "$DIAGNOSE_BLEND")"
+    DIAGNOSE_REPORT="$(dirname -- "$DIAGNOSE_BLEND")/topology_${scene_name%.blend}.json"
+  fi
+  [[ "$DIAGNOSE_REPORT" == *.json ]] || die "Report must be .json"
+  command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
+  [[ -f "$ROOT/ai3d/diagnostics/blender_topology.py" ]] || die "Missing diagnostic adapter"
+  diag_cmd=("$BLENDER" --background "$DIAGNOSE_BLEND" --python-exit-code 1
+    --python "$ROOT/ai3d/diagnostics/blender_topology.py" --
+    --object "$DIAGNOSE_OBJECT" --side "$DIAGNOSE_SIDE" --report "$DIAGNOSE_REPORT")
+  if (( DRY_RUN )); then
+    printf 'Would run read-only diagnostic:'
+    printf ' %q' "${diag_cmd[@]}"
+    printf '\n'
+  else
+    printf '\n[DIAGNOSE] No generation, mesh edits, or Blender scene saves\n'
+    "${diag_cmd[@]}"
+  fi
+  exit 0
+fi
+
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 if (( ! DRY_RUN )); then
