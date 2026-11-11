@@ -102,3 +102,42 @@ Unit tests check the contour generation, exclusion of short equipment
 islands, refusal to guess with missing surface support, and inset behavior.
 The shell remains a prototype until a Blender visual review and a separate
 topology/texture/occlusion validation pass.
+
+## Reversible holster-remnant review (next milestone)
+
+The existing experimental `hole_in_thigh_exposed.blend` contains three
+small, visually suspicious islands remaining near the removed holster.
+These measured regions (I0050, I0060, I0082 in that one topology report)
+comprise **147 faces / 115 vertices**. The signature matcher verifies each
+island's world bounds, vertex count and face count before proceeding. A
+missing or ambiguous match aborts without producing a preview.
+
+Run from the AI3D root after closing Blender:
+
+```bash
+git pull --ff-only
+./build_character.sh --thigh-review
+blender outputs/mara_complete_v1_assembly/thigh_holster_review.blend
+```
+
+This is a separate preview, not an overwrite of earlier prototypes or
+either original .blend file. In the Outliner:
+
+- `Mesh` (under 00_BODY): original experimental body, **hidden and intact**.
+- `AI3D_Mara_Body_RemnantsHidden_TEST`: duplicated body, with only the
+  verified 147 candidate faces removed from this copy.
+- `AI3D_Holster_Candidates_REVIEW`: another copy containing only those
+  candidate faces, initially hidden so you can toggle them to compare.
+- `AI3D_Thigh_GuidedPatch_TEST`: still a separate **open** cyan surface;
+  its perimeter is gently embedded into adjacent geometry to reduce the
+  visibly sharp edges. It is NOT sewn to the trousers.
+
+All original UVs and material slots are copied along with the body;
+the prototype patch itself has no matching texture or UVs yet.
+A candidate signature is **not** proof that an island is expendable.
+Review the front, side, and three-quarter views before approving further
+work. To rerun this exact preview and overwrite only the preview output,
+use `./build_character.sh --thigh-review --force`.
+
+The blender-only adapter requires Blender 4.1+ and has not been tested in
+GitHub's Python-only CI, which covers the pure matching and meshing code.

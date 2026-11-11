@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from ai3d.diagnostics.thigh_underlay import build_mara_underlay
 from ai3d.diagnostics.guided_thigh_patch import build_mesh_guided_thigh_patch
+from ai3d.diagnostics.blender_review_helper import add_non_destructive_remnant_review
 
 
 def parse_args():
@@ -34,6 +35,8 @@ def parse_args():
     parser.add_argument("--inset", type=float, default=0.0)
     parser.add_argument("--method", choices=("guided", "stations"), default="guided")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--review-remnants", action="store_true",
+                        help="Create a separate preview body with 3 verified candidates isolated")
     args = sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     return parser.parse_args(args)
 
@@ -52,6 +55,8 @@ def main():
         raise RuntimeError("Refusing symlink destination")
     if output.exists() and not args.overwrite:
         raise RuntimeError("Prototype already exists; pass --force to rebuild separately")
+    if args.review_remnants and args.method != "guided":
+        raise RuntimeError("Remnant review is supported only with the guided panel")
     body = bpy.data.objects.get(args.object)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Cannot find body mesh object {args.object!r}")
@@ -73,7 +78,8 @@ def main():
         points = [tuple(body.matrix_world @ vert.co) for vert in body.data.vertices]
         source_faces = [tuple(poly.vertices) for poly in body.data.polygons]
         vertices, faces, diagnostics = build_mesh_guided_thigh_patch(
-            points, source_faces, inset=args.inset
+            points, source_faces, inset=args.inset,
+            edge_embed=0.004 if args.review_remnants else 0.0,
         )
         object_name = "AI3D_Thigh_GuidedPatch_TEST"
         mesh_name = "AI3D_thigh_guided_patch_test_mesh"
@@ -108,6 +114,10 @@ def main():
     patch["fitting_method"] = args.method
     patch["fitting_metadata_json"] = json.dumps(diagnostics, sort_keys=True)
     patch["inset"] = args.inset
+    if args.review_remnants:
+        selection = add_non_destructive_remnant_review(body)
+        patch["remnant_review"] = ", ".join(selection.names)
+        patch["remnant_review_faces"] = len(selection.face_indices)
 
     # New file only. Existing body, head, clothing, selections, sources and
     # other assets are retained in-memory for this separate inspectable scene.
@@ -123,6 +133,10 @@ def main():
         print(f"  Support islands: {diagnostics['source_islands']}", flush=True)
         print(f"  Supported rings front/rear: {diagnostics['front_supported_rings']}/{diagnostics['rear_supported_rings']}", flush=True)
     print(f"  Prototype vertices: {len(vertices)}; faces: {len(faces)}", flush=True)
+    if args.review_remnants:
+        print(f"  Remnants hidden ONLY in body preview copy: {', '.join(selection.names)}", flush=True)
+        print(f"  Faces isolated for review: {len(selection.face_indices)}", flush=True)
+        print("  Inspect AI3D_HOLSTER_REMNANT_REVIEW to toggle source/candidate meshes.", flush=True)
     print("  NOT approved for gameplay. Mesh-guided patch is OPEN, not joined or textured.", flush=True)
     print("  Check front, side and 3/4 views, old holster fragments and edge gaps.", flush=True)
 

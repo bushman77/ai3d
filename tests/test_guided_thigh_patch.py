@@ -76,11 +76,27 @@ class GuidedThighTest(unittest.TestCase):
             self.assertAlmostEqual(b[0]-a[0], .005)
             self.assertEqual(a[1:], b[1:])
 
+    def test_edge_embed_feathers_only_patch_perimeter(self):
+        points, faces = fixture()
+        base, _, _ = build_mesh_guided_thigh_patch(points, faces)
+        embedded, _, meta = build_mesh_guided_thigh_patch(
+            points, faces, edge_embed=.004
+        )
+        self.assertEqual(meta["edge_embed"], .004)
+        for index in (0, 17, 33*18, 33*18+17):
+            self.assertAlmostEqual(embedded[index][0] - base[index][0], .004)
+            self.assertEqual(embedded[index][1:], base[index][1:])
+        middle = 17*18+9
+        self.assertAlmostEqual(embedded[middle][0], base[middle][0])
+        self.assertEqual(embedded[middle][1:], base[middle][1:])
+
     def test_invalid_parameters_rejected(self):
         points, faces = fixture()
         for params in ({"rings": 4}, {"width_segments": 2},
                        {"inset": -.01}, {"inset": float("nan")},
-                       {"z_min": -.6}, {"z_max": .05}):
+                       {"z_min": -.6}, {"z_max": .05},
+                       {"edge_embed": -.01}, {"edge_embed": float("nan")},
+                       {"edge_embed": .02}):
             with self.subTest(params=params):
                 with self.assertRaises(ValueError):
                     build_mesh_guided_thigh_patch(points, faces, **params)

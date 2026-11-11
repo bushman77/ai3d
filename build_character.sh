@@ -27,6 +27,7 @@ DIAGNOSE_REPORT=""
 DIAGNOSE_OBJECT="Mesh"
 DIAGNOSE_SIDE="negative-x"
 THIGH_PROTOTYPE=0
+THIGH_REVIEW=0
 THIGH_OUTPUT=""
 THIGH_INSET="0.0"
 THIGH_METHOD="guided"
@@ -56,6 +57,7 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
   --diagnose-side SIDE   negative-x|positive-x|both (default: negative-x)
   --diagnose-report FILE Destination .json (default: beside .blend)
   --thigh-prototype      Create a separate, diagnostic thigh preview .blend
+  --thigh-review         Create separate guided patch + reversible remnant review
   --thigh-method METHOD  guided|stations (default: guided mesh-driven side panel)
   --thigh-output FILE    Prototype .blend path (method-specific, beside source)
   --thigh-inset FLOAT    guided: move patch inward +X; stations: shrink radius
@@ -97,6 +99,7 @@ while (($#)); do
     --fresh-body) BODY_AUTO=0; shift;;
     --diagnose) DIAGNOSE=1; shift;;
     --thigh-prototype) THIGH_PROTOTYPE=1; shift;;
+    --thigh-review) THIGH_PROTOTYPE=1; THIGH_REVIEW=1; shift;;
     --refit) REFIT=1; shift;;
     --force) FORCE=1; REFIT=1; shift;;
     --dry-run) DRY_RUN=1; shift;;
@@ -143,10 +146,15 @@ if (( THIGH_PROTOTYPE )); then
   (( ! DIAGNOSE )) || die "Choose either --diagnose or --thigh-prototype"
   [[ "$THIGH_INSET" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]] || die "Invalid --thigh-inset"
   case "$THIGH_METHOD" in guided|stations) ;; *) die "Invalid --thigh-method";; esac
+  if (( THIGH_REVIEW )) && [[ "$THIGH_METHOD" != guided ]]; then
+    die "--thigh-review requires --thigh-method guided"
+  fi
   # Fitting is Mara-only; the Python generator validates range more strictly.
   source_scene="$OUTPUT_DIR/$ASSEMBLY/hole_in_thigh_exposed.blend"
   [[ -s "$source_scene" ]] || die "Missing experimental scene: $source_scene"
-  if [[ "$THIGH_METHOD" == guided ]]; then
+  if (( THIGH_REVIEW )); then
+    default_thigh_file="thigh_holster_review.blend"
+  elif [[ "$THIGH_METHOD" == guided ]]; then
     default_thigh_file="thigh_guided_prototype.blend"
   else
     default_thigh_file="thigh_underlay_prototype.blend"
@@ -157,6 +165,7 @@ if (( THIGH_PROTOTYPE )); then
   proto_cmd=("$BLENDER" --background "$source_scene" --python-exit-code 1
      --python "$ROOT/ai3d/diagnostics/blender_thigh_prototype.py" --
      --output "$THIGH_OUTPUT" --inset "$THIGH_INSET" --method "$THIGH_METHOD")
+  if (( THIGH_REVIEW )); then proto_cmd+=(--review-remnants); fi
   if (( FORCE )); then proto_cmd+=(--overwrite); fi
   if (( DRY_RUN )); then
      printf 'Would create separate prototype:'

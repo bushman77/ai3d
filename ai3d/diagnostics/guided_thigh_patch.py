@@ -93,7 +93,7 @@ def _fill_sparse(values, name):
 
 
 def build_mesh_guided_thigh_patch(points, faces, *, rings=34, width_segments=18,
-                                  inset=0.0, z_min=GUIDED_Z_MIN,
+                                  inset=0.0, edge_embed=0.0, z_min=GUIDED_Z_MIN,
                                   z_max=GUIDED_Z_MAX):
     """Return (world vertices, triangle indices, fitting diagnostics).
 
@@ -105,6 +105,8 @@ def build_mesh_guided_thigh_patch(points, faces, *, rings=34, width_segments=18,
         raise ValueError("Need at least 8 rings, 3 width segments and ascending Z")
     if not math.isfinite(inset) or not 0 <= inset < 0.03:
         raise ValueError("Inset must be finite and between 0 and 0.03")
+    if not math.isfinite(edge_embed) or not 0 <= edge_embed <= 0.012:
+        raise ValueError("Edge embed must be finite and between 0 and 0.012")
     if len(points) < 200 or not faces:
         raise ValueError("Missing mesh surface samples")
     if any(len(point) != 3 or not all(math.isfinite(v) for v in point)
@@ -157,7 +159,12 @@ def build_mesh_guided_thigh_patch(points, faces, *, rings=34, width_segments=18,
         for j in range(width_segments):
             t = j / (width_segments-1)
             x = (1-t)*fx + t*bx - bulge*math.sin(math.pi*t)
-            x = max(x, outer_x) + inset
+            # Smoothly bury the four perimeter edges under extant clothing.
+            # This is cosmetic seam feathering, NOT topology welding.
+            axial = max(0.0, 1.0 - min(k, rings-1-k) / max(1.0, rings*0.12))
+            lateral = max(0.0, 1.0 - min(j, width_segments-1-j) /
+                          max(1.0, width_segments*0.17))
+            x = max(x, outer_x) + inset + edge_embed * max(axial, lateral)
             y = (1-t)*fy + t*by
             vertices.append((x, y, z))
 
@@ -180,6 +187,7 @@ def build_mesh_guided_thigh_patch(points, faces, *, rings=34, width_segments=18,
         "width_segments": width_segments,
         "anchors": anchors,
         "inset": inset,
+        "edge_embed": edge_embed,
         "notes": [
             "Diagnostic OPEN surface, not welded to body",
             "No accessory, UV, texture, or normals reconstruction",
