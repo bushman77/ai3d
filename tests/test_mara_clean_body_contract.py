@@ -17,7 +17,7 @@ class MaraCleanBodyContractTest(unittest.TestCase):
         for disallowed in ("belt", "pouch", "holster", "repair tool", "thigh rig"):
             self.assertNotIn(disallowed, positive, f"positive body prompt includes {disallowed!r}")
         self.assertIn("jumpsuit", positive)
-        self.assertIn("uninterrupted", positive)
+        self.assertIn("continuous", positive)
         self.assertIn("a-pose", positive)
         self.assertEqual(view, "front")
         combined = compose_reference_prompt(card, body, view).lower()
