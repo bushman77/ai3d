@@ -3,12 +3,15 @@
 Standard library only; never changes the source GLBs or their render images.
 """
 import argparse
+import subprocess
+import sys
 from html import escape
 import json
 from pathlib import Path
 from urllib.parse import quote
 
-VIEWS = ("front", "side", "back", "threequarter")
+VIEWS = ("front", "threequarter", "side")  # original 3-view API
+GALLERY_VIEWS = ("front", "side", "back", "threequarter")
 
 
 def gallery(card, prefix, output_dir, selected):
@@ -30,7 +33,7 @@ def gallery(card, prefix, output_dir, selected):
         tiles.append(f"<section class='component'><header><h2>{escape(part['label'])}</h2>"
                      f"<span>{escape(part_id)} · {escape(model_state)}</span></header>"
                      "<div class='views'>")
-        for side in VIEWS:
+        for side in GALLERY_VIEWS:
             picture = source_dir / f"preview_{side}.png"
             if picture.is_file() and picture.stat().st_size:
                 rel = quote(f"../{name}/preview_{side}.png", safe="/")
@@ -66,6 +69,73 @@ Source files remain in their own run directories.</p>
 </body></html>
 """
 
+
+def prototype_paths(card, prefix, output_dir):
+    """Existing game-stage preview contract; kept for API compatibility."""
+    root = Path(output_dir)
+    for part in card["parts"]:
+        part_id = part["id"]
+        view = part.get("reference_view") or "front"
+        folder = root / f"{prefix}_{part_id}_{view}"
+        yield {
+            "id": part_id,
+            "folder": folder,
+            "glb": folder / "06_game.glb",
+            "previews": tuple(folder / f"07_preview_{side}.png" for side in VIEWS),
+        }
+
+
+def create_gallery(card, prefix, output_dir, *, blender="blender", dry_run=False):
+    """Historical three-view game-stage gallery; no AI inference.
+
+    This separate API remains usable for existing integrations and tests.
+    The standalone seven-part coordinator uses the painted-stage four-view
+    `gallery()` function instead.
+    """
+    output_dir = Path(output_dir)
+    index = output_dir / f"{prefix}_prototypes" / "index.html"
+    parts = list(prototype_paths(card, prefix, output_dir))
+    for part in parts:
+        print(f"{part['id']}: {part['glb']}")
+    if dry_run:
+        return index
+    missing = [p["glb"] for p in parts if not p["glb"].is_file() or
+               p["glb"].stat().st_size == 0]
+    if missing:
+        raise RuntimeError("Missing or empty game-stage GLB; no game-stage GLB for: " +
+                           ", ".join(str(path) for path in missing))
+    script = Path(__file__).with_name("blender_render_component.py")
+    for part in parts:
+        if all(path.is_file() and path.stat().st_size > 0 for path in part["previews"]):
+            continue
+        command = [
+            blender, "--background", "--factory-startup", "--python-exit-code", "1",
+            "--python", str(script), "--",
+            "--input", str(part["glb"]), "--output-dir", str(part["folder"]),
+            "--part", part["id"], "--filename-prefix", "07_preview",
+        ]
+        subprocess.run(command, check=True)
+        if not all(path.is_file() and path.stat().st_size > 0 for path in part["previews"]):
+            raise RuntimeError("Blender did not produce expected 07_preview PNG files")
+
+    tiles = []
+    for part in parts:
+        tiles.append("<section><h2>" + escape(part["id"]) + "</h2>")
+        for side, path in zip(VIEWS, part["previews"]):
+            rel = quote(f"../{part['folder'].name}/{path.name}", safe="/")
+            tiles.append(f"<img src='{rel}' alt='{escape(part['id'])} {side}'>")
+        tiles.append("</section>")
+    index.parent.mkdir(parents=True, exist_ok=True)
+    index.write_text("<!doctype html><html><head><meta charset='utf-8'></head><body>" +
+                     "".join(tiles) + "</body></html>", encoding="utf-8")
+    report = {"parts": [
+        {"id": part["id"], "glb": str(part["glb"]),
+         "previews": [str(path) for path in part["previews"]]}
+        for part in parts
+    ]}
+    (index.parent / "report.json").write_text(json.dumps(report, indent=2) + "\n",
+                                               encoding="utf-8")
+    return index
 
 def main():
     parser = argparse.ArgumentParser(description="Produce standalone 3D render gallery")

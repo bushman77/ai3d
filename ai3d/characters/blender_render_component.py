@@ -30,6 +30,8 @@ def arguments():
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--part", required=True)
+    parser.add_argument("--filename-prefix", default="preview",
+                        help="Filename prefix for preview images (default: preview)")
     parser.add_argument("--force", action="store_true")
     return parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
 
@@ -111,7 +113,7 @@ def main():
                            float(size.y) / aspect, 0.05) * 1.32
 
     for name, direction in VIEWS.items():
-        destination = directory / ("preview_" + name + ".png")
+        destination = directory / (opts.filename_prefix + "_" + name + ".png")
         if destination.is_file() and destination.stat().st_size > 0 and not opts.force:
             print("AI3D preview reused:", destination, flush=True)
             continue
