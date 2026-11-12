@@ -42,6 +42,7 @@ PAINT_DEBUG=0
 OUTFIT_REFERENCES=0
 PROTOTYPE_ALL=0
 PROTOTYPE_RENDER_ONLY=0
+ASSEMBLE_WORKABLE=0
 
 usage() {
   cat <<'HELP'
@@ -54,6 +55,8 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
+  --assemble-workable    Build editable seven-part character from existing GLBs;
+                        approximate fitting + 4 rendered views, no regeneration
   --prototype-all-parts
                         Produce independent textured GLB + 4 Blender render PNGs
                         for every card component, including experimental regions
@@ -132,6 +135,8 @@ while (($#)); do
     --all-parts) MODULAR_ALL=1; shift;;
     --outfit-references) OUTFIT_REFERENCES=1; shift;;
     --prototype-all-parts) PROTOTYPE_ALL=1; shift;;
+    --assemble-workable) ASSEMBLE_WORKABLE=1; shift;;
+
     --render-only) PROTOTYPE_RENDER_ONLY=1; shift;;
     --experimental-region-mesh) EXPERIMENTAL_REGION_MESH=1; shift;;
     --legacy-full-build) LEGACY_FULL=1; shift;;
@@ -220,6 +225,26 @@ fi
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 "$PYTHON" -m ai3d character validate "$CARD"
+
+# Explicit non-destructive seven-part assembly using existing painted GLBs.
+# The prior body/head assembly remains unchanged; output goes to a new folder.
+if (( ASSEMBLE_WORKABLE )); then
+  [[ -z "$MODULAR_STAGE" && $LEGACY_FULL -eq 0 && $BODY_ONLY -eq 0 &&
+     $OUTFIT_REFERENCES -eq 0 && $MODULAR_ALL -eq 0 &&
+     $PROTOTYPE_ALL -eq 0 && $PROTOTYPE_RENDER_ONLY -eq 0 &&
+     $EXPERIMENTAL_REGION_MESH -eq 0 && ${#MODULAR_PARTS[@]} -eq 0 ]] ||
+    die "--assemble-workable cannot be combined with other modes/stages"
+  [[ -z "$BODY_SHAPE" && -z "$BODY_IMAGE" ]] ||
+    die "--assemble-workable uses existing standalone GLBs, not --body-shape/--body-image"
+  (( ! DRY_RUN || ! FORCE )) || die "Do not combine --dry-run and --force"
+  WORKABLE=("$PYTHON" -m ai3d.characters.workable_assembly
+    --card "$CARD" --prefix "$PREFIX" --output-dir "$OUTPUT_DIR"
+    --blender "$BLENDER")
+  if (( DRY_RUN )); then WORKABLE+=(--dry-run); fi
+  if (( REFIT )); then WORKABLE+=(--refit); fi
+  "${WORKABLE[@]}"
+  exit 0
+fi
 
 # Prove every part has its own real 3D mesh and render, not only a PNG
 # reference. The Python coordinator handles all seven card parts in sequence.

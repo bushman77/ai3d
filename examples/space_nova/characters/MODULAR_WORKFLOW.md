@@ -237,6 +237,54 @@ The objective here is **seven independently inspectable 3D components**,
 not seven well-fitted wearable components. Blender Cycles CPU rendering does
 not require a display or consume GPU VRAM, although it does take CPU time.
 
+## First workable seven-part character assembly
+
+Now that `--prototype-all-parts` has generated and rendered every component,
+assemble the *existing* painted meshes without running any AI models:
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+
+./build_character.sh --assemble-workable --prefix mara_clean_v2 --dry-run
+./build_character.sh --assemble-workable --prefix mara_clean_v2
+```
+
+This command creates a **separate** output directory,
+`outputs/mara_clean_v2_workable_character/`, containing:
+
+- `preview.blend` — Blender scene with all seven independently selectable parts
+- `preview.glb` — combined scene export, still containing separate objects
+- `assembly.json` — editable part transforms/visibility and approximation notes
+- `measurements.json` — component bounds
+- `preview_front.png`, `preview_side.png`, `preview_back.png`,
+  `preview_threequarter.png` — rendered fit checks
+
+The command imports and measures each standalone GLB, applies the existing
+bounds-based placement heuristic, and enables **all seven components** in the
+new assembled preview. It copies any compatible body/head transforms and neck
+cut settings from `outputs/mara_clean_v2_assembly/assembly.json`; that
+existing approved preview stays untouched. A second Blender pass exports
+the fitted scene, followed by four CPU renders.
+
+**Expect intersections and duplicate mannequin geometry**. Especially
+the hairstyle/head, glove/hands and gear prototypes may contain surplus
+mesh. This is a first workable *static visual prototype*, not a rigged
+game-ready character. Open the resulting Blender scene, inspect, and adjust
+the per-part transforms in `assembly.json` when needed.
+
+Rerunning the command preserves manual transforms and visibility in an
+existing workable manifest; `--refit` deliberately recalculates the
+heuristics and reapplies compatible old body/head alignment.
+
+```bash
+blender outputs/mara_clean_v2_workable_character/preview.blend
+firefox outputs/mara_clean_v2_workable_character/preview_front.png
+```
+
+No Qwen/Hunyuan/Paint3D runs, topology edits to sources, automatic rigging,
+joining or seam welding occur in this operation.
+
 ## Historical full build
 
 The former four-stage automatic pipeline remains available **only** behind
