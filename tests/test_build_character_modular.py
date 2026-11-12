@@ -78,29 +78,69 @@ class ModularShellTest(unittest.TestCase):
                       self.command("--outfit-references", "--part", "head",
                                    "--dry-run", ok=False))
 
-    def test_full_prototype_includes_every_part_and_game_stage(self):
-        out = self.command("--prototype-all-parts", "--dry-run")
-        self.assertIn("[COMPLETE 3D PROTOTYPE]", out)
-        self.assertIn("mara_prototype_full_v1", out)
-        self.assertIn("Selected parts: 7", out)
-        for part in ("body", "head", "hair", "upper_outfit",
-                     "lower_outfit", "hands", "equipment"):
-            self.assertIn(part, out)
-        self.assertIn("up to game", out)
+    def test_prototype_all_parts_dry_run_attempts_every_3d_region(self):
+        out = self.command("--prototype-all-parts", "--prefix", "mara_proof", "--dry-run")
+        for ident in ("body", "head", "hair", "upper_outfit",
+                      "lower_outfit", "hands", "equipment"):
+            self.assertIn(f"[COMPONENT", out)
+            self.assertIn(f"mara_proof_{ident}_", out)
+        # All 7 parts must reach Paint3D (including reference-only regions).
+        self.assertEqual(out.count("requested target: paint"), 7)
+        self.assertEqual(out.count("Dry run: would invoke ai3d generate"), 7)
         self.assertNotIn("Region parts produce references only", out)
-        self.assertIn("[ALL-PART 3D GALLERY] 7 parts", out)
-        self.assertIn("index.html", out)
+        self.assertEqual(out.count("[DRY RUN] Would render:"), 7)
+        self.assertIn("prototype_gallery", out)
+        self.assertIn("STANDALONE 3D PROTOTYPES", out)
 
-    def test_full_prototype_rejects_conflicting_modes(self):
+    def test_prototype_render_only_dry_run_never_infers(self):
+        out = self.command("--prototype-all-parts", "--render-only",
+                           "--part", "upper_outfit", "--prefix", "mara_proof", "--dry-run")
+        self.assertIn("Reusing existing mesh", out)
+        self.assertNotIn("would invoke ai3d generate", out)
+        self.assertEqual(out.count("[DRY RUN] Would render:"), 1)
+
+    def test_prototype_rejects_conflicting_modes_and_bad_part(self):
         self.assertIn("cannot be combined",
-                      self.command("--prototype-all-parts", "--stage", "shape",
+                      self.command("--prototype-all-parts", "--stage", "paint",
                                    "--dry-run", ok=False))
-        self.assertIn("cannot be combined",
-                      self.command("--prototype-all-parts", "--part", "head",
+        self.assertIn("Unknown part",
+                      self.command("--prototype-all-parts", "--part", "tail",
                                    "--dry-run", ok=False))
-        self.assertIn("cannot be combined",
-                      self.command("--prototype-all-parts", "--outfit-references",
-                                   "--dry-run", ok=False))
+        self.assertIn("requires --prototype-all-parts",
+                      self.command("--render-only", "--dry-run", ok=False))
+
+    def test_prototype_render_only_with_fake_blender_produces_gallery(self):
+        import json
+        fake = Path(self.temp.name) / "fake-blender"
+        # The fake stands in for Blender: no graphics or AI inference runs.
+        fake.write_text(
+            "#!/usr/bin/env python3\n"
+            "import pathlib,sys\n"
+            "a=sys.argv; d=pathlib.Path(a[a.index('--output-dir')+1])\n"
+            "for v in ('front','side','back','threequarter'):\n"
+            "    (d/('preview_'+v+'.png')).write_bytes(b'fake-png')\n"
+        )
+        fake.chmod(0o755)
+        card = json.loads((ROOT / "examples/space_nova/characters/mara_venn.json").read_text())
+        part = next(p for p in card["parts"] if p["id"] == "upper_outfit")
+        folder = self.output / f"mara_proof_upper_outfit_{part['reference_view']}"
+        folder.mkdir(parents=True)
+        mesh = folder / "05_painted.glb"
+        mesh.write_bytes(b"mock-glb")
+        result = subprocess.run(
+            ["bash", str(SCRIPT), "--output-dir", str(self.output),
+             "--prototype-all-parts", "--render-only", "--part", "upper_outfit",
+             "--prefix", "mara_proof"],
+            cwd=ROOT, env={**__import__("os").environ, "BLENDER": str(fake)},
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(mesh.read_bytes(), b"mock-glb")
+        html = (self.output / "mara_proof_prototypes/index.html").read_text()
+        self.assertIn("upper_outfit", html)
+        self.assertIn("preview_front.png", html)
+        self.assertIn("05_painted.glb", html)
+        self.assertNotIn("head ·", html)
 
     def test_preview_must_be_chosen_and_never_runs_with_dry_run(self):
         out = self.command("--stage", "preview", "--prefix", "preview_smoke", "--dry-run")

@@ -179,6 +179,64 @@ The `equipment` part is a combined prop reference, not yet split into
 individual pieces. Individual pockets, holsters and tools require future
 component-card splitting and coordinate-aware fitting.
 
+## Proof of standalone 3D — every component (priority milestone)
+
+The root script includes an **explicit standalone prototype mode** that does
+what the normal `--all-parts` reference command does not do: it passes
+`--include-regions` to the Hunyuan/Paint3D pipeline so hair, both garment
+sections, and hands receive real GLB meshes. Each part is an independent
+experiment; nothing is fitted to the body, rigged, or exported as a combined
+character.
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+
+# Preview the exact seven-part plan, with no inference or Blender writes.
+./build_character.sh --prototype-all-parts --prefix mara_clean_v2 --dry-run
+
+# Execute: reuses existing body/head 05_painted.glb and approved garment
+# references, generates missing meshes, then renders every component.
+./build_character.sh --prototype-all-parts --prefix mara_clean_v2
+```
+
+This mode reads the current character card to discover all seven parts, processes
+each part serially on limited VRAM, and produces a distinct
+`outputs/mara_clean_v2_<part>_<view>/05_painted.glb` plus
+`preview_front.png`, `preview_side.png`, `preview_back.png`, and
+`preview_threequarter.png` in that part's run directory.
+
+The local visual contact sheet lives at:
+`outputs/mara_clean_v2_prototypes/index.html`.
+
+```bash
+firefox outputs/mara_clean_v2_prototypes/index.html
+```
+
+To generate only missing clothing prototypes first, select a subset:
+```bash
+./build_character.sh --prototype-all-parts --prefix mara_clean_v2 \
+  --part upper_outfit --part lower_outfit
+```
+
+To rerender already-produced GLBs without invoking Qwen, Hunyuan or Paint3D:
+```bash
+./build_character.sh --prototype-all-parts --render-only \
+  --prefix mara_clean_v2
+```
+
+**Cache safety:** when `05_painted.glb` already exists and is non-empty, the
+default mode *skips generation entirely for that part*. This avoids regenerating
+approved body/head sources due to unrelated card edits. `--force` deliberately
+regenerates and replaces cached part outputs and preview renders: use a new
+`--prefix` for risky experiments.
+
+**Limitations:** shape/texture quality can be poor; clothes can include the
+mannequin; hair/hands can be ambiguous; the equipment is still a grouped prop.
+The objective here is **seven independently inspectable 3D components**,
+not seven well-fitted wearable components. Blender Cycles CPU rendering does
+not require a display or consume GPU VRAM, although it does take CPU time.
+
 ## Historical full build
 
 The former four-stage automatic pipeline remains available **only** behind
