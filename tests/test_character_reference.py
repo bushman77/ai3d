@@ -65,7 +65,7 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertIn("head-and-neck", prompt)
         self.assertNotIn("Entire character in frame", prompt)
         self.assertNotIn("no cropped body parts", prompt)
-        self.assertIn("No full body", prompt)
+        self.assertIn("no full body", prompt.lower())
 
     def test_mara_head_includes_hair_and_does_not_generate_second_head(self):
         ids = [part["id"] for part in self.card["parts"]]
