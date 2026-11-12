@@ -39,6 +39,7 @@ MODULAR_ALL=0
 EXPERIMENTAL_REGION_MESH=0
 LEGACY_FULL=0
 PAINT_DEBUG=0
+OUTFIT_REFERENCES=0
 
 usage() {
   cat <<'HELP'
@@ -51,6 +52,8 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
+  --outfit-references   Alias: --stage reference --part upper_outfit
+                        --part lower_outfit; preserve body/head outputs
   --experimental-region-mesh
                         Permit stand-alone Hunyuan geometry for a region,
                         which still needs fitting (not automatically exported)
@@ -85,7 +88,7 @@ If present, outputs/mara_body_shape50/{01_reference.png,03_shape.glb}
 are reused automatically for the default Mara card. No original asset is edited.
 The master outfit/design is in the card and prompt.txt BEFORE splitting.
 It is NOT image-conditioned into each component yet. Region references
-(outfit, hands, hair) are design inputs, not fitted replacement geometry.
+(upper_outfit, lower_outfit, hands, hair) are design inputs, not fitted geometry.
 Preview stages only body + detailed head and never publish a game character.
 --legacy-full-build produces a STATIC GLB and retains historical behavior.
 HELP
@@ -121,6 +124,7 @@ while (($#)); do
     --fresh-body) BODY_AUTO=0; shift;;
     --body-only) BODY_ONLY=1; BODY_AUTO=0; shift;;
     --all-parts) MODULAR_ALL=1; shift;;
+    --outfit-references) OUTFIT_REFERENCES=1; shift;;
     --experimental-region-mesh) EXPERIMENTAL_REGION_MESH=1; shift;;
     --legacy-full-build) LEGACY_FULL=1; shift;;
     --paint-debug) PAINT_DEBUG=1; shift;;
@@ -217,6 +221,12 @@ if (( ! LEGACY_FULL )); then
     MODULAR_STAGE="shape"
     MODULAR_PARTS+=("body")
   fi
+  if (( OUTFIT_REFERENCES )); then
+    [[ -z "$MODULAR_STAGE" && ${#MODULAR_PARTS[@]} -eq 0 && $MODULAR_ALL -eq 0 ]] ||
+      die "--outfit-references cannot be combined with --stage, --part or --all-parts"
+    MODULAR_STAGE="reference"
+    MODULAR_PARTS=(upper_outfit lower_outfit)
+  fi
   MODULAR_STAGE="${MODULAR_STAGE:-plan}"
   case "$MODULAR_STAGE" in
     plan|reference|shape|paint|game|preview) ;;
@@ -269,9 +279,9 @@ for part in card["parts"]:
     found = [p.split("_", 1)[1].split(".", 1)[0] for p in outputs if (folder / p).is_file()]
     print(f"  {part['id']:<15} {part['kind']:<11} {' / '.join(found) if found else 'not generated'}")
 print("\nReview progression: reference -> shape -> paint -> game (per part).")
-print("Regions (outfit, gloves/hands, hair) need a future fitted-geometry workflow.")
+print("Regions (upper_outfit, lower_outfit, gloves/hands, hair) are design-only until fitted geometry exists.")
 print("Preview: painted body + separately generated head only, reversible and unapproved.")
-print("Example: ./build_character.sh --stage reference --part head --prefix", prefix)
+print("Garment reference command: ./build_character.sh --outfit-references --prefix", prefix)
 PY
     exit 0
   fi
@@ -350,6 +360,7 @@ PY
     "${COMMON[@]}" "${ACTION[@]}" "${EXPERIMENTAL[@]}" "${DEBUG[@]}"
   printf '\n[CHECKPOINT] Review component output before advancing to the next stage.\n'
   if [[ "$MODULAR_STAGE" == reference ]]; then
+    printf 'Inspect separate garment design references before any experimental reconstruction.\n'
     printf 'Do not reconstruct reference images containing unintended accessories.\n'
   elif [[ "$MODULAR_STAGE" == shape ]]; then
     printf 'Inspect 03_shape.glb in Blender solid mode for anatomy and surface defects.\n'
@@ -361,7 +372,7 @@ fi
 
 # Historical full-build operation remains opt-in and is not modular.
 [[ -z "$MODULAR_STAGE" && ${#MODULAR_PARTS[@]} -eq 0 && $MODULAR_ALL -eq 0 ]] || die "--legacy-full-build cannot combine with modular stages or parts"
-(( ! EXPERIMENTAL_REGION_MESH )) || die "--experimental-region-mesh is modular-only"
+(( ! EXPERIMENTAL_REGION_MESH && ! OUTFIT_REFERENCES )) || die "--experimental-region-mesh and --outfit-references are modular-only"
 if (( ! DRY_RUN )); then
   command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
 fi

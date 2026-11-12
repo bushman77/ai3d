@@ -71,17 +71,18 @@ geometry specifications only after the reference has been visually accepted.
 
 ## Later after body approval
 
-1. Generate/validate the high-detail head with a separate close-up.
-2. Split torso outfit / trousers / gloves / boots / hair / equipment into
-   independently generated and fitted components. The current card still
-   contains legacy `outfit`, `hands` and combined `equipment` fields;
-   do not confuse these with finished modular attachments.
-3. Use attachment anchors and staged approval before exporting any prop.
-4. Paint and export only after body geometry and component alignment are
-   accepted, then optimize and run visual regression checks.
+1. The high-detail head and body have been generated separately, painted,
+   and inspected as a two-part Blender preview.
+2. Mara card revision 5 replaces the combined `outfit` region with
+   `upper_outfit` and `lower_outfit` region references. Generate their
+   design images using `./build_character.sh --outfit-references --prefix mara_clean_v2`.
+   The corresponding fitted meshes and attachment anchors are NOT implemented.
+3. Continue with gloves, boots, hair and individual equipment only after
+   the two garment design images pass their visual checks.
+4. Paint and export wearable garments only after geometry fit, seam
+   clearance and component alignment are accepted.
 
-The recommended next step is the staged head workflow, described in
-`MODULAR_WORKFLOW.md`. The historical four-stage full build is now explicit:
+The active workflow is documented in `MODULAR_WORKFLOW.md`. The historical four-stage full build is now explicit:
 `./build_character.sh --legacy-full-build --fresh-body --prefix legacy_trial`.
 Do not use the legacy full build for the modular reconstruction.
 Current `autofit.py` excludes the combined equipment mesh from export

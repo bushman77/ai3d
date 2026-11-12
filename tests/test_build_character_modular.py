@@ -32,14 +32,16 @@ class ModularShellTest(unittest.TestCase):
         self.assertIn("[MODULAR PLAN]", result)
         self.assertIn("body", result)
         self.assertIn("head", result)
-        self.assertIn("outfit", result)
+        self.assertIn("upper_outfit", result)
+        self.assertIn("lower_outfit", result)
         self.assertIn("not conditioned on a master PNG", result)
 
     def test_each_stage_has_component_selection_and_dry_run(self):
         for stage, part in [
             ("reference", "body"),
             ("reference", "head"),
-            ("reference", "outfit"),
+            ("reference", "upper_outfit"),
+            ("reference", "lower_outfit"),
             ("shape", "head"),
             ("shape", "body"),
             ("paint", "head"),
@@ -52,15 +54,29 @@ class ModularShellTest(unittest.TestCase):
     def test_reference_batch_is_explicit_and_readonly(self):
         output = self.command("--stage", "reference", "--all-parts",
                               "--prefix", "batch_smoke", "--dry-run")
-        self.assertIn("Selected parts: 6", output)
+        self.assertIn("Selected parts: 7", output)
         self.assertIn("equipment", output)
 
     def test_region_mesh_requires_experimental_flag(self):
-        out = self.command("--stage", "shape", "--part", "outfit", "--dry-run", ok=False)
+        out = self.command("--stage", "shape", "--part", "upper_outfit", "--dry-run", ok=False)
         self.assertIn("region, not a fitted mesh", out)
-        out = self.command("--stage", "shape", "--part", "outfit",
+        out = self.command("--stage", "shape", "--part", "upper_outfit",
                            "--experimental-region-mesh", "--dry-run")
-        self.assertIn("outfit", out)
+        self.assertIn("upper_outfit", out)
+
+    def test_outfit_references_alias_generates_exactly_two_reference_jobs(self):
+        out = self.command("--outfit-references", "--prefix", "mara_clean_v2", "--dry-run")
+        self.assertIn("Selected parts: 2", out)
+        self.assertIn("mara_clean_v2_upper_outfit_upper_outfit_closeup", out)
+        self.assertIn("mara_clean_v2_lower_outfit_lower_outfit_closeup", out)
+        self.assertNotIn("mara_clean_v2_head_head_closeup", out)
+        self.assertNotIn("mara_clean_v2_body_front", out)
+        self.assertIn("cannot be combined",
+                      self.command("--outfit-references", "--stage", "paint",
+                                   "--dry-run", ok=False))
+        self.assertIn("cannot be combined",
+                      self.command("--outfit-references", "--part", "head",
+                                   "--dry-run", ok=False))
 
     def test_preview_must_be_chosen_and_never_runs_with_dry_run(self):
         out = self.command("--stage", "preview", "--prefix", "preview_smoke", "--dry-run")

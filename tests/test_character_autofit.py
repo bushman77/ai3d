@@ -24,7 +24,8 @@ class AutoFitTest(unittest.TestCase):
             "body": [[-0.8, -0.3, -1.0], [0.8, 0.3, 1.0]],
             "head": [[-0.4, -0.4, -0.5], [0.4, 0.4, 0.5]],
             "hair": [[-0.2, -0.2, -0.3], [0.2, 0.2, 0.3]],
-            "outfit": [[-0.5, -0.2, -0.6], [0.5, 0.2, 0.6]],
+            "upper_outfit": [[-0.5, -0.2, -0.5], [0.5, 0.2, 0.5]],
+            "lower_outfit": [[-0.5, -0.2, -0.6], [0.5, 0.2, 0.6]],
             "hands": [[-0.6, -0.2, -0.2], [0.6, 0.2, 0.2]],
             "equipment": [[-0.5, -0.1, -0.1], [0.5, 0.1, 0.1]],
         }
@@ -64,7 +65,7 @@ class AutoFitTest(unittest.TestCase):
         self.assertFalse(parts["equipment"]["include_in_preview"])
         self.assertFalse(parts["equipment"]["visible"])
         self.assertEqual(parts["equipment"]["status"], "staged_for_attachment_review")
-        for ident in ("hair", "hands", "outfit"):
+        for ident in ("hair", "hands", "upper_outfit", "lower_outfit"):
             self.assertFalse(parts[ident]["include_in_preview"])
             self.assertEqual(parts[ident]["status"], "staged_for_manual_replacement")
 

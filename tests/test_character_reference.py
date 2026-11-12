@@ -75,10 +75,10 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertIn("entire body", prompt.lower())
         self.assertNotIn("avoid:", prompt.lower())
 
-    def test_mara_body_revision_four_has_visual_only_clean_reference(self):
+    def test_mara_body_revision_five_has_visual_only_clean_reference(self):
         part, view = select_part_and_view(self.card, "body")
         prompt = compose_reference_prompt(self.card, part, view)
-        self.assertEqual(self.card["revision"], 4)
+        self.assertEqual(self.card["revision"], 5)
         self.assertEqual(part["generation"]["reference_mode"], "visual_only")
         self.assertIn("natural bust", self.card["prompts"]["master"])
         self.assertIn("athletic feminine", prompt)
@@ -87,6 +87,27 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertNotIn("Avoid:", prompt)
         self.assertNotIn("repair engineer", prompt)
         self.assertNotIn("utility belt", prompt)
+        self.assertEqual(validate_card(self.card), [])
+
+    def test_mara_split_outfit_references_are_independent_and_positive_only(self):
+        parts = {part["id"]: part for part in self.card["parts"]}
+        self.assertNotIn("outfit", parts)
+        self.assertEqual(parts["upper_outfit"]["kind"], "region")
+        self.assertEqual(parts["lower_outfit"]["kind"], "region")
+        for ident, own, other in (
+            ("upper_outfit", "collar", "trouser legs"),
+            ("lower_outfit", "trousers", "both sleeves"),
+        ):
+            part, view = select_part_and_view(self.card, ident)
+            prompt = compose_reference_prompt(self.card, part, view)
+            self.assertEqual(part["generation"]["reference_mode"], "visual_only")
+            self.assertIn(own, prompt.lower())
+            self.assertNotIn("Avoid:", prompt)
+            self.assertNotIn("Personality:", prompt)
+            self.assertNotIn("utility belt", prompt.lower())
+            self.assertNotIn(other, part["prompts"]["reference"].lower())
+            self.assertEqual(part["parent"], "body")
+            self.assertEqual(part["reference_view"], view)
         self.assertEqual(validate_card(self.card), [])
 
     def test_invalid_reference_mode_is_rejected(self):

@@ -4,7 +4,7 @@
   "name": "Mara Venn",
   "category": "humanoid",
   "project": "space_nova",
-  "revision": 4,
+  "revision": 5,
   "identity": {
     "role": "Spaceport repair engineer",
     "species": "human",
@@ -53,9 +53,10 @@
       "back": "Straight back view consistent with other references.",
       "head_closeup": "Same Mara Venn identity: head and neck, nearly front facing, eyes and eyelids clearly defined, sharp nose bridge, visible lips and jaw, even neutral lighting, both ears and full hairline visible.",
       "hair_closeup": "Tight detail reference focused exclusively on the head's hairstyle and hairline; hair fully visible, clean neutral backdrop, no full body or clothing details.",
-      "outfit_closeup": "Studio product-style reference focused on the engineer's fitted forest-green and charcoal-gray jumpsuit, high collar, reinforced material seams and fit; avoid full character facial portrait.",
       "hands_closeup": "Detailed close-up of only the gloved hands in a relaxed open pose, all fingers clearly visible, uniform studio lighting, no face, no torso.",
-      "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait."
+      "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait.",
+      "upper_outfit_closeup": "Upper outfit ONLY, isolated collar-through-waist tunic and both sleeves with full wrist cuffs in frame. Straight-on orthographic fashion garment product view. Use the forest-green and charcoal fabric design shared with the lower outfit.",
+      "lower_outfit_closeup": "Lower outfit ONLY, isolated level waist-to-ankle trousers with both legs fully visible. Straight-on orthographic garment product view, coordinated forest-green and charcoal fabric shared with the upper outfit."
     }
   },
   "references": [],
@@ -153,17 +154,49 @@
       "reference_view": "hair_closeup"
     },
     {
-      "id": "outfit",
-      "label": "Clothing and surface materials",
+      "id": "upper_outfit",
+      "label": "Upper engineering jumpsuit garment — collar, torso and sleeves",
       "kind": "region",
       "parent": "body",
-      "attachment": null,
+      "attachment": "torso and shoulder surface (fit not implemented)",
       "reference_ids": [],
       "prompts": {
-        "geometry": "",
-        "texture": "Forest-green and charcoal engineering jumpsuit, practical seams, reinforced details, modest wear.",
-        "reference": "Detailed reference of the forest-green and charcoal-gray engineering jumpsuit showing seams, reinforced material boundaries, high collar, fitted torso and practical industrial design. Avoid dramatic lighting and occlusion.",
-        "negative": "No face, no full person, no duplicate clothing, no unrelated props, no text, no watermark, no kiosk."
+        "geometry": "A separate, fitted upper-garment surface that follows the base body at shoulders, chest, waist and both arms. Preserve a continuous waist joining edge for the lower garment. Geometry fitting to Mara's body is not implemented yet.",
+        "texture": "Matte forest-green engineering fabric, charcoal side inserts and deliberate symmetrical seams. No white streaks or skin tones on fabric.",
+        "reference": "Isolated upper section of a fitted stylized-realistic female spacecraft engineer's jumpsuit on a neutral, featureless display mannequin. A slim high forest-green collar follows the neckline; clean contoured forest-green chest and abdomen with subtle charcoal-gray side panels, narrow symmetrical reinforced seams and modest sleeve detailing. Two long, fitted fabric sleeves extend to wrist cuffs, held in a gentle symmetrical A-pose with arms angled slightly downward and apart. The garment ends at a level waist joining edge to match separate trousers. Show the entire upper garment, collar, both sleeves and waist edge unobstructed in an orthographic frontal fashion-product view. Smooth matte clean fabric, balanced proportions, crisp material transitions, flat studio lighting, pale gray backdrop.",
+        "negative": "No character face, bare skin, hands, utility belt, pockets, holsters, thigh straps, tools, boots, extra limbs, bulky armor, chest attachments, lettering or watermark."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only"
+      },
+      "quality_gates": [
+        "Reference shows a distinct complete collar, torso, two sleeves and clearly visible level waist joining edge",
+        "Forest-green fabric and charcoal panels continue smoothly and symmetrically to side seams; no pale slabs or random stripes",
+        "No embedded belt, tools, holsters, pockets or external equipment",
+        "Treat as a design reference until independent mesh fitting, collision clearance and visual checks are implemented"
+      ],
+      "notes": "Designed to pair with lower_outfit through a shared waist material/edge. Region-only: isolated shape generation is experimental and does not automatically produce a wearable fitted surface.",
+      "reference_view": "upper_outfit_closeup"
+    },
+    {
+      "id": "lower_outfit",
+      "label": "Lower engineering jumpsuit garment — waist, trouser legs and ankle cuffs",
+      "kind": "region",
+      "parent": "body",
+      "attachment": "hips, waist and legs surface (fit not implemented)",
+      "reference_ids": [],
+      "prompts": {
+        "geometry": "Separate fitted lower garment with continuous waist and two trouser legs following base-body hips, thighs, knees and shins. Retain matching waist seam to upper outfit, clear ankle hems and closed continuous cloth over thighs. Geometry fitting to Mara's body is not implemented yet.",
+        "texture": "Same matte forest-green material and charcoal-gray side insets as upper garment. Smooth thigh and seat panel transitions, subtle reinforced knee construction without random pale streaks.",
+        "reference": "Isolated lower section of a fitted stylized-realistic female spacecraft engineer's forest-green jumpsuit on a neutral, featureless display form, shown from a clean level waistband through hips, both legs and close-fitting ankle cuffs. The fitted trousers have two complete, symmetrical legs gently separated in a standing A-pose; continuous smooth matte forest-green fabric across hips, seat, crotch and thighs, restrained charcoal-gray side inserts aligned vertically with the upper garment, subtle purposeful knee reinforcement and seams. The waist edge is level and precisely designed to meet a matching upper jumpsuit garment. Show the full waist, both legs and ankle cuffs in a straight-on orthographic fashion-product view, crisp material boundaries, neutral even studio lighting, pale gray seamless background.",
+        "negative": "No face, torso, utility belt, holsters, thigh pouches, badges, pockets, tools, shoes, boots, extra legs, bare skin, labels or text."
       },
       "generation": {
         "geometry_backend": null,
@@ -172,14 +205,17 @@
         "target_triangles": null,
         "view_resolution": null,
         "reference_width": 384,
-        "reference_height": 576
+        "reference_height": 576,
+        "reference_mode": "visual_only"
       },
       "quality_gates": [
-        "Material boundaries are clear",
-        "Textures do not bleed across UV islands"
+        "Reference shows one complete waist opening, hips, two distinct full-length trouser legs and ankle cuffs",
+        "Smooth continuous fabric over waist, crotch, hips, inner/outer thighs and knees; no embedded pouches or holsters",
+        "Matching forest-green/charcoal palette and compatible side-panel layout with upper_outfit",
+        "Treat as a design reference until geometry is fitted against Mara's measured body and intersections are inspected"
       ],
-      "notes": "A region need not be a separate mesh.",
-      "reference_view": "outfit_closeup"
+      "notes": "Designed to pair with upper_outfit. This is a reference-only region; generating an isolated Hunyuan shape does not fit it to the body.",
+      "reference_view": "lower_outfit_closeup"
     },
     {
       "id": "hands",

@@ -133,7 +133,11 @@ def fit_manifest(manifest_path: Path, measurements_path: Path, *, refit: bool = 
     # exclude from export to avoid duplicate hands/hair/clothing.
     region_targets = {
         "hair": ((0, 0.17 * h), [cx, cy, 0.0], crown),
+        # Historical manifest compatibility: old monolithic outfit stays staged.
         "outfit": ((0, 0.34 * h), [cx, cy, base + 0.71 * h], None),
+        # Design previews only: these rough dimensions are NOT a garment fit.
+        "upper_outfit": ((0, 0.35 * h), [cx, cy, base + 0.74 * h], None),
+        "lower_outfit": ((0, 0.46 * h), [cx, cy, base + 0.34 * h], None),
         "hands": ((0, 0.58 * h), [cx, cy, base + 0.50 * h], None),
     }
     for part_id, (dimension, target, top) in region_targets.items():
