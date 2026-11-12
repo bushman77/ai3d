@@ -78,6 +78,30 @@ class ModularShellTest(unittest.TestCase):
                       self.command("--outfit-references", "--part", "head",
                                    "--dry-run", ok=False))
 
+    def test_full_prototype_includes_every_part_and_game_stage(self):
+        out = self.command("--prototype-all-parts", "--dry-run")
+        self.assertIn("[COMPLETE 3D PROTOTYPE]", out)
+        self.assertIn("mara_prototype_full_v1", out)
+        self.assertIn("Selected parts: 7", out)
+        for part in ("body", "head", "hair", "upper_outfit",
+                     "lower_outfit", "hands", "equipment"):
+            self.assertIn(part, out)
+        self.assertIn("up to game", out)
+        self.assertNotIn("Region parts produce references only", out)
+        self.assertIn("[ALL-PART 3D GALLERY] 7 parts", out)
+        self.assertIn("index.html", out)
+
+    def test_full_prototype_rejects_conflicting_modes(self):
+        self.assertIn("cannot be combined",
+                      self.command("--prototype-all-parts", "--stage", "shape",
+                                   "--dry-run", ok=False))
+        self.assertIn("cannot be combined",
+                      self.command("--prototype-all-parts", "--part", "head",
+                                   "--dry-run", ok=False))
+        self.assertIn("cannot be combined",
+                      self.command("--prototype-all-parts", "--outfit-references",
+                                   "--dry-run", ok=False))
+
     def test_preview_must_be_chosen_and_never_runs_with_dry_run(self):
         out = self.command("--stage", "preview", "--prefix", "preview_smoke", "--dry-run")
         self.assertIn("body+head preview", out)

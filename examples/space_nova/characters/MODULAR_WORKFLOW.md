@@ -1,5 +1,71 @@
 # Staged modular character workflow
 
+## Complete standalone 3D proof-of-pipeline (no review pauses)
+
+This mode intentionally answers a different question from the staged
+production workflow: **can the entire seven-component pipeline run end to
+end, even if the generated shapes are awkward or unfitted?**
+
+```bash
+cd ~/ai3d
+./build_character.sh --prototype-all-parts
+```
+
+This is one command, with a fresh default prefix:
+`mara_prototype_full_v1`. It runs the following sequence for **each**
+component from the card, in card order:
+
+1. Qwen reference image (`01_reference.png`)
+2. Hunyuan3D standalone reconstruction (`03_shape.glb`)
+3. Paint3D texturing (`05_painted.glb`)
+4. Blender game export (`06_game.glb`)
+5. Blender front, three-quarter and side renders
+   (`07_preview_front.png`, `07_preview_threequarter.png`,
+   `07_preview_side.png`)
+
+The seven components currently are `body`, `head`, `hair`,
+`upper_outfit`, `lower_outfit`, `hands`, and `equipment`.
+**Region meshes are deliberately included**, despite the risk that the
+individual 3D outputs depict unwanted mannequin/skin/body geometry.
+This is acceptable for the proof-of-pipeline run. No fitting,
+alignment, assembly, or quality gates are required between stages.
+
+After rendering, the script writes:
+
+```text
+outputs/mara_prototype_full_v1_prototype_gallery/index.html
+outputs/mara_prototype_full_v1_prototype_gallery/report.json
+```
+
+Open the visual gallery with:
+
+```bash
+firefox ~/ai3d/outputs/mara_prototype_full_v1_prototype_gallery/index.html
+```
+
+Every component also has its own GLB and PNGs under
+`outputs/mara_prototype_full_v1_<part>_<view>/`. The run uses serial
+generation and `--resume`, so rerunning the command after a failure
+reuses completed stages when the recorded inputs still match. The
+render gallery also reuses up-to-date previews. For a new independent
+experiment, choose `--prefix mara_prototype_full_v2`.
+
+To inspect all commands without starting models or writing assets:
+
+```bash
+./build_character.sh --prototype-all-parts --dry-run
+```
+
+The complete run is not an automatic guarantee of success: if a backend
+fails, it exits nonzero instead of claiming completion. Fix the failure
+and rerun the same command to resume. Blender requires a working render
+context for textured preview images; the script attempts a Workbench
+fallback when a render operation raises an exception.
+
+This mode leaves the previously generated
+`mara_clean_v2_*` assets and assembly untouched.
+
+
 `build_character.sh` now defaults to a **read-only plan**. A full character is
 never generated, fitted and exported merely because the root script is run.
 

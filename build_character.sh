@@ -40,6 +40,8 @@ EXPERIMENTAL_REGION_MESH=0
 LEGACY_FULL=0
 PAINT_DEBUG=0
 OUTFIT_REFERENCES=0
+PROTOTYPE_ALL=0
+PREFIX_SPECIFIED=0
 
 usage() {
   cat <<'HELP'
@@ -52,6 +54,11 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
+  --prototype-all-parts
+                        Run ALL parts from Qwen to Hunyuan to Paint3D to
+                        optimized GLBs, then render 3 views each + HTML gallery.
+                        Experimental regions INCLUDED; no fitting/assembly.
+                        Default prefix: mara_prototype_full_v1
   --outfit-references   Alias: --stage reference --part upper_outfit
                         --part lower_outfit; preserve body/head outputs
   --experimental-region-mesh
@@ -103,7 +110,7 @@ while (($#)); do
       need_value "$@"
       case "$1" in
         --card) CARD="$2";;
-        --prefix) PREFIX="$2";;
+        --prefix) PREFIX="$2"; PREFIX_SPECIFIED=1;;
         --assembly) ASSEMBLY="$2";;
         --output-dir) OUTPUT_DIR="$2";;
         --body-shape) BODY_SHAPE="$2";;
@@ -125,6 +132,7 @@ while (($#)); do
     --body-only) BODY_ONLY=1; BODY_AUTO=0; shift;;
     --all-parts) MODULAR_ALL=1; shift;;
     --outfit-references) OUTFIT_REFERENCES=1; shift;;
+    --prototype-all-parts) PROTOTYPE_ALL=1; shift;;
     --experimental-region-mesh) EXPERIMENTAL_REGION_MESH=1; shift;;
     --legacy-full-build) LEGACY_FULL=1; shift;;
     --paint-debug) PAINT_DEBUG=1; shift;;
@@ -139,6 +147,7 @@ while (($#)); do
   esac
 done
 
+if (( PROTOTYPE_ALL && ! PREFIX_SPECIFIED )); then PREFIX="mara_prototype_full_v1"; fi
 [[ "$PREFIX" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --prefix"
 ASSEMBLY="${ASSEMBLY:-${PREFIX}_assembly}"
 [[ "$ASSEMBLY" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --assembly"
@@ -212,6 +221,43 @@ fi
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 "$PYTHON" -m ai3d character validate "$CARD"
+
+# An explicit proof-of-pipeline run is intentionally different from the
+# review-gated modular workflow. All parts, including region parts, go through
+# standalone Qwen -> Hunyuan -> Paint3D -> Blender game GLB and image previews.
+if (( PROTOTYPE_ALL )); then
+  (( ! LEGACY_FULL && ! BODY_ONLY && ! OUTFIT_REFERENCES && ! DIAGNOSE && ! THIGH_PROTOTYPE )) ||
+    die "--prototype-all-parts cannot be combined with legacy, body-only, outfit-references or diagnostics"
+  [[ -z "$MODULAR_STAGE" && ${#MODULAR_PARTS[@]} -eq 0 && $MODULAR_ALL -eq 0 ]] ||
+    die "--prototype-all-parts cannot be combined with --stage, --part or --all-parts"
+  [[ -z "$BODY_SHAPE" && -z "$BODY_IMAGE" ]] ||
+    die "--prototype-all-parts does not use single-body reuse flags"
+  (( ! EXPERIMENTAL_REGION_MESH )) ||
+    die "--experimental-region-mesh is implicit with --prototype-all-parts"
+  if (( ! DRY_RUN )); then
+    command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
+  fi
+  PROTO_ACTION=(--resume)
+  if (( FORCE )); then PROTO_ACTION=(--force); fi
+  if (( DRY_RUN )); then PROTO_ACTION+=(--dry-run); fi
+  PROTO_DEBUG=()
+  if (( PAINT_DEBUG )); then PROTO_DEBUG=(--paint-debug); fi
+  printf '\n[COMPLETE 3D PROTOTYPE] %s -> all card parts, no inspection pauses\n' "$PREFIX"
+  printf 'Qwen -> Hunyuan -> Paint3D -> game GLBs -> 3 rendered views per part -> gallery\n'
+  printf 'Includes experimental hair, upper/lower clothing and hands; no assembly or fitting.\n'
+  "$PYTHON" -m ai3d character generate "$CARD" \
+    --all --include-regions --stop-after game \
+    --run-prefix "$PREFIX" --quality "$QUALITY" \
+    --output-dir "$OUTPUT_DIR" --blender "$BLENDER" \
+    "${PROTO_ACTION[@]}" "${PROTO_DEBUG[@]}"
+  GALLERY_ACTION=()
+  if (( DRY_RUN )); then GALLERY_ACTION=(--dry-run); fi
+  "$PYTHON" -m ai3d.characters.prototype_gallery \
+    --card "$CARD" --prefix "$PREFIX" \
+    --output-dir "$OUTPUT_DIR" --blender "$BLENDER" \
+    "${GALLERY_ACTION[@]}"
+  exit 0
+fi
 
 # The modular workflow is the safe default. It intentionally cannot infer
 # that a reference/mesh/component is approved from the presence of its files.
