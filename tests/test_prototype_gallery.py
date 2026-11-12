@@ -34,8 +34,8 @@ class PrototypeGalleryTest(unittest.TestCase):
         paths = list(prototype_paths(self.card, self.prefix, self.outputs))
         self.assertEqual([entry["id"] for entry in paths],
                          [p["id"] for p in self.card["parts"]])
-        self.assertEqual(len(paths), 7)
-        self.assertEqual(len({str(p["glb"]) for p in paths}), 7)
+        self.assertEqual(len(paths), 6)
+        self.assertEqual(len({str(p["glb"]) for p in paths}), 6)
         for entry in paths:
             self.assertEqual(entry["glb"].name, "06_game.glb")
             self.assertEqual(len(entry["previews"]), 3)
@@ -48,7 +48,7 @@ class PrototypeGalleryTest(unittest.TestCase):
         run.assert_not_called()
         self.assertFalse(self.outputs.exists())
         self.assertEqual(result.name, "index.html")
-        self.assertIn("hair:", stdout.getvalue())
+        self.assertNotIn("hair:", stdout.getvalue())
         self.assertIn("upper_outfit:", stdout.getvalue())
         self.assertIn("lower_outfit:", stdout.getvalue())
 
@@ -82,20 +82,21 @@ class PrototypeGalleryTest(unittest.TestCase):
             with redirect_stdout(io.StringIO()):
                 index = create_gallery(self.card, self.prefix, self.outputs,
                                        blender="fake-blender")
-            self.assertEqual(run.call_count, 7)
+            self.assertEqual(run.call_count, 6)
             self.assertEqual(calls, [p["glb"] for p in paths])
             html = index.read_text(encoding="utf-8")
-            self.assertEqual(html.count("<section>"), 7)
-            self.assertEqual(html.count("<img "), 21)
+            self.assertEqual(html.count("<section>"), 6)
+            self.assertEqual(html.count("<img "), 18)
+            self.assertNotIn("<h2>hair</h2>", html)
             self.assertIn("upper_outfit", html)
             self.assertIn("lower_outfit", html)
             self.assertIn("07_preview_threequarter.png", html)
             report = json.loads((index.parent / "report.json").read_text())
-            self.assertEqual(len(report["parts"]), 7)
+            self.assertEqual(len(report["parts"]), 6)
             with redirect_stdout(io.StringIO()):
                 create_gallery(self.card, self.prefix, self.outputs,
                                blender="fake-blender")
-            self.assertEqual(run.call_count, 7, "Resume should reuse previews")
+            self.assertEqual(run.call_count, 6, "Resume should reuse previews")
 
 
 if __name__ == "__main__":

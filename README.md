@@ -101,7 +101,7 @@ after reviewing the debug images.
 ## Reusable character cards
 
 Version 1 includes a **permanent, project-independent character-card
-template** with separate body, head, hair, clothing, hands and equipment
+template** with separate body, unified head (face + hair), clothing, hands and equipment
 sections. Each part can have its own prompts, references, generation
 preferences and quality gates. The source cards are editable JSON files,
 never temporary generated outputs.
@@ -277,7 +277,7 @@ and inspect them. Continue with `--stop-after shape --resume`,
 `--stop-after paint --resume`, and `--stop-after game --resume`.
 Only mesh and attachment parts proceed beyond reference by default;
 `--include-regions` opts into experimental standalone mesh generation for
-hair, outfit and hands. The generator does not assemble, align or rig parts.
+clothing and hands. The generator does not assemble, align or rig parts.
 
 See [character-card batch workflow](ai3d/characters/README.md).
 
@@ -342,7 +342,7 @@ python3 -m ai3d character assemble \
   --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
 ```
 
-New hair/outfit/hands/equipment GLBs are imported into hidden Blender
+New clothing/hands/equipment GLBs are imported into hidden Blender
 collections and excluded from the comparison GLB until explicitly
 activated, to avoid duplicate geometry. Use
 `python3 -m ai3d character component --help` for visibility/export

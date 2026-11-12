@@ -4,8 +4,9 @@ This folder is an **example consumer** of the project-independent AI3D
 toolkit, not a required AI3D dependency.
 
 `characters/mara_venn.json` illustrates a durable character card for
-a full-body spaceport engineer with separate head, hair, outfit, hands and
-equipment definitions. Its head prompt is independent of the full-body
+a full-body spaceport engineer with a unified face-and-hairstyle head,
+separate upper and lower garments, hands and equipment definitions.
+Its head prompt is independent of the full-body
 reference to support controlled shape reconstruction experiments.
 
 ```bash
@@ -50,7 +51,7 @@ python3 -m ai3d character generate \
 Inspect the six images before advancing the components to shape, paint or game.
 To avoid generating the head again, add `--skip head` to **all** batch
 commands, then continue using the existing approved head GLB separately.
-To experiment with separate hair, outfit and hand meshes, add
+To experiment with separate garment and hand meshes, add
 `--include-regions` intentionally; otherwise these remain reference-only.
 Part geometry and painted assets are not automatically assembled.
 

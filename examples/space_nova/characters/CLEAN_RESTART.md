@@ -2,7 +2,7 @@
 
 This intentionally begins with ONE new body reference and ONE new base shape.
 Do not immediately run the full 4-stage character build: it will produce
-existing coarse hair/outfit/hands/equipment parts before the redesigned
+existing coarse outfit/hands/equipment parts before the redesigned
 attachment system has been approved.
 
 ## Design and source
@@ -77,7 +77,7 @@ geometry specifications only after the reference has been visually accepted.
    `upper_outfit` and `lower_outfit` region references. Generate their
    design images using `./build_character.sh --outfit-references --prefix mara_clean_v2`.
    The corresponding fitted meshes and attachment anchors are NOT implemented.
-3. Continue with gloves, boots, hair and individual equipment only after
+3. Continue with gloves, boots and individual equipment only after
    the two garment design images pass their visual checks.
 4. Paint and export wearable garments only after geometry fit, seam
    clearance and component alignment are accepted.

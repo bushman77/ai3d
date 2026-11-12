@@ -4,7 +4,7 @@
   "name": "Mara Venn",
   "category": "humanoid",
   "project": "space_nova",
-  "revision": 5,
+  "revision": 6,
   "identity": {
     "role": "Spaceport repair engineer",
     "species": "human",
@@ -51,8 +51,7 @@
       "three_quarter": "Slight three-quarter view showing face, outfit and silhouette without occlusion.",
       "side": "Clean orthographic side view with identical face and hairstyle.",
       "back": "Straight back view consistent with other references.",
-      "head_closeup": "Same Mara Venn identity: head and neck, nearly front facing, eyes and eyelids clearly defined, sharp nose bridge, visible lips and jaw, even neutral lighting, both ears and full hairline visible.",
-      "hair_closeup": "Tight detail reference focused exclusively on the head's hairstyle and hairline; hair fully visible, clean neutral backdrop, no full body or clothing details.",
+      "head_closeup": "Single unified head-and-neck with full facial anatomy and complete attached hairstyle, including the visible pulled-back hair volume. Nearly front-facing, ears and hairline visible, one face only.",
       "hands_closeup": "Detailed close-up of only the gloved hands in a relaxed open pose, all fingers clearly visible, uniform studio lighting, no face, no torso.",
       "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait.",
       "upper_outfit_closeup": "Upper outfit ONLY, isolated collar-through-waist tunic and both sleeves with full wrist cuffs in frame. Straight-on orthographic fashion garment product view. Use the forest-green and charcoal fabric design shared with the lower outfit.",
@@ -96,16 +95,16 @@
     },
     {
       "id": "head",
-      "label": "Head and face",
+      "label": "Head, face and hairstyle",
       "kind": "mesh",
       "parent": "body",
       "attachment": "neck (planned; not automatically merged)",
       "reference_ids": [],
       "prompts": {
-        "geometry": "Reconstruct isolated head-and-neck geometry with clearly shaped eye sockets, eyelids, nose, lips, ears, and jaw while preserving Mara's identity.",
-        "texture": "Natural skin, consistent eye shape, facial expression, and hairline; no hair texture bleeding across the eyes.",
-        "reference": "Portrait-quality isolated head-and-neck reference of the same adult character. Frame from hair crown to the base of the neck including only a glimpse of the high engineering collar. Face fills most of the image; do not depict the full body. Nearly front-facing with both eyes and ears visible, symmetrical believable facial proportions. Chestnut-brown hair tied back with clean side-swept hairline. Sharp distinctive cheekbones, slightly raised chin, one subtly arched eyebrow, confident aloof and faintly unimpressed expression. Explicit detailed upper and lower eyelids, natural eye sockets, nose bridge and nostrils, clearly formed lips and jawline. Soft even neutral studio lighting, no face-obscuring shadows, clean light-gray backdrop, high quality stylized-realistic character turnaround reference for precise 3D reconstruction.",
-        "negative": "No full body, no legs, no hands, no floating or severed head, no duplicate face, no asymmetrical eyes, no distorted anatomy, no extra people, no text, no watermark, no helmet, no kiosk, no dramatic shadows."
+        "geometry": "Reconstruct one unified head-and-neck shape with a single face, scalp, complete chestnut-brown side-swept hairstyle tied back, hairline, hair volume, eye sockets, eyelids, nose, lips, ears and jaw. The hairstyle is part of this head reconstruction, not a second head or separate head covering. Preserve Mara's identity.",
+        "texture": "Natural skin with consistent eyes, expression and hairline; chestnut-brown hair texture over the attached hairstyle, preserving clean separation between scalp, strands, forehead and eyes.",
+        "reference": "Portrait-quality isolated head-and-neck reference of Mara Venn with her complete hairstyle included as one continuous head subject. Show her entire chestnut-brown side-swept hair from the hairline to the neatly tied-back rear hair volume, with the full top and back silhouette visible; frame her face, ears, hairstyle and neck without cropping the rear hair. Only one face, scalp and head in the image, not a separate hairstyle display or wig. Nearly front-facing with both eyes and ears visible; believable facial proportions, sharp cheekbones, slightly raised chin, one arched eyebrow and a confident aloof expression. Clearly formed upper and lower eyelids, eye sockets, nose, lips and jaw. Soft neutral studio lighting, light-gray background, crisp stylized-realistic 3D reconstruction reference.",
+        "negative": "No duplicate head, no extra face, no second person, no separate wig or floating head covering, no full body, legs or hands, no detached hair mesh, no helmet, no text or watermark."
       },
       "generation": {
         "geometry_backend": null,
@@ -120,38 +119,11 @@
         "Eyes and eyelids readable in solid shading",
         "Nose, mouth, ears and jaw clearly formed",
         "Recognizable expression and facial silhouette",
-        "Inspect front and profile geometry before texture painting"
+        "Inspect front and profile geometry before texture painting",
+        "Complete attached hairstyle and hairline with no second head or separate hair component"
       ],
-      "notes": "Generate separately when full-body reconstruction loses facial anatomy.",
+      "notes": "One unified head reconstruction contains face, scalp and attached tied-back chestnut hair; no independent hair/head-covering asset. Inspect front and profile before paint.",
       "reference_view": "head_closeup"
-    },
-    {
-      "id": "hair",
-      "label": "Hair / head covering",
-      "kind": "region",
-      "parent": "head",
-      "attachment": null,
-      "reference_ids": [],
-      "prompts": {
-        "geometry": "Chestnut-brown hair pulled back, with clean hairline and consistent silhouette.",
-        "texture": "",
-        "reference": "Close-up hair and hairline design reference only, showing a neat chestnut-brown tied-back hairstyle, front-to-side hairline transition and realistic volume. Neutral light-gray backdrop with hair fully visible.",
-        "negative": "No full body, no extra people, no text, no watermark, no helmet, no extravagant hairstyle."
-      },
-      "generation": {
-        "geometry_backend": null,
-        "texture_backend": null,
-        "shape_steps": null,
-        "target_triangles": null,
-        "view_resolution": null,
-        "reference_width": 384,
-        "reference_height": 384
-      },
-      "quality_gates": [
-        "Hairline does not obscure eyes"
-      ],
-      "notes": "Region or separate mesh: choose during implementation.",
-      "reference_view": "hair_closeup"
     },
     {
       "id": "upper_outfit",

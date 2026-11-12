@@ -387,7 +387,7 @@ class AssemblyTests(unittest.TestCase):
         plan = self.plan(include_all_parts=True)
         self.assertEqual(
             [p["id"] for p in plan["parts"]],
-            ["body", "head", "hair", "upper_outfit", "lower_outfit", "hands", "equipment"],
+            ["body", "head", "upper_outfit", "lower_outfit", "hands", "equipment"],
         )
         self.assertTrue(all(p["visible"] and p["include_in_preview"]
                             for p in plan["parts"][:2]))
@@ -415,11 +415,11 @@ class AssemblyTests(unittest.TestCase):
             target.write_bytes(b"fixture")
         stage_components(path, MARA, all_parts=True)
         result = json.loads(path.read_text())
-        self.assertEqual(len(result["parts"]), 7)
+        self.assertEqual(len(result["parts"]), 6)
         self.assertEqual(result["parts"][1], data["parts"][1])
         self.assertEqual(result["parts"][0], data["parts"][0])
         self.assertEqual([p["id"] for p in result["parts"][2:]],
-                         ["hair", "upper_outfit", "lower_outfit", "hands", "equipment"])
+                         ["upper_outfit", "lower_outfit", "hands", "equipment"])
         self.assertTrue(all(not p["include_in_preview"] and not p["visible"]
                             for p in result["parts"][2:]))
 
@@ -502,7 +502,7 @@ class AssemblyTests(unittest.TestCase):
         with patch("ai3d.characters.assembly.readable_glb") as valid:
             with patch.object(Runner, "command", autospec=True, side_effect=self.fake_blender):
                 assemble_preview(MARA, rebuild=True, **self.options)
-        self.assertEqual(valid.call_count, 7)
+        self.assertEqual(valid.call_count, 6)
 
     def test_stage_and_component_command_help(self):
         for subcommand in ("stage", "component"):

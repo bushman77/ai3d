@@ -43,13 +43,13 @@ class CharacterBatchTests(unittest.TestCase):
             plan = generate_character(self.card, MARA, **args)
         return plan, out.getvalue()
 
-    def test_plan_all_seven_parts_in_card_order(self):
+    def test_plan_all_six_parts_in_card_order(self):
         plan = self.plan(all_parts=True)
         self.assertEqual(
             [p["part_id"] for p in plan],
-            ["body", "head", "hair", "upper_outfit", "lower_outfit", "hands", "equipment"],
+            ["body", "head", "upper_outfit", "lower_outfit", "hands", "equipment"],
         )
-        self.assertEqual(len({p["folder"] for p in plan}), 7)
+        self.assertEqual(len({p["folder"] for p in plan}), 6)
 
     def test_default_stops_at_reference_for_every_part(self):
         plan = self.plan(all_parts=True)
@@ -61,7 +61,7 @@ class CharacterBatchTests(unittest.TestCase):
         self.assertEqual(stage["body"], "game")
         self.assertEqual(stage["head"], "game")
         self.assertEqual(stage["equipment"], "game")
-        for name in ("hair", "hands", "upper_outfit", "lower_outfit"):
+        for name in ("hands", "upper_outfit", "lower_outfit"):
             self.assertEqual(stage[name], "reference")
 
     def test_include_regions_enables_isolated_mesh_trials(self):
@@ -71,7 +71,7 @@ class CharacterBatchTests(unittest.TestCase):
     def test_skip_previously_approved_head(self):
         plan = self.plan(all_parts=True, skip=["head"], stop_after="shape")
         self.assertNotIn("head", [p["part_id"] for p in plan])
-        self.assertEqual(len(plan), 6)
+        self.assertEqual(len(plan), 5)
 
     def test_select_individual_parts_preserves_card_order_requested(self):
         plan = self.plan(part_ids=["equipment", "head", "equipment"])
@@ -114,7 +114,7 @@ class CharacterBatchTests(unittest.TestCase):
 
     def test_dry_run_prints_plan_and_creates_no_files(self):
         plan, output = self.preview(all_parts=True, stop_after="game")
-        self.assertEqual(len(plan), 7)
+        self.assertEqual(len(plan), 6)
         self.assertIn("Region parts produce references only", output)
         self.assertIn("Dry run completed", output)
         self.assertFalse(self.root.exists())
@@ -165,7 +165,6 @@ class CharacterBatchTests(unittest.TestCase):
             ("pipeline", "mara_venn_body_front"),
             ("reference", "head"),
             ("pipeline", "mara_venn_head_head_closeup"),
-            ("reference", "hair"),
             ("reference", "upper_outfit"),
             ("reference", "lower_outfit"),
             ("reference", "hands"),
@@ -214,7 +213,6 @@ class CharacterBatchTests(unittest.TestCase):
         self.assertEqual(mapping["equipment"], "equipment_closeup")
         self.assertEqual(mapping["upper_outfit"], "upper_outfit_closeup")
         self.assertEqual(mapping["lower_outfit"], "lower_outfit_closeup")
-        self.assertEqual(mapping["hair"], "hair_closeup")
 
     def test_force_and_resume_conflict(self):
         with self.assertRaisesRegex(RuntimeError, "either --resume or --force"):

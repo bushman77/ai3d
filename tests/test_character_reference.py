@@ -67,6 +67,22 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertNotIn("no cropped body parts", prompt)
         self.assertIn("No full body", prompt)
 
+    def test_mara_head_includes_hair_and_does_not_generate_second_head(self):
+        ids = [part["id"] for part in self.card["parts"]]
+        self.assertEqual(ids, [
+            "body", "head", "upper_outfit", "lower_outfit", "hands", "equipment",
+        ])
+        self.assertNotIn("hair", ids)
+        self.assertNotIn("hair_closeup", self.card["prompts"]["reference_views"])
+        head, view = select_part_and_view(self.card, "head")
+        prompt = compose_reference_prompt(self.card, head, view)
+        self.assertIn("complete hairstyle", prompt.lower())
+        self.assertIn("hairline", prompt.lower())
+        self.assertIn("chestnut-brown", prompt.lower())
+        self.assertIn("one continuous head subject", prompt.lower())
+        with self.assertRaisesRegex(RuntimeError, "no part"):
+            select_part_and_view(self.card, "hair")
+
     def test_body_uses_its_own_reference_prompt(self):
         part, view = select_part_and_view(self.card, "body")
         self.assertEqual(view, "front")
@@ -75,10 +91,10 @@ class CharacterReferenceTests(unittest.TestCase):
         self.assertIn("entire body", prompt.lower())
         self.assertNotIn("avoid:", prompt.lower())
 
-    def test_mara_body_revision_five_has_visual_only_clean_reference(self):
+    def test_mara_body_revision_six_has_visual_only_clean_reference(self):
         part, view = select_part_and_view(self.card, "body")
         prompt = compose_reference_prompt(self.card, part, view)
-        self.assertEqual(self.card["revision"], 5)
+        self.assertEqual(self.card["revision"], 6)
         self.assertEqual(part["generation"]["reference_mode"], "visual_only")
         self.assertIn("natural bust", self.card["prompts"]["master"])
         self.assertIn("athletic feminine", prompt)

@@ -24,8 +24,11 @@ class CharacterCardTests(unittest.TestCase):
         template = json.loads(TEMPLATE_PATH.read_text())
         self.assertEqual([], validate_card(template))
         ids = {part["id"] for part in template["parts"]}
-        self.assertTrue({"head", "body", "hair", "outfit", "hands", "equipment"} <= ids)
+        self.assertTrue({"head", "body", "outfit", "hands", "equipment"} <= ids)
         self.assertEqual(template["schema_version"], 1)
+        self.assertNotIn("hair", ids)
+        self.assertNotIn("hair_closeup", template["prompts"]["reference_views"])
+        self.assertIn("hairstyle", next(p for p in template["parts"] if p["id"] == "head")["label"])
 
     def test_new_card_has_independent_parts_and_name(self):
         first = new_card("captain_lira", "Captain Lira", "android")

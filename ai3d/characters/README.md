@@ -31,7 +31,7 @@ standard library, and also checks parent cycles and duplicate IDs.
 | `appearance` | Style, silhouette, face, hair, clothing, palette, recognizability |
 | `prompts` | Master and negative prompts, plus per-view prompt instructions |
 | `references` | Optional named image references, with view and purpose metadata |
-| `parts` | Body/head/hair/outfit/hands/equipment or any custom component graph |
+| `parts` | Body/unified head (including hair)/outfit/hands/equipment or any custom component graph |
 | `assembly` | Intended units, axes, rest pose, rigging and attachment notes |
 | `provenance`, `notes` | Optional authorship, licensing, design notes |
 
@@ -47,7 +47,7 @@ These are **design classifications**, not automatic Blender operations.
 Parent links must refer to another part and cannot form cycles. Attachment
 strings are descriptive until an explicit assembly system exists.
 
-The template starts with six editable parts, but a creature, robot or other
+The template starts with five editable parts (hair is included in the head), but a creature, robot or other
 character may have any valid component set. You can add `tail`, `wings`,
 `helmet`, `antennae`, or remove irrelevant sections.
 
@@ -401,7 +401,7 @@ python3 -m ai3d character stage \
   examples/space_nova/characters/mara_venn.json --all
 ```
 
-The additional `hair`, `outfit`, `hands`, `equipment` sources are imported
+The additional `upper_outfit`, `lower_outfit`, `hands`, `equipment` sources are imported
 into **independent Blender collections** but default to:
 
 ```json
@@ -463,7 +463,7 @@ python3 -m ai3d character assemble \
   --name mara_assembly_full_v1 --all-parts
 ```
 
-**Important:** This milestone does not automatically fit hair, gloves or
+**Important:** This milestone does not automatically fit gloves or
 uniform from close-up reconstructions. It does not weld the neck seam,
 resolve interpenetrating surfaces, remove redundant garment geometry,
 retopologize or rig the resulting character. Those are separate geometry

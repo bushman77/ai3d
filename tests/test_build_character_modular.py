@@ -54,7 +54,7 @@ class ModularShellTest(unittest.TestCase):
     def test_reference_batch_is_explicit_and_readonly(self):
         output = self.command("--stage", "reference", "--all-parts",
                               "--prefix", "batch_smoke", "--dry-run")
-        self.assertIn("Selected parts: 7", output)
+        self.assertIn("Selected parts: 6", output)
         self.assertIn("equipment", output)
 
     def test_region_mesh_requires_experimental_flag(self):
@@ -80,17 +80,25 @@ class ModularShellTest(unittest.TestCase):
 
     def test_prototype_all_parts_dry_run_attempts_every_3d_region(self):
         out = self.command("--prototype-all-parts", "--prefix", "mara_proof", "--dry-run")
-        for ident in ("body", "head", "hair", "upper_outfit",
+        for ident in ("body", "head", "upper_outfit",
                       "lower_outfit", "hands", "equipment"):
             self.assertIn(f"[COMPONENT", out)
             self.assertIn(f"mara_proof_{ident}_", out)
-        # All 7 parts must reach Paint3D (including reference-only regions).
-        self.assertEqual(out.count("requested target: paint"), 7)
-        self.assertEqual(out.count("Dry run: would invoke ai3d generate"), 7)
+        # All six parts must reach Paint3D (including reference-only regions).
+        self.assertEqual(out.count("requested target: paint"), 6)
+        self.assertEqual(out.count("Dry run: would invoke ai3d generate"), 6)
         self.assertNotIn("Region parts produce references only", out)
-        self.assertEqual(out.count("[DRY RUN] Would render:"), 7)
+        self.assertEqual(out.count("[DRY RUN] Would render:"), 6)
         self.assertIn("prototype_gallery", out)
         self.assertIn("STANDALONE 3D PROTOTYPES", out)
+
+    def test_removed_hair_component_cannot_be_generated(self):
+        out = self.command("--prototype-all-parts", "--part", "hair",
+                           "--dry-run", ok=False)
+        self.assertIn("Unknown part", out)
+        out = self.command("--prototype-all-parts", "--dry-run")
+        self.assertNotIn("mara_complete_v1_hair_", out)
+        self.assertIn("mara_complete_v1_head_head_closeup", out)
 
     def test_prototype_render_only_dry_run_never_infers(self):
         out = self.command("--prototype-all-parts", "--render-only",

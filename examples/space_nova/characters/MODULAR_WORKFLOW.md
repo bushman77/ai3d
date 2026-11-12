@@ -1,9 +1,33 @@
 # Staged modular character workflow
 
+## Removing the redundant second head
+
+Mara's `hair / head covering` was previously a separate Qwen/Hunyuan job.
+Because the hair close-up included a face, the resulting GLB depicted a second
+person. Revision 6 removes this job; the `head` part now generates face, scalp
+and complete tied-back hairstyle **together**. Existing saved GLBs remain
+untouched, including historical standalone hair assets.
+
+Rebuild the **existing** gallery without rerunning Qwen, Hunyuan or Paint3D:
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+./build_character.sh --prototype-all-parts --render-only --prefix mara_complete_v1
+firefox ~/ai3d/outputs/mara_complete_v1_prototypes/index.html
+```
+
+This overwrites only the HTML contact sheet and reuses (or produces) image
+previews for the six remaining painted GLBs. It does not delete the old hair
+folder and does not regenerate Mara's head. If an older
+`_workable_character/assembly.json` contains seven parts, keep it as a
+historical project: its part inventory no longer matches the active card.
+Do not force a rebuild of that manifest with the changed inventory.
+
 ## Complete standalone 3D proof-of-pipeline (no review pauses)
 
 This mode intentionally answers a different question from the staged
-production workflow: **can the entire seven-component pipeline run end to
+production workflow: **can the entire six-component pipeline run end to
 end, even if the generated shapes are awkward or unfitted?**
 
 ```bash
@@ -23,7 +47,7 @@ component from the card, in card order:
    (`07_preview_front.png`, `07_preview_threequarter.png`,
    `07_preview_side.png`)
 
-The seven components currently are `body`, `head`, `hair`,
+The six components are `body`, `head` (face and hairstyle together),
 `upper_outfit`, `lower_outfit`, `hands`, and `equipment`.
 **Region meshes are deliberately included**, despite the risk that the
 individual 3D outputs depict unwanted mannequin/skin/body geometry.
@@ -146,8 +170,10 @@ pale panels and streaks. Do not treat this preview as production quality.
 
 ## Region and equipment separation
 
-Mara's card revision 5 defines **seven** parts: `body`, `head`, `hair`,
-`upper_outfit`, `lower_outfit`, `hands`, `equipment`.
+Mara's card revision 6 defines **six** parts: `body`, `head` (face + hair),
+`upper_outfit`, `lower_outfit`, `hands`, `equipment`. The earlier standalone
+`hair / head covering` part has been removed. The head generation now produces
+one face/hairstyle subject in its dedicated reference and reconstruction.
 The former broad `outfit` region has been replaced with **two separate
 garment reference designs**:
 
@@ -162,7 +188,7 @@ visual quality gates. The master outfit still belongs to the full character
 design *before* generation is split. No model-to-model image conditioning
 exists yet, so exact material alignment must be checked by eye.
 
-`hair`, `upper_outfit`, `lower_outfit` and `hands` are still
+`upper_outfit`, `lower_outfit` and `hands` are still
 `kind=region` and currently generate design references only. The shell
 rejects shape/paint/game requests for them unless you explicitly use
 `--experimental-region-mesh`. That opt-in creates an **isolated, unaligned**
@@ -183,8 +209,8 @@ component-card splitting and coordinate-aware fitting.
 
 The root script includes an **explicit standalone prototype mode** that does
 what the normal `--all-parts` reference command does not do: it passes
-`--include-regions` to the Hunyuan/Paint3D pipeline so hair, both garment
-sections, and hands receive real GLB meshes. Each part is an independent
+`--include-regions` to the Hunyuan/Paint3D pipeline so both garment
+sections and hands receive real GLB meshes. Each part is an independent
 experiment; nothing is fitted to the body, rigged, or exported as a combined
 character.
 
@@ -192,7 +218,7 @@ character.
 cd ~/ai3d
 git pull --ff-only
 
-# Preview the exact seven-part plan, with no inference or Blender writes.
+# Preview the exact six-part plan, with no inference or Blender writes.
 ./build_character.sh --prototype-all-parts --prefix mara_clean_v2 --dry-run
 
 # Execute: reuses existing body/head 05_painted.glb and approved garment
@@ -200,7 +226,7 @@ git pull --ff-only
 ./build_character.sh --prototype-all-parts --prefix mara_clean_v2
 ```
 
-This mode reads the current character card to discover all seven parts, processes
+This mode reads the current character card to discover all six parts, processes
 each part serially on limited VRAM, and produces a distinct
 `outputs/mara_clean_v2_<part>_<view>/05_painted.glb` plus
 `preview_front.png`, `preview_side.png`, `preview_back.png`, and
@@ -232,12 +258,12 @@ regenerates and replaces cached part outputs and preview renders: use a new
 `--prefix` for risky experiments.
 
 **Limitations:** shape/texture quality can be poor; clothes can include the
-mannequin; hair/hands can be ambiguous; the equipment is still a grouped prop.
-The objective here is **seven independently inspectable 3D components**,
-not seven well-fitted wearable components. Blender Cycles CPU rendering does
+mannequin; gloves/hands can be ambiguous; the equipment is still a grouped prop.
+The objective here is **six independently inspectable 3D components**,
+not six well-fitted wearable components. Blender Cycles CPU rendering does
 not require a display or consume GPU VRAM, although it does take CPU time.
 
-## First workable seven-part character assembly
+## First workable six-part character assembly
 
 Now that `--prototype-all-parts` has generated and rendered every component,
 assemble the *existing* painted meshes without running any AI models:
@@ -253,7 +279,7 @@ git pull --ff-only
 This command creates a **separate** output directory,
 `outputs/mara_clean_v2_workable_character/`, containing:
 
-- `preview.blend` — Blender scene with all seven independently selectable parts
+- `preview.blend` — Blender scene with all six independently selectable parts
 - `preview.glb` — combined scene export, still containing separate objects
 - `assembly.json` — editable part transforms/visibility and approximation notes
 - `measurements.json` — component bounds
@@ -261,14 +287,14 @@ This command creates a **separate** output directory,
   `preview_threequarter.png` — rendered fit checks
 
 The command imports and measures each standalone GLB, applies the existing
-bounds-based placement heuristic, and enables **all seven components** in the
+bounds-based placement heuristic, and enables **all six components** in the
 new assembled preview. It copies any compatible body/head transforms and neck
 cut settings from `outputs/mara_clean_v2_assembly/assembly.json`; that
 existing approved preview stays untouched. A second Blender pass exports
 the fitted scene, followed by four CPU renders.
 
 **Expect intersections and duplicate mannequin geometry**. Especially
-the hairstyle/head, glove/hands and gear prototypes may contain surplus
+the garment/mannequin, glove/hands and gear prototypes may contain surplus
 mesh. This is a first workable *static visual prototype*, not a rigged
 game-ready character. Open the resulting Blender scene, inspect, and adjust
 the per-part transforms in `assembly.json` when needed.

@@ -32,13 +32,13 @@ class WorkableAssemblyTests(unittest.TestCase):
             "--output-dir", str(self.root), *extra,
         ])
 
-    def test_dry_run_is_non_mutating_and_includes_all_seven_glbs(self):
+    def test_dry_run_is_non_mutating_and_includes_all_six_glbs(self):
         out = assemble(self.options("--dry-run"))
         self.assertFalse(out.exists())
         self.assertFalse(self.root.exists())
         expected = sources(self.card, self.name, self.root)
         self.assertEqual(list(expected), [p["id"] for p in self.card["parts"]])
-        self.assertEqual(len(expected), 7)
+        self.assertEqual(len(expected), 6)
         self.assertTrue(all(p.name == "05_painted.glb" for p in expected.values()))
 
     def test_missing_source_fails_before_writing_anything(self):
@@ -55,7 +55,7 @@ class WorkableAssemblyTests(unittest.TestCase):
         enable_workable_parts(plan)
         self.assertEqual(plan["workable_version"], 1)
         self.assertEqual(plan["preview_layout"], "overlay")
-        self.assertEqual(len(plan["parts"]), 7)
+        self.assertEqual(len(plan["parts"]), 6)
         self.assertTrue(all(p["visible"] and p["include_in_preview"]
                             for p in plan["parts"]))
         self.assertEqual(plan["parts"][0]["transform"], before[0]["transform"])
@@ -79,7 +79,7 @@ class WorkableAssemblyTests(unittest.TestCase):
         self.assertEqual(plan["parts"][1]["transform"]["position"],
                          [0.01, -0.03, 0.75])
         self.assertEqual(plan["parts"][0]["cut"]["plane_z"], 0.68)
-        self.assertEqual(plan["parts"][2]["id"], "hair")
+        self.assertEqual(plan["parts"][2]["id"], "upper_outfit")
 
         changed = deepcopy(plan)
         changed["parts"][1]["source"] = str(self.root / "other.glb")
@@ -94,7 +94,7 @@ class WorkableAssemblyTests(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("WORKABLE ASSEMBLY", result.stdout)
-        self.assertIn("7 independent parts", result.stdout)
+        self.assertIn("6 independent parts", result.stdout)
         self.assertFalse(self.root.exists())
         result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)

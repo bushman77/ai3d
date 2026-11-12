@@ -32,7 +32,6 @@
       "side": "",
       "back": "",
       "head_closeup": "",
-      "hair_closeup": "",
       "outfit_closeup": "",
       "hands_closeup": "",
       "equipment_closeup": ""
@@ -70,7 +69,7 @@
     },
     {
       "id": "head",
-      "label": "Head and face",
+      "label": "Head, face and hairstyle",
       "kind": "mesh",
       "parent": "body",
       "attachment": "neck (planned; not automatically merged)",
@@ -93,38 +92,11 @@
       "quality_gates": [
         "Eyes and eyelids readable in solid shading",
         "Nose, mouth, ears and jaw clearly formed",
-        "Recognizable expression and facial silhouette"
+        "Recognizable expression and facial silhouette",
+        "Complete attached hairstyle and hairline with no second head or separate hair component"
       ],
-      "notes": "Generate separately when full-body reconstruction loses facial anatomy.",
+      "notes": "Generate face, scalp and hairstyle as one head reference and one reconstruction; do not create a second hair/head-covering component.",
       "reference_view": "head_closeup"
-    },
-    {
-      "id": "hair",
-      "label": "Hair / head covering",
-      "kind": "region",
-      "parent": "head",
-      "attachment": null,
-      "reference_ids": [],
-      "prompts": {
-        "reference": "",
-        "negative": "",
-        "geometry": "",
-        "texture": ""
-      },
-      "generation": {
-        "geometry_backend": null,
-        "texture_backend": null,
-        "shape_steps": null,
-        "target_triangles": null,
-        "view_resolution": null,
-        "reference_width": null,
-        "reference_height": null
-      },
-      "quality_gates": [
-        "Hairline does not obscure eyes"
-      ],
-      "notes": "Region or separate mesh: choose during implementation.",
-      "reference_view": "hair_closeup"
     },
     {
       "id": "outfit",

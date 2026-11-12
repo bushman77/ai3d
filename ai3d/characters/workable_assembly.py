@@ -85,8 +85,8 @@ def enable_workable_parts(manifest):
     manifest["preview_layout"] = "overlay"
     manifest["workable_version"] = WORKABLE_VERSION
     manifest["workable_warnings"] = [
-        "All seven independent painted meshes are included, even if they overlap.",
-        "Generated hair, gloves and clothing may include unwanted mannequin geometry.",
+        "All configured independent painted meshes are included, even if they overlap.",
+        "Generated gloves and clothing may include unwanted mannequin geometry.",
         "Bounds-only alignment is approximate; edit per-part transforms in assembly.json.",
         "No rigging, automatic skinning, garment shrinkwrap, weld, or topology repair.",
         "No source GLB or earlier body/head assembly is changed.",
@@ -198,7 +198,7 @@ def assemble(args):
     else:
         print("[WORKABLE] Preserving previously edited transforms and visibility")
 
-    print("[WORKABLE] Exporting editable scene and seven-part GLB", flush=True)
+    print("[WORKABLE] Exporting editable scene with configured parts", flush=True)
     assemble_preview(card_path, name=target_name, run_prefix=args.prefix,
                      output_root=output_root, blender=args.blender, rebuild=True)
     render_scene(args.blender, folder)

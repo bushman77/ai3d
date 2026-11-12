@@ -97,7 +97,7 @@ If present, outputs/mara_body_shape50/{01_reference.png,03_shape.glb}
 are reused automatically for the default Mara card. No original asset is edited.
 The master outfit/design is in the card and prompt.txt BEFORE splitting.
 It is NOT image-conditioned into each component yet. Region references
-(upper_outfit, lower_outfit, hands, hair) are design inputs, not fitted geometry.
+(upper_outfit, lower_outfit, hands) are design inputs, not fitted geometry.
 Preview stages only body + detailed head and never publish a game character.
 --legacy-full-build produces a STATIC GLB and retains historical behavior.
 HELP
@@ -247,7 +247,7 @@ if (( ASSEMBLE_WORKABLE )); then
 fi
 
 # Prove every part has its own real 3D mesh and render, not only a PNG
-# reference. The Python coordinator handles all seven card parts in sequence.
+# reference. The Python coordinator handles all configured card parts in sequence.
 if (( PROTOTYPE_ALL )); then
   [[ -z "$MODULAR_STAGE" && $LEGACY_FULL -eq 0 && $BODY_ONLY -eq 0 &&
      $OUTFIT_REFERENCES -eq 0 && $MODULAR_ALL -eq 0 &&
@@ -334,7 +334,7 @@ for part in card["parts"]:
     found = [p.split("_", 1)[1].split(".", 1)[0] for p in outputs if (folder / p).is_file()]
     print(f"  {part['id']:<15} {part['kind']:<11} {' / '.join(found) if found else 'not generated'}")
 print("\nReview progression: reference -> shape -> paint -> game (per part).")
-print("Regions (upper_outfit, lower_outfit, gloves/hands, hair) are design-only until fitted geometry exists.")
+print("Regions (upper_outfit, lower_outfit, gloves/hands) are design-only until fitted geometry exists.")
 print("Preview: painted body + separately generated head only, reversible and unapproved.")
 print("Garment reference command: ./build_character.sh --outfit-references --prefix", prefix)
 PY
