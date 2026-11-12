@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from copy import deepcopy
 import json
+from html import escape
 import os
 from pathlib import Path
 import shutil
@@ -28,6 +29,7 @@ def args_from_cli(argv=None):
     parser = argparse.ArgumentParser(description="Assemble existing standalone character GLBs")
     parser.add_argument("--card", type=Path, required=True)
     parser.add_argument("--prefix", required=True)
+    parser.add_argument("--name", help="Distinct assembly output directory (default: PREFIX_workable_character)")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--blender", default="blender")
     parser.add_argument("--dry-run", action="store_true")
@@ -38,6 +40,10 @@ def args_from_cli(argv=None):
         c.isalnum() or c in "-_" for c in args.prefix
     ):
         parser.error("Invalid --prefix")
+    if args.name is not None and (not args.name or not args.name[0].isalnum() or not all(
+        c.isalnum() or c in "_-" for c in args.name
+    )):
+        parser.error("Invalid --name; use letters, digits, underscores or hyphens")
     if args.refit and args.dry_run:
         parser.error("Do not combine --refit and --dry-run")
     return args
@@ -129,6 +135,68 @@ def render_scene(blender, output):
             raise RuntimeError("Missing assembled preview: " + str(image))
 
 
+def write_assembly_gallery(folder: Path, card: dict, source_paths: dict) -> Path:
+    """Static local gallery for a complete, non-destructive character preview."""
+    directions = ("front", "side", "back", "threequarter")
+    for direction in directions:
+        picture = folder / f"preview_{direction}.png"
+        if not picture.is_file() or picture.stat().st_size == 0:
+            raise RuntimeError(f"Missing assembled render: {picture}")
+    for filename in ("preview.blend", "preview.glb", "assembly.json", "measurements.json"):
+        source = folder / filename
+        if not source.is_file() or source.stat().st_size == 0:
+            raise RuntimeError(f"Missing assembled output: {source}")
+    tiles = "".join(
+        f'<figure><a href="preview_{direction}.png"><img loading="lazy" '
+        f'src="preview_{direction}.png" alt="Assembled {escape(card["name"])} '
+        f'{direction} view"></a><figcaption>{direction}</figcaption></figure>'
+        for direction in directions
+    )
+    links = " | ".join(
+        f'<a href="{filename}">{label}</a>'
+        for filename, label in (
+            ("preview.blend", "Open in Blender"),
+            ("preview.glb", "Combined GLB"),
+            ("assembly.json", "Editable transforms"),
+            ("measurements.json", "Measurements"),
+        )
+    )
+    # Only the active card's parts are linked. Historical separate hair assets
+    # are left on disk, but never appear in the assembled character.
+    components = "".join(
+        '<li>' + escape(part["label"]) + ' — <a href="../'
+        + escape(source.parent.name, quote=True) + '/05_painted.glb">'
+        + escape(part_id) + ' source GLB</a></li>'
+        for part_id, source in source_paths.items()
+        for part in card["parts"] if part["id"] == part_id
+    )
+    page = (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f'<title>{escape(card["name"])} — assembled prototype</title>'
+        '<style>body{font:16px/1.5 system-ui,sans-serif;margin:0 auto;'
+        'padding:24px;max-width:1400px;background:#111821;color:#e8eff6}'
+        'a{color:#8acfff}.views{display:grid;grid-template-columns:'
+        'repeat(auto-fit,minmax(220px,1fr));gap:14px}'
+        'figure{margin:0}img{width:100%;border-radius:8px;background:#263343}'
+        'figcaption{text-align:center}p{max-width:820px}li{padding:3px}</style>'
+        '</head><body>'
+        f'<h1>{escape(card["name"])} — assembled prototype</h1>'
+        '<p>All configured components are imported from independently generated '
+        'painted GLBs. Placement and neck cuts are approximate and editable. '
+        'Overlapping fabric, mannequin remnants and unsealed seams are expected; '
+        'this is not a rigged or production-ready game character.</p>'
+        f'<p>{links}</p><div class="views">{tiles}</div>'
+        f'<h2>Source components ({len(source_paths)})</h2><ul>{components}</ul>'
+        '</body></html>'
+    )
+    index = folder / "index.html"
+    if index.is_symlink():
+        raise RuntimeError(f"Refusing symlink assembly gallery: {index}")
+    index.write_text(page, encoding="utf-8")
+    return index
+
+
 def assemble(args):
     card_path = args.card.expanduser().resolve()
     card = load_card(card_path)
@@ -137,7 +205,18 @@ def assemble(args):
         raise RuntimeError("Workable assembly requires body and head")
     output_root = args.output_dir.expanduser().resolve()
     source_paths = sources(card, args.prefix, output_root)
-    target_name = args.prefix + "_workable_character"
+    target_name = args.name or args.prefix + "_workable_character"
+    # Never overwrite an approved body/head assembly, a painted part folder,
+    # or the separate prototype gallery.
+    protected_names = {
+        args.prefix + "_assembly", args.prefix + "_prototypes",
+        *[source.parent.name for source in source_paths.values()],
+    }
+    if target_name in protected_names:
+        raise RuntimeError(
+            f"Assembly output name {target_name!r} is reserved for existing assets; "
+            "choose a distinct --assembly NAME"
+        )
     folder = run_directory(target_name, output_root)
     prior = run_directory(args.prefix + "_assembly", output_root) / "assembly.json"
     manifest_file = folder / "assembly.json"
@@ -171,19 +250,34 @@ def assemble(args):
                          output_root=output_root, blender=args.blender,
                          layout="overlay", include_all_parts=True,
                          source_stage="painted")
-    if not measures.is_file():
-        assemble_preview(card_path, name=target_name, run_prefix=args.prefix,
-                         output_root=output_root, blender=args.blender, rebuild=True)
     if not manifest_file.is_file():
         raise RuntimeError("Missing assembly manifest after Blender import")
 
+    # Validate any existing manifest BEFORE rebuilding it. In particular,
+    # an old seven-part scene containing the removed hair component must never
+    # be overwritten by a six-part run, even if its measurements are missing.
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     if (manifest.get("character_id") != card["id"] or
             manifest.get("run_prefix") != args.prefix):
         raise RuntimeError("Existing workable folder belongs to another run")
     previous_ids = [part["id"] for part in manifest.get("parts", [])]
     if previous_ids != ids:
-        raise RuntimeError("Part inventory changed; choose a new --prefix to avoid clobbering edits")
+        raise RuntimeError(
+            "Part inventory changed (for example, an older seven-part assembly "
+            "may still include the removed hair component). Keep it intact and "
+            "choose a fresh --assembly NAME with the same --prefix."
+        )
+    actual_sources = {part["id"]: Path(part["source"]).resolve() for part in manifest["parts"]}
+    expected_sources = {ident: source.resolve() for ident, source in source_paths.items()}
+    if actual_sources != expected_sources:
+        raise RuntimeError(
+            "Existing assembly uses different component source files; "
+            "choose a fresh --assembly NAME instead of overwriting manual work."
+        )
+
+    if not measures.is_file():
+        assemble_preview(card_path, name=target_name, run_prefix=args.prefix,
+                         output_root=output_root, blender=args.blender, rebuild=True)
 
     initial = manifest.get("workable_version") != WORKABLE_VERSION
     if initial or args.refit:
@@ -202,11 +296,14 @@ def assemble(args):
     assemble_preview(card_path, name=target_name, run_prefix=args.prefix,
                      output_root=output_root, blender=args.blender, rebuild=True)
     render_scene(args.blender, folder)
+    index = write_assembly_gallery(folder, card, source_paths)
     print("\n[WORKABLE] Complete:", folder)
     print("Blender:", folder / "preview.blend")
     print("GLB:", folder / "preview.glb")
     print("Transforms:", manifest_file)
     print("Renders:", folder / "preview_front.png", "(+ side/back/threequarter)")
+    print("Gallery:", index)
+    print("Open locally: firefox", index)
     print("All placements are provisional; inspect in Blender before calling it game-ready.")
     return folder
 

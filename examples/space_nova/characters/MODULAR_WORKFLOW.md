@@ -1,5 +1,46 @@
 # Staged modular character workflow
 
+## Assemble Mara's six generated components (current milestone)
+
+All six component GLBs from the full prototype run already exist under
+`outputs/mara_complete_v1_*`. **Do not regenerate them to assemble them.**
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+
+# Read-only: confirms all six painted GLBs are present.
+./build_character.sh --assemble-workable --prefix mara_complete_v1 --dry-run
+
+# Build a NEW, editable six-part Blender scene and render it from four angles.
+./build_character.sh --assemble-workable --prefix mara_complete_v1 \
+  --assembly mara_complete_v1_six_assembly
+
+# Inspect the result as one character (not the separate part gallery).
+firefox ~/ai3d/outputs/mara_complete_v1_six_assembly/index.html
+blender ~/ai3d/outputs/mara_complete_v1_six_assembly/preview.blend
+```
+
+The assembler imports the active card's `body`, unified `head` (including
+hair), `upper_outfit`, `lower_outfit`, `hands`, and `equipment` from the
+**existing** `05_painted.glb` files. It estimates each component's scale and
+position using measured mesh bounds, aligns them to a common body, and applies
+reversible head/body neck cuts **only to imported working copies**. It exports
+independently selectable meshes in an editable Blender scene and a combined
+preview GLB. The output folder contains `assembly.json` for manual transform
+adjustments, `measurements.json`, four `preview_*.png` renders, and a local
+`index.html` gallery. Source GLBs and existing body/head previews are untouched.
+
+Expect some intersections, mannequin remnants and mismatched costume boundaries.
+This is an **assembled static prototype**, not skinning, rigging, garment
+shrinkwrapping, or a final game asset. If an earlier
+`mara_complete_v1_workable_character/assembly.json` still lists seven parts,
+it is preserved, not silently rewritten. Use a distinct `--assembly NAME` as
+shown above. On a later run with the **same** six-part assembly name, hand-edited
+transforms are preserved; only `--refit` explicitly recalculates the initial
+placement. Assembly will not run Qwen, Hunyuan or Paint3D.
+
+
 ## Removing the redundant second head
 
 Mara's `hair / head covering` was previously a separate Qwen/Hunyuan job.

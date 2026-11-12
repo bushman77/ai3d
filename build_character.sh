@@ -13,6 +13,7 @@ BLENDER="${BLENDER:-blender}"
 CARD="examples/space_nova/characters/mara_venn.json"
 PREFIX="mara_complete_v1"
 ASSEMBLY=""
+ASSEMBLY_SPECIFIED=0
 OUTPUT_DIR="$ROOT/outputs"
 BODY_SHAPE=""
 BODY_IMAGE=""
@@ -55,8 +56,9 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
-  --assemble-workable    Build editable seven-part character from existing GLBs;
-                        approximate fitting + 4 rendered views, no regeneration
+  --assemble-workable   Assemble the current six Mara parts from existing GLBs
+                        into a separate editable Blender scene, approximate
+                        placement, four renders and an HTML gallery; no AI
   --prototype-all-parts
                         Produce independent textured GLB + 4 Blender render PNGs
                         for every card component, including experimental regions
@@ -70,7 +72,9 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --legacy-full-build   Opt in to historical four-stage automatic build
   --card FILE            Character card (default: Mara Venn example)
   --prefix NAME          Component run prefix (default: mara_complete_v1)
-  --assembly NAME        Assembly run folder (default: PREFIX_assembly)
+  --assembly NAME        Separate output folder (workable default:
+                        PREFIX_workable_character; never overwrites
+                        PREFIX_assembly or any component folder)
   --output-dir DIR       Generated asset root (default: ./outputs)
   --body-shape GLB       Reuse existing body geometry instead of Hunyuan
   --body-image PNG       Matching reference for --body-shape
@@ -113,7 +117,7 @@ while (($#)); do
       case "$1" in
         --card) CARD="$2";;
         --prefix) PREFIX="$2";;
-        --assembly) ASSEMBLY="$2";;
+        --assembly) ASSEMBLY="$2"; ASSEMBLY_SPECIFIED=1;;
         --output-dir) OUTPUT_DIR="$2";;
         --body-shape) BODY_SHAPE="$2";;
         --body-image) BODY_IMAGE="$2";;
@@ -240,6 +244,7 @@ if (( ASSEMBLE_WORKABLE )); then
   WORKABLE=("$PYTHON" -m ai3d.characters.workable_assembly
     --card "$CARD" --prefix "$PREFIX" --output-dir "$OUTPUT_DIR"
     --blender "$BLENDER")
+  if (( ASSEMBLY_SPECIFIED )); then WORKABLE+=(--name "$ASSEMBLY"); fi
   if (( DRY_RUN )); then WORKABLE+=(--dry-run); fi
   if (( REFIT )); then WORKABLE+=(--refit); fi
   "${WORKABLE[@]}"
