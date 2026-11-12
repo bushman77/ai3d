@@ -80,9 +80,10 @@ geometry specifications only after the reference has been visually accepted.
 4. Paint and export only after body geometry and component alignment are
    accepted, then optimize and run visual regression checks.
 
-The existing `--fresh-body --prefix mara_clean_v2` full-build invocation
-can resume from the first checkpoint, but should be postponed until the
-component separation work is implemented and visually checked.
+The recommended next step is the staged head workflow, described in
+`MODULAR_WORKFLOW.md`. The historical four-stage full build is now explicit:
+`./build_character.sh --legacy-full-build --fresh-body --prefix legacy_trial`.
+Do not use the legacy full build for the modular reconstruction.
 Current `autofit.py` excludes the combined equipment mesh from export
 by default, while keeping it available for manual review.
 

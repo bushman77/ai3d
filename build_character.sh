@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# One-command, resumable character build: card -> references -> meshes ->
-# textures -> editable assembly -> heuristically fitted static game GLB.
+# Staged modular character build: design -> component references -> shape ->
+# paint -> game component GLBs -> reversible preview, with review gates.
+# The pre-modular whole-character builder is kept behind --legacy-full-build.
 # Run from any directory: bash ~/ai3d/build_character.sh [options]
 set -Eeuo pipefail
 
@@ -32,14 +33,29 @@ THIGH_OUTPUT=""
 THIGH_INSET="0.0"
 THIGH_METHOD="guided"
 BODY_ONLY=0
+MODULAR_STAGE=""
+MODULAR_PARTS=()
+MODULAR_ALL=0
+EXPERIMENTAL_REGION_MESH=0
+LEGACY_FULL=0
+PAINT_DEBUG=0
 
 usage() {
   cat <<'HELP'
 Usage: bash build_character.sh [options]
 
-Build a character from its card all the way through a fitted static GLB.
-The stages run sequentially (important for 6 GB VRAM) and resume by default.
+Default behavior is a READ-ONLY modular build plan. Select one component
+and one stage, review its result, then explicitly advance to the next stage.
+Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
 
+  --stage STAGE         plan|reference|shape|paint|game|preview
+  --part ID             Process one card part (repeatable; not for preview)
+  --all-parts           Generate ALL part references only (not meshes)
+  --experimental-region-mesh
+                        Permit stand-alone Hunyuan geometry for a region,
+                        which still needs fitting (not automatically exported)
+  --paint-debug         Save per-view diagnostics during paint/game stages
+  --legacy-full-build   Opt in to historical four-stage automatic build
   --card FILE            Character card (default: Mara Venn example)
   --prefix NAME          Component run prefix (default: mara_complete_v1)
   --assembly NAME        Assembly run folder (default: PREFIX_assembly)
@@ -47,7 +63,7 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
   --body-shape GLB       Reuse existing body geometry instead of Hunyuan
   --body-image PNG       Matching reference for --body-shape
   --fresh-body           Generate the body from the card, don't auto-reuse Mara
-  --body-only            Stop after new Qwen body reference + Hunyuan shape
+  --body-only            Alias: --stage shape --part body (no automatic assembly)
   --quality PRESET       Paint3D quality: fast|low|medium|high|highest
   --game-faces NUMBER    Target for combined static GLB (default: 60000)
   --refit                Recalculate heuristic assembly transforms
@@ -67,9 +83,11 @@ The stages run sequentially (important for 6 GB VRAM) and resume by default.
 
 If present, outputs/mara_body_shape50/{01_reference.png,03_shape.glb}
 are reused automatically for the default Mara card. No original asset is edited.
-The final GLB is a best-effort STATIC mesh, not an animated/rigged character.
-Unverified region meshes remain staged in the editable .blend to avoid
-silently covering/duplicating the body's clothing, hair, or gloves.
+The master outfit/design is in the card and prompt.txt BEFORE splitting.
+It is NOT image-conditioned into each component yet. Region references
+(outfit, hands, hair) are design inputs, not fitted replacement geometry.
+Preview stages only body + detailed head and never publish a game character.
+--legacy-full-build produces a STATIC GLB and retains historical behavior.
 HELP
 }
 
@@ -78,7 +96,7 @@ need_value() { [[ $# -ge 2 && -n "$2" ]] || die "Missing value after $1"; }
 
 while (($#)); do
   case "$1" in
-    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset|--thigh-method)
+    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset|--thigh-method|--stage|--part)
       need_value "$@"
       case "$1" in
         --card) CARD="$2";;
@@ -96,10 +114,16 @@ while (($#)); do
         --thigh-output) THIGH_OUTPUT="$2"; THIGH_PROTOTYPE=1;;
         --thigh-inset) THIGH_INSET="$2"; THIGH_PROTOTYPE=1;;
         --thigh-method) THIGH_METHOD="$2"; THIGH_PROTOTYPE=1;;
+        --stage) MODULAR_STAGE="$2";;
+        --part) MODULAR_PARTS+=("$2");;
       esac
       shift 2;;
     --fresh-body) BODY_AUTO=0; shift;;
     --body-only) BODY_ONLY=1; BODY_AUTO=0; shift;;
+    --all-parts) MODULAR_ALL=1; shift;;
+    --experimental-region-mesh) EXPERIMENTAL_REGION_MESH=1; shift;;
+    --legacy-full-build) LEGACY_FULL=1; shift;;
+    --paint-debug) PAINT_DEBUG=1; shift;;
     --diagnose) DIAGNOSE=1; shift;;
     --thigh-prototype) THIGH_PROTOTYPE=1; shift;;
     --thigh-review) THIGH_PROTOTYPE=1; THIGH_REVIEW=1; shift;;
@@ -183,11 +207,164 @@ fi
 
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
+"$PYTHON" -m ai3d character validate "$CARD"
+
+# The modular workflow is the safe default. It intentionally cannot infer
+# that a reference/mesh/component is approved from the presence of its files.
+if (( ! LEGACY_FULL )); then
+  if (( BODY_ONLY )); then
+    [[ -z "$MODULAR_STAGE" ]] || die "--body-only cannot be combined with --stage"
+    MODULAR_STAGE="shape"
+    MODULAR_PARTS+=("body")
+  fi
+  MODULAR_STAGE="${MODULAR_STAGE:-plan}"
+  case "$MODULAR_STAGE" in
+    plan|reference|shape|paint|game|preview) ;;
+    *) die "Unknown modular stage: $MODULAR_STAGE";;
+  esac
+  (( ! FORCE || DRY_RUN == 0 )) || die "Do not combine --force and --dry-run"
+  [[ -z "$BODY_SHAPE" && -z "$BODY_IMAGE" ]] || die "--body-shape/--body-image require --legacy-full-build"
+  (( ! MODULAR_ALL || ${#MODULAR_PARTS[@]} == 0 )) || die "Use either --all-parts or --part"
+  if (( MODULAR_ALL )) && [[ "$MODULAR_STAGE" != reference ]]; then
+    die "--all-parts is allowed only for reference generation"
+  fi
+  if [[ "$MODULAR_STAGE" == "plan" || "$MODULAR_STAGE" == "preview" ]]; then
+    (( ${#MODULAR_PARTS[@]} == 0 && ! MODULAR_ALL )) || die "This stage does not accept --part or --all-parts"
+  else
+    (( ${#MODULAR_PARTS[@]} > 0 || MODULAR_ALL )) || die "Specify --part ID (or --all-parts for references)"
+  fi
+  # Fail closed on unsupported part IDs and prevent region meshes from being
+  # mistaken for fitted wearable items. This check is stdlib-only.
+  "$PYTHON" - "$CARD" "$MODULAR_STAGE" "$EXPERIMENTAL_REGION_MESH" "${MODULAR_PARTS[@]}" <<'PY'
+import json
+import sys
+card_path, stage, experimental, *selected = sys.argv[1:]
+card = json.load(open(card_path, encoding="utf-8"))
+parts = {part["id"]: part for part in card["parts"]}
+for part_id in selected:
+    if part_id not in parts:
+        raise SystemExit(f"ERROR: unknown part {part_id!r}; available: {', '.join(parts)}")
+    if stage not in ("plan", "reference") and parts[part_id]["kind"] == "region" and experimental != "1":
+        raise SystemExit(
+            f"ERROR: {part_id} is a region, not a fitted mesh. "
+            "Generate its reference first or explicitly use --experimental-region-mesh."
+        )
+PY
+  if [[ "$MODULAR_STAGE" == plan ]]; then
+    "$PYTHON" - "$CARD" "$PREFIX" "$OUTPUT_DIR" <<'PY'
+import json
+from pathlib import Path
+import sys
+card_path, prefix, output_dir = sys.argv[1:]
+card = json.load(open(card_path, encoding="utf-8"))
+root = Path(output_dir)
+print(f"\n[MODULAR PLAN] {card['name']} | prefix={prefix}")
+print("Master design: card appearance + prompts.master; prompt.txt remains the source brief.")
+print("Design first: the complete outfit is specified before individual references.")
+print("Note: component images are currently generated independently, not conditioned on a master PNG.")
+for part in card["parts"]:
+    view = part.get("reference_view") or "front"
+    folder = root / f"{prefix}_{part['id']}_{view}"
+    outputs = ("01_reference.png", "03_shape.glb", "05_painted.glb", "06_game.glb")
+    found = [p.split("_", 1)[1].split(".", 1)[0] for p in outputs if (folder / p).is_file()]
+    print(f"  {part['id']:<15} {part['kind']:<11} {' / '.join(found) if found else 'not generated'}")
+print("\nReview progression: reference -> shape -> paint -> game (per part).")
+print("Regions (outfit, gloves/hands, hair) need a future fitted-geometry workflow.")
+print("Preview: painted body + separately generated head only, reversible and unapproved.")
+print("Example: ./build_character.sh --stage reference --part head --prefix", prefix)
+PY
+    exit 0
+  fi
+  COMMON=(--output-dir "$OUTPUT_DIR" --blender "$BLENDER")
+  ACTION=(--resume)
+  if (( FORCE )); then ACTION=(--force); fi
+  if (( DRY_RUN )); then ACTION+=(--dry-run); fi
+  if [[ "$MODULAR_STAGE" == preview ]]; then
+    if (( ! DRY_RUN )); then
+      command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
+    fi
+    (( ! EXPERIMENTAL_REGION_MESH )) || die "--experimental-region-mesh has no effect on preview"
+    [[ -z "$BODY_SHAPE" && -z "$BODY_IMAGE" ]] || die "Preview uses generated card components"
+    MANIFEST="$OUTPUT_DIR/$ASSEMBLY/assembly.json"
+    MEASUREMENTS="$OUTPUT_DIR/$ASSEMBLY/measurements.json"
+    if (( DRY_RUN )); then
+      printf '[DRY RUN] Would assemble a body+head preview from painted GLBs, auto-fit approximate positions and rebuild.\n'
+      printf '           Preview: %s/preview.blend\n' "$OUTPUT_DIR/$ASSEMBLY"
+      exit 0
+    fi
+    # Never launch a partial preview when the chosen prefix is not painted.
+    "$PYTHON" - "$CARD" "$PREFIX" "$OUTPUT_DIR" <<'PY'
+import json
+from pathlib import Path
+import sys
+card_path, prefix, output_dir = sys.argv[1:]
+card = json.load(open(card_path, encoding="utf-8"))
+parts = {p["id"]: p for p in card["parts"]}
+for part_id in ("body", "head"):
+    if part_id not in parts:
+        raise SystemExit(f"ERROR: preview requires {part_id} in card")
+    view = parts[part_id].get("reference_view") or "front"
+    source = Path(output_dir) / f"{prefix}_{part_id}_{view}" / "05_painted.glb"
+    if not source.is_file() or source.stat().st_size == 0:
+        raise SystemExit(f"ERROR: preview requires approved painted {part_id}: {source}")
+PY
+    if [[ -f "$MANIFEST" ]]; then
+      "$PYTHON" -m ai3d character assemble "$CARD" \
+        --run-prefix "$PREFIX" --name "$ASSEMBLY" "${COMMON[@]}" --rebuild
+    else
+      "$PYTHON" -m ai3d character assemble "$CARD" \
+        --run-prefix "$PREFIX" --name "$ASSEMBLY" --layout overlay \
+        --source-stage painted "${COMMON[@]}"
+    fi
+    FIT_ARGS=()
+    if (( REFIT )); then FIT_ARGS+=(--refit); fi
+    "$PYTHON" -m ai3d.characters.autofit \
+      --manifest "$MANIFEST" --measurements "$MEASUREMENTS" "${FIT_ARGS[@]}"
+    "$PYTHON" -m ai3d character assemble "$CARD" \
+      --run-prefix "$PREFIX" --name "$ASSEMBLY" "${COMMON[@]}" --rebuild
+    printf '\n[PREVIEW] %s/preview.blend\n' "$OUTPUT_DIR/$ASSEMBLY"
+    printf 'Review neck seam and transforms; this is not an approved final game asset.\n'
+    exit 0
+  fi
+  SELECTOR=()
+  if (( MODULAR_ALL )); then
+    SELECTOR=(--all)
+  else
+    for part in "${MODULAR_PARTS[@]}"; do
+      SELECTOR+=(--part "$part")
+    done
+  fi
+  EXPERIMENTAL=()
+  if (( EXPERIMENTAL_REGION_MESH )); then EXPERIMENTAL=(--include-regions); fi
+  DEBUG=()
+  if (( PAINT_DEBUG )) && [[ "$MODULAR_STAGE" == paint || "$MODULAR_STAGE" == game ]]; then
+    DEBUG=(--paint-debug)
+  fi
+  if (( ! DRY_RUN )) && [[ "$MODULAR_STAGE" == paint || "$MODULAR_STAGE" == game ]]; then
+    command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
+  fi
+  printf '\n[MODULAR %s] %s | prefix=%s\n' "$MODULAR_STAGE" "${MODULAR_PARTS[*]:-all references}" "$PREFIX"
+  "$PYTHON" -m ai3d character generate "$CARD" \
+    "${SELECTOR[@]}" --stop-after "$MODULAR_STAGE" \
+    --run-prefix "$PREFIX" --quality "$QUALITY" \
+    "${COMMON[@]}" "${ACTION[@]}" "${EXPERIMENTAL[@]}" "${DEBUG[@]}"
+  printf '\n[CHECKPOINT] Review component output before advancing to the next stage.\n'
+  if [[ "$MODULAR_STAGE" == reference ]]; then
+    printf 'Do not reconstruct reference images containing unintended accessories.\n'
+  elif [[ "$MODULAR_STAGE" == shape ]]; then
+    printf 'Inspect 03_shape.glb in Blender solid mode for anatomy and surface defects.\n'
+  elif [[ "$MODULAR_STAGE" == paint ]]; then
+    printf 'Inspect 05_painted.glb front/side/back and debug images for paint coverage.\n'
+  fi
+  exit 0
+fi
+
+# Historical full-build operation remains opt-in and is not modular.
+[[ -z "$MODULAR_STAGE" && ${#MODULAR_PARTS[@]} -eq 0 && $MODULAR_ALL -eq 0 ]] || die "--legacy-full-build cannot combine with modular stages or parts"
+(( ! EXPERIMENTAL_REGION_MESH )) || die "--experimental-region-mesh is modular-only"
 if (( ! DRY_RUN )); then
   command -v "$BLENDER" >/dev/null || die "Blender not found: $BLENDER"
 fi
-
-"$PYTHON" -m ai3d character validate "$CARD"
 
 # Reuse the successful body shape and the exact image used for reconstruction.
 # A reference from a different run can paint the wrong surface details.
