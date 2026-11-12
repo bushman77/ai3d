@@ -44,6 +44,7 @@ OUTFIT_REFERENCES=0
 PROTOTYPE_ALL=0
 PROTOTYPE_RENDER_ONLY=0
 ASSEMBLE_WORKABLE=0
+REPLACE_UPPER_BODY=0
 
 usage() {
   cat <<'HELP'
@@ -59,6 +60,8 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --assemble-workable   Assemble six existing GLBs with landmark-box outfit
                         placement and split glove-to-wrist working copies;
                         editable Blender scene + four renders; no AI
+  --replace-upper-body  With --assemble-workable: suppress original body
+                        surface covered by the upper garment, on copies only
   --prototype-all-parts
                         Produce independent textured GLB + 4 Blender render PNGs
                         for every card component, including experimental regions
@@ -140,6 +143,7 @@ while (($#)); do
     --outfit-references) OUTFIT_REFERENCES=1; shift;;
     --prototype-all-parts) PROTOTYPE_ALL=1; shift;;
     --assemble-workable) ASSEMBLE_WORKABLE=1; shift;;
+    --replace-upper-body) REPLACE_UPPER_BODY=1; shift;;
 
     --render-only) PROTOTYPE_RENDER_ONLY=1; shift;;
     --experimental-region-mesh) EXPERIMENTAL_REGION_MESH=1; shift;;
@@ -156,6 +160,8 @@ while (($#)); do
   esac
 done
 
+(( ! REPLACE_UPPER_BODY || ASSEMBLE_WORKABLE )) ||
+  die "--replace-upper-body requires --assemble-workable"
 [[ "$PREFIX" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --prefix"
 ASSEMBLY="${ASSEMBLY:-${PREFIX}_assembly}"
 [[ "$ASSEMBLY" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --assembly"
@@ -245,6 +251,7 @@ if (( ASSEMBLE_WORKABLE )); then
     --card "$CARD" --prefix "$PREFIX" --output-dir "$OUTPUT_DIR"
     --blender "$BLENDER")
   if (( ASSEMBLY_SPECIFIED )); then WORKABLE+=(--name "$ASSEMBLY"); fi
+  if (( REPLACE_UPPER_BODY )); then WORKABLE+=(--replace-upper-body); fi
   if (( DRY_RUN )); then WORKABLE+=(--dry-run); fi
   if (( REFIT )); then WORKABLE+=(--refit); fi
   "${WORKABLE[@]}"

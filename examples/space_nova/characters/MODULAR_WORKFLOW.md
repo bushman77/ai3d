@@ -1,5 +1,60 @@
 # Staged modular character workflow
 
+## Upper-outfit body-coverage prototype (experimental, opt-in)
+
+After isolating Mara's body and clothing in Blender, we confirmed the body
+contains a full torso and arms while the separately generated upper outfit
+also contains its own full torso/sleeves. These surfaces overlap when enabled
+together. The first upper-body replacement pass now uses a **mesh-driven
+coverage test**, not a blind removal of all torso polygons.
+
+Run the same six painted source GLBs into a **new** working assembly:
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+
+./build_character.sh --assemble-workable \
+  --replace-upper-body \
+  --prefix mara_complete_v1 \
+  --assembly mara_complete_v1_upper_coverage_v1
+
+firefox ~/ai3d/outputs/mara_complete_v1_upper_coverage_v1/index.html
+blender ~/ai3d/outputs/mara_complete_v1_upper_coverage_v1/preview.blend
+```
+
+This invokes the existing six-part placement and wrist-splitting operations.
+Inside Blender, the replacement pass intersects the body-surface region
+(49–93% of original body height) with the upper garment's actual vertical
+extent. For each body face in that region, it queries a BVH of the upper
+garment and suppresses faces only when an **outward garment surface** is
+close enough to cover them (up to 6.5% of body height). Other body surfaces
+and the **lower outfit** are left unchanged. A safety check rejects an
+excessive cut (more than 55% of original body faces).
+
+The original component GLBs are untouched. Before applying any body-face
+suppression, Blender saves an intact duplicate in a hidden collection named
+`AI3D_BODY_UNMASKED_BACKUP` inside the output `preview.blend`. That hidden
+copy is never included in `preview.glb`. The rendered gallery and
+`measurements.json` report `clothing_replacement.status`,
+`removed_faces`, `removed_fraction`, and the height window. If no
+covered surface is detected, the pass reports `no_covered_faces` instead of
+blindly removing geometry.
+
+**Limits:** A near-neighbor surface test cannot prove watertight clothing
+coverage. There may be gaps at the waist or cuff, protruding body faces,
+mannequin remnants from the garment generation, or intersections caused by
+imperfect source geometry. This pass deliberately changes only the body
+surface beneath the **upper** garment; it does **not** apply the same treatment
+to the trousers yet, nor does it shrinkwrap, rig or weld components.
+
+The new flag is strictly opt-in and requires `--assemble-workable`. It
+cannot be silently enabled on an existing scene; choose a new
+`--assembly` name to compare against your approved earlier assembly. To
+inspect the clean body or upper garment alone, toggle the
+`00_BODY` and `02_UPPER_OUTFIT` collections in Blender's Outliner. The
+hidden backup lets you compare the removed surface with its original.
+
 ## Landmark-box assembly v2 — jacket, trousers, wrists
 
 The original six-part render showed **trousers reaching the head and a huge

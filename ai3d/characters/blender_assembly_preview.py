@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from ai3d.assembly.blender_cutting import guide_plane, bisect_part_world_z
 from ai3d.characters.blender_glove_pair import split_glove_pair
+from ai3d.characters.blender_clothing_replacement import replace_upper_body
 
 
 def arguments():
@@ -201,6 +202,22 @@ def main():
                 raise RuntimeError("Pair split is only supported for hands")
             result["glove_split"] = split_glove_pair(result, layout)
 
+    # Opt-in coverage pass hides only imported body faces under the upper
+    # garment. The original GLB is unchanged, and a hidden original-body copy
+    # is preserved in the .blend before any removal happens.
+    clothing_report = {"mode": "off", "status": "disabled", "removed_faces": 0}
+    clothing_plan = manifest.get("clothing_replacement", {"mode": "off"})
+    if clothing_plan.get("mode") == "upper_coverage_v1":
+        part_lookup = {item["id"]: item for item in results}
+        if not {"body", "upper_outfit"} <= part_lookup.keys():
+            raise RuntimeError("Upper clothing coverage requires body and upper_outfit")
+        if manifest["preview_layout"] != "overlay":
+            raise RuntimeError("Upper clothing coverage requires overlay layout")
+        clothing_report = replace_upper_body(
+            scene_root, part_lookup["body"], part_lookup["upper_outfit"],
+            clothing_plan,
+        )
+
     for result in results:
         result["preview_bounds"] = world_bounds(result["meshes"])
 
@@ -224,6 +241,7 @@ def main():
         "character_id": manifest["character_id"],
         "preview_layout": manifest["preview_layout"],
         "blender_version": bpy.app.version_string,
+        "clothing_replacement": clothing_report,
         "scene_bounds": scene_bounds,
         "components": [{
             "id": item["id"],
@@ -253,6 +271,7 @@ def main():
             "Original generated source GLBs are unchanged.",
             "Cutting is optional and applies only to imported working meshes.",
             "Cut planes do NOT cap holes, stitch neck seams, replace parts, or rig the character.",
+            "Optional upper coverage removes only body faces beneath detected garment surfaces.",
             "This is not a production character export.",
         ],
     }

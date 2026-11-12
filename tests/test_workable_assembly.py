@@ -97,9 +97,15 @@ class WorkableAssemblyTests(unittest.TestCase):
     def test_gallery_contains_six_parts_and_four_combined_views(self):
         folder = self.root / "mara_assembled_six"
         folder.mkdir(parents=True)
-        for filename in ("preview.blend", "preview.glb", "assembly.json",
-                         "measurements.json"):
+        for filename in ("preview.blend", "preview.glb", "assembly.json"):
             (folder / filename).write_bytes(b"sample")
+        (folder / "measurements.json").write_text(json.dumps({
+            "clothing_replacement": {
+                "mode": "upper_coverage_v1",
+                "status": "applied",
+                "removed_faces": 120,
+            },
+        }))
         for direction in ("front", "side", "back", "threequarter"):
             (folder / f"preview_{direction}.png").write_bytes(b"sample-png")
         index = write_assembly_gallery(
@@ -114,6 +120,7 @@ class WorkableAssemblyTests(unittest.TestCase):
         self.assertIn("preview.blend", html)
         self.assertIn("preview.glb", html)
         self.assertIn("assembly.json", html)
+        self.assertIn("removed on assembly copies: 120", html)
 
         index.unlink()
         (folder / "preview_side.png").unlink()
@@ -232,6 +239,84 @@ class WorkableAssemblyTests(unittest.TestCase):
                         preserved["parts"][2]["transform"]["position"][0], 0.1234
                     )
 
+    def test_opt_in_upper_replacement_manifest_and_existing_scene_protection(self):
+        inputs = self.make_dummy_sources()
+        dest_name = self.name + "_upper_mask_v1"
+        size = {
+            "body": [[-0.3, -0.2, 0.0], [0.3, 0.2, 1.7]],
+            "head": [[-0.12, -0.12, 0.0], [0.12, 0.12, 0.32]],
+            "upper_outfit": [[-0.24, -0.18, 0.0], [0.24, 0.18, 0.62]],
+            "lower_outfit": [[-0.25, -0.17, 0.0], [0.25, 0.17, 0.9]],
+            "hands": [[-0.45, -0.10, 0.0], [0.45, 0.10, 0.2]],
+            "equipment": [[-0.2, -0.1, 0.0], [0.2, 0.1, 0.2]],
+        }
+
+        def fake_build(_card, *, name, run_prefix, output_root,
+                       rebuild=False, **kwargs):
+            folder = Path(output_root) / name
+            folder.mkdir(parents=True, exist_ok=True)
+            manifest_file = folder / "assembly.json"
+            if not rebuild:
+                plan = build_assembly_plan(
+                    self.card, run_prefix=run_prefix, name=name,
+                    include_all_parts=True, output_root=output_root,
+                    layout="overlay",
+                )
+                manifest_file.write_text(json.dumps(plan))
+            plan = json.loads(manifest_file.read_text())
+            (folder / "measurements.json").write_text(json.dumps({
+                "character_id": self.card["id"],
+                "components": [
+                    {"id": part["id"], "bounds_with_user_transform": {
+                        "min": size[part["id"]][0],
+                        "max": size[part["id"]][1],
+                    }} for part in plan["parts"]
+                ],
+                "clothing_replacement": {
+                    "mode": plan.get("clothing_replacement", {}).get("mode", "off"),
+                    "status": "applied", "removed_faces": 80,
+                },
+            }))
+            (folder / "preview.blend").write_bytes(b"preview")
+            (folder / "preview.glb").write_bytes(b"preview")
+
+        def fake_render(blender, folder):
+            for direction in ("front", "side", "back", "threequarter"):
+                (folder / f"preview_{direction}.png").write_bytes(b"png")
+
+        before = {ident: path.read_bytes() for ident, path in inputs.items()}
+        with patch("ai3d.characters.workable_assembly.assemble_preview",
+                   side_effect=fake_build):
+            with patch("ai3d.characters.workable_assembly.render_scene",
+                       side_effect=fake_render):
+                with patch("ai3d.characters.workable_assembly.shutil.which",
+                           return_value="/usr/bin/blender"):
+                    folder = assemble(self.options(
+                        "--name", dest_name, "--replace-upper-body",
+                    ))
+                    plan = json.loads((folder / "assembly.json").read_text())
+                    self.assertEqual(plan["clothing_replacement"]["mode"],
+                                     "upper_coverage_v1")
+                    self.assertEqual(plan["clothing_replacement"]["max_distance_ratio"],
+                                     0.065)
+                    self.assertIn("removed on assembly copies: 80",
+                                  (folder / "index.html").read_text())
+                    prior = (folder / "assembly.json").read_bytes()
+                    with self.assertRaisesRegex(RuntimeError, "differs"):
+                        assemble(self.options("--name", dest_name))
+                    self.assertEqual((folder / "assembly.json").read_bytes(), prior)
+        self.assertEqual({ident: path.read_bytes() for ident, path
+                          in inputs.items()}, before)
+
+    def test_blender_clothing_replacement_script_is_syntactically_valid(self):
+        import ast
+        path = ROOT / "ai3d/characters/blender_clothing_replacement.py"
+        code = path.read_text(encoding="utf-8")
+        ast.parse(code, filename=str(path))
+        self.assertIn("BVHTree.FromPolygons", code)
+        self.assertIn("bmesh.ops.delete", code)
+        self.assertIn("AI3D_BODY_UNMASKED_BACKUP", code)
+
     def test_named_output_is_separate_and_protected(self):
         self.assertEqual(self.options("--name", "mara_six_assembled").name,
                          "mara_six_assembled")
@@ -249,6 +334,13 @@ class WorkableAssemblyTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("WORKABLE ASSEMBLY", result.stdout)
         self.assertIn("6 independent parts", result.stdout)
+        self.assertFalse(self.root.exists())
+        masked_dry = subprocess.run(cmd + ["--replace-upper-body",
+                                           "--dry-run"], cwd=ROOT,
+                                    capture_output=True, text=True)
+        self.assertEqual(masked_dry.returncode, 0,
+                         masked_dry.stdout + masked_dry.stderr)
+        self.assertIn("ENABLED (working copies only)", masked_dry.stdout)
         self.assertFalse(self.root.exists())
         named = subprocess.run(cmd + ["--assembly", "mara_assembled_six",
                                       "--dry-run"], cwd=ROOT,

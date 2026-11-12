@@ -129,6 +129,39 @@ class AssemblyTests(unittest.TestCase):
         hands["pair_layout"]["mode"] = "unknown"
         self.assertTrue(any("pair_layout" in e for e in validate_manifest(plan, target)))
 
+    def test_upper_coverage_plan_is_explicit_and_validated(self):
+        plan = self.plan(include_all_parts=True, layout="overlay")
+        target = self.root / "mara_assembly_v1"
+        coverage = {
+            "mode": "upper_coverage_v1",
+            "min_height_ratio": 0.49,
+            "max_height_ratio": 0.93,
+            "max_distance_ratio": 0.065,
+            "max_removed_fraction": 0.55,
+        }
+        self.assertEqual(validate_manifest(plan, target), [])
+        plan["clothing_replacement"] = coverage
+        self.assertEqual(validate_manifest(plan, target), [])
+        plan["preview_layout"] = "side_by_side"
+        self.assertTrue(any("overlay" in e
+                            for e in validate_manifest(plan, target)))
+        plan["preview_layout"] = "overlay"
+        coverage["max_distance_ratio"] = float("nan")
+        self.assertTrue(any("max_distance_ratio" in e
+                            for e in validate_manifest(plan, target)))
+        coverage["max_distance_ratio"] = 0.065
+        coverage["min_height_ratio"] = 0.96
+        self.assertTrue(any("height ratios" in e
+                            for e in validate_manifest(plan, target)))
+        coverage["min_height_ratio"] = 0.49
+        coverage["mode"] = "delete_body"
+        self.assertTrue(any("clothing_replacement.mode" in e
+                            for e in validate_manifest(plan, target)))
+        coverage["mode"] = "upper_coverage_v1"
+        plan["parts"] = [p for p in plan["parts"] if p["id"] != "upper_outfit"]
+        self.assertTrue(any("requires body and upper_outfit" in e
+                            for e in validate_manifest(plan, target)))
+
     def test_dry_run_is_read_only_even_if_sources_are_missing(self):
         with contextlib.redirect_stdout(io.StringIO()) as output:
             data = assemble_preview(MARA, dry_run=True, **self.options)

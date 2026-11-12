@@ -120,7 +120,34 @@ def validate_manifest(manifest: object, output: Path) -> list[str]:
         errors.append("manifest_version must be 1")
     if manifest.get("preview_layout") not in LAYOUTS:
         errors.append("preview_layout must be side_by_side or overlay")
+    # The upper-garment replacement is a separate optional Blender working
+    # pass. Never silently enable a destructive-on-copy geometry operation.
+    coverage = manifest.get("clothing_replacement")
+    if coverage is not None:
+        if not isinstance(coverage, dict) or coverage.get("mode") not in (
+            "off", "upper_coverage_v1",
+        ):
+            errors.append("clothing_replacement.mode must be off or upper_coverage_v1")
+        elif coverage["mode"] == "upper_coverage_v1":
+            if manifest.get("preview_layout") != "overlay":
+                errors.append("upper clothing replacement requires overlay layout")
+            values = {}
+            for key in ("min_height_ratio", "max_height_ratio",
+                        "max_distance_ratio", "max_removed_fraction"):
+                value = coverage.get(key)
+                if (type(value) not in (float, int) or
+                        not math.isfinite(value) or not 0 < value < 1):
+                    errors.append(f"clothing_replacement.{key} must be finite and between 0 and 1")
+                else:
+                    values[key] = value
+            if ("min_height_ratio" in values and "max_height_ratio" in values
+                    and values["min_height_ratio"] >= values["max_height_ratio"]):
+                errors.append("clothing_replacement height ratios must increase")
     parts = manifest.get("parts")
+    if isinstance(coverage, dict) and coverage.get("mode") == "upper_coverage_v1":
+        ids = {part.get("id") for part in parts if isinstance(part, dict)} if isinstance(parts, list) else set()
+        if not {"body", "upper_outfit"}.issubset(ids):
+            errors.append("upper clothing replacement requires body and upper_outfit")
     if not isinstance(parts, list) or len(parts) < 2:
         errors.append("parts must contain at least two components")
     else:

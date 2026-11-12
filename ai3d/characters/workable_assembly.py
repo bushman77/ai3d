@@ -24,6 +24,19 @@ from ai3d.characters.card import load_card
 from ai3d.output import run_directory
 
 WORKABLE_VERSION = 1
+UPPER_REPLACEMENT_MODE = "upper_coverage_v1"
+
+
+def upper_replacement_plan():
+    """Conservative default mask: torso and sleeves, never head/legs/hands."""
+    return {
+        "mode": UPPER_REPLACEMENT_MODE,
+        "min_height_ratio": 0.49,
+        "max_height_ratio": 0.93,
+        "max_distance_ratio": 0.065,
+        "max_removed_fraction": 0.55,
+    }
+
 
 
 def args_from_cli(argv=None):
@@ -34,6 +47,8 @@ def args_from_cli(argv=None):
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--blender", default="blender")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--replace-upper-body", action="store_true",
+                        help="On a new assembly, mask body faces covered by the upper garment (copies only)")
     parser.add_argument("--refit", action="store_true",
                         help="Recalculate approximate placements, discarding manual adjustments")
     args = parser.parse_args(argv)
@@ -174,6 +189,15 @@ def write_assembly_gallery(folder: Path, card: dict, source_paths: dict) -> Path
         for part_id, source in source_paths.items()
         for part in card["parts"] if part["id"] == part_id
     )
+    metrics = json.loads((folder / "measurements.json").read_text(encoding="utf-8"))
+    coverage = metrics.get("clothing_replacement", {})
+    coverage_note = (
+        f'<p>Upper garment coverage: {escape(str(coverage.get("status", "off")))}; '
+        f'underlying body faces removed on assembly copies: '
+        f'{int(coverage.get("removed_faces", 0))}. '
+        'The original body remains available in the hidden backup collection '
+        'when a mask is applied.</p>'
+    )
     page = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -190,7 +214,7 @@ def write_assembly_gallery(folder: Path, card: dict, source_paths: dict) -> Path
         'painted GLBs. Placement and neck cuts are approximate and editable. '
         'Overlapping fabric, mannequin remnants and unsealed seams are expected; '
         'this is not a rigged or production-ready game character.</p>'
-        f'<p>{links}</p><div class="views">{tiles}</div>'
+        f'<p>{links}</p>{coverage_note}<div class="views">{tiles}</div>'
         f'<h2>Source components ({len(source_paths)})</h2><ul>{components}</ul>'
         '</body></html>'
     )
@@ -232,6 +256,8 @@ def assemble(args):
         print(f"  {ident:<16} {'FOUND' if ready else 'MISSING'} {source}")
     print(f"Output: {folder}")
     print(f"Prior body/head alignment: {prior}")
+    print("Upper garment body replacement:",
+          "ENABLED (working copies only)" if args.replace_upper_body else "off")
     if args.dry_run:
         print("Dry run: no Blender, inference, changes or new files.")
         return folder
@@ -246,7 +272,8 @@ def assemble(args):
     if folder.is_symlink() or manifest_file.is_symlink():
         raise RuntimeError("Refusing symlink output or manifest")
 
-    if not manifest_file.exists():
+    fresh_assembly = not manifest_file.exists()
+    if fresh_assembly:
         # Initial geometry measurement includes every unmodified part, staged
         # separately. This is a NEW folder, not the approved head/body preview.
         print("[WORKABLE] Import and measure all standalone meshes", flush=True)
@@ -279,6 +306,14 @@ def assemble(args):
             "choose a fresh --assembly NAME instead of overwriting manual work."
         )
 
+    requested_mode = (UPPER_REPLACEMENT_MODE if args.replace_upper_body else "off")
+    existing_mode = manifest.get("clothing_replacement", {}).get("mode", "off")
+    if not fresh_assembly and requested_mode != existing_mode:
+        raise RuntimeError(
+            "The requested upper-body replacement differs from the existing "
+            "assembly. Choose a fresh --assembly NAME to protect manual work."
+        )
+
     if not measures.is_file():
         assemble_preview(card_path, name=target_name, run_prefix=args.prefix,
                          output_root=output_root, blender=args.blender, rebuild=True)
@@ -292,6 +327,8 @@ def assemble(args):
         else:
             print("[WORKABLE] No matching prior body/head fit; using bounds estimate")
         enable_workable_parts(manifest)
+        if args.replace_upper_body:
+            manifest["clothing_replacement"] = upper_replacement_plan()
         save_manifest(manifest_file, manifest)
     else:
         print("[WORKABLE] Preserving previously edited transforms and visibility")
@@ -306,6 +343,12 @@ def assemble(args):
     print("GLB:", folder / "preview.glb")
     print("Transforms:", manifest_file)
     print("Renders:", folder / "preview_front.png", "(+ side/back/threequarter)")
+    if args.replace_upper_body:
+        report = json.loads(measures.read_text(encoding="utf-8")).get(
+            "clothing_replacement", {}
+        )
+        print("Upper-garment body masking:", report.get("status"),
+              "covered faces:", report.get("removed_faces"))
     print("Gallery:", index)
     print("Open locally: firefox", index)
     print("All placements are provisional; inspect in Blender before calling it game-ready.")
