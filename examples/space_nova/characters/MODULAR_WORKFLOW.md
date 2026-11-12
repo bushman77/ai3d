@@ -1,5 +1,49 @@
 # Staged modular character workflow
 
+## Landmark-box assembly v2 — jacket, trousers, wrists
+
+The original six-part render showed **trousers reaching the head and a huge
+horizontal glove pair across the abdomen**. The cause was an X-width-only
+outfit scaling heuristic and treating two gloves as one centered mesh.
+
+The revised assembler now uses measured full-body proportions to define
+approximate vertical regions:
+
+- `upper_outfit`: between approximately 54% and 90% of body height
+- `lower_outfit`: between approximately 2% and 56% of body height
+- `hands`: split the single imported glove pair along its X midpoint, orient
+  each half downward and place each copy at opposite wrist estimates
+- `equipment`: approximate belt-and-hip placement; further editing expected
+
+These are **starting guesses**, not recovered human skeleton joints. Some
+clothing shapes include extraneous mannequin material. Glove halves are
+simple non-destructive cuts; a split that does not produce both mesh halves
+is reported as a failure rather than silently displaying huge gloves.
+
+The prior assembly's `assembly.json` was edited or fitted with the old
+algorithm. **Create a new named assembly** to compare the changes while
+preserving every source GLB and your original rendered result:
+
+```bash
+cd ~/ai3d
+git pull --ff-only
+./build_character.sh --assemble-workable --prefix mara_complete_v1 \
+  --assembly mara_complete_v1_landmark_v2
+
+firefox ~/ai3d/outputs/mara_complete_v1_landmark_v2/index.html
+blender ~/ai3d/outputs/mara_complete_v1_landmark_v2/preview.blend
+```
+
+The geometry edits occur only on imported Blender working copies. The two
+glove pieces are separate selectable Blender objects under the `hands`
+component. This still does not shrinkwrap garments, remove underlying suit
+or mannequin geometry, weld seams, rig, or animate anything. Inspect all
+four views, particularly the wrist orientation and waist transition.
+
+If you deliberately want to re-estimate an existing assembly with this new
+fit, `--refit` applies the new version; however it can replace manual
+transform adjustments. A fresh `--assembly` name is safer.
+
 ## Assemble Mara's six generated components (current milestone)
 
 All six component GLBs from the full prototype run already exist under

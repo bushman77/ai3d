@@ -108,6 +108,27 @@ class AssemblyTests(unittest.TestCase):
             self.assertEqual(component["transform"]["position"], [0.0, 0.0, 0.0])
             self.assertEqual(component["transform"]["scale"], [1.0, 1.0, 1.0])
 
+    def test_optional_glove_pair_plan_rejects_invalid_anchors(self):
+        plan = self.plan(include_all_parts=True)
+        hands = next(p for p in plan["parts"] if p["id"] == "hands")
+        hands["pair_layout"] = {
+            "mode": "split_x_to_wrists_v1",
+            "left_wrist": [-0.4, 0, 0.8],
+            "right_wrist": [0.4, 0, 0.8],
+            "hand_length": 0.2,
+            "hand_width": 0.1,
+        }
+        target = self.root / "mara_assembly_v1"
+        self.assertEqual(validate_manifest(plan, target), [])
+        hands["pair_layout"]["left_wrist"][0] = float("nan")
+        self.assertTrue(any("left_wrist" in e for e in validate_manifest(plan, target)))
+        hands["pair_layout"]["left_wrist"][0] = -0.4
+        hands["pair_layout"]["hand_length"] = 0
+        self.assertTrue(any("hand_length" in e for e in validate_manifest(plan, target)))
+        hands["pair_layout"]["hand_length"] = 0.2
+        hands["pair_layout"]["mode"] = "unknown"
+        self.assertTrue(any("pair_layout" in e for e in validate_manifest(plan, target)))
+
     def test_dry_run_is_read_only_even_if_sources_are_missing(self):
         with contextlib.redirect_stdout(io.StringIO()) as output:
             data = assemble_preview(MARA, dry_run=True, **self.options)

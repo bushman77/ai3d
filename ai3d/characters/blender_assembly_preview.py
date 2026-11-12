@@ -22,6 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from ai3d.assembly.blender_cutting import guide_plane, bisect_part_world_z
+from ai3d.characters.blender_glove_pair import split_glove_pair
 
 
 def arguments():
@@ -145,8 +146,8 @@ def main():
         import_component(scene_root, part, i)
         for i, part in enumerate(manifest["parts"])
     ]
-    # Each additional region is deliberately staged, not composited into the
-    # full-body mesh. The source body already contains hands/outfit/hair/gear.
+    # Independent regions remain separate from the body, even if the base
+    # already contains suit/hands/gear. Hair is included in the unified head.
     # Preserve old manifests that lacked visibility/export flags.
     for spec, result in zip(manifest["parts"], results):
         result["visible"] = spec.get("visible", True)
@@ -189,6 +190,16 @@ def main():
             if mode == "apply":
                 report.update(bisect_part_world_z(result, height, cut["keep"]))
         cut_results[result["id"]] = report
+
+    # Gloves can arrive from Hunyuan as a single horizontally arranged pair.
+    # A manifest fit plan separates the two working halves and anchors them
+    # to estimated wrist locations; source GLBs are never modified.
+    for spec, result in zip(manifest["parts"], results):
+        layout = spec.get("pair_layout")
+        if layout is not None:
+            if spec["id"] != "hands":
+                raise RuntimeError("Pair split is only supported for hands")
+            result["glove_split"] = split_glove_pair(result, layout)
 
     for result in results:
         result["preview_bounds"] = world_bounds(result["meshes"])
@@ -233,9 +244,11 @@ def main():
             "bounds_with_user_transform": item["original_bounds_after_transform"],
             "staging_offset": stage_offsets[item["id"]],
             "preview_bounds": item["preview_bounds"],
+            "glove_split": item.get("glove_split"),
         } for i, item in enumerate(results)],
         "warnings": [
-            "Preview only: meshes remain separate, with no head-to-body fit.",
+            "Preview only: independent meshes remain separate and unfused.",
+            "Clothing uses approximate anatomical boxes; gloves split into two wrist pieces.",
             "Side-by-side offsets are display-only and are not fitted attachment transforms.",
             "Original generated source GLBs are unchanged.",
             "Cutting is optional and applies only to imported working meshes.",

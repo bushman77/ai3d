@@ -1,8 +1,9 @@
 """Workable, non-destructive multi-part character assembly.
 
 Uses ALL existing painted GLBs; imports each as an independent mesh hierarchy.
-The old body/head preview is never overwritten. Initial placement is a bounds
-heuristic, not automatic anatomical registration or collision correction.
+The old body/head preview is never overwritten. Placement uses explicit
+anatomical fraction targets inferred from body bounds and a Blender glove-pair
+split; it is not joint tracking, garment registration or collision correction.
 """
 from __future__ import annotations
 
@@ -86,14 +87,17 @@ def enable_workable_parts(manifest):
     for part in manifest["parts"]:
         part["visible"] = True
         part["include_in_preview"] = True
-        if part["id"] not in ("body", "head"):
+        if part["id"] not in ("body", "head") and part.get("status") in (
+            None, "unfitted", "staged_unfitted",
+        ):
             part["status"] = "provisional_visible_unfitted"
     manifest["preview_layout"] = "overlay"
     manifest["workable_version"] = WORKABLE_VERSION
     manifest["workable_warnings"] = [
         "All configured independent painted meshes are included, even if they overlap.",
         "Generated gloves and clothing may include unwanted mannequin geometry.",
-        "Bounds-only alignment is approximate; edit per-part transforms in assembly.json.",
+        "Landmark-box alignment remains approximate; edit transforms in assembly.json.",
+        "Gloves are split into left/right working copies with wrist anchors; inspect orientation.",
         "No rigging, automatic skinning, garment shrinkwrap, weld, or topology repair.",
         "No source GLB or earlier body/head assembly is changed.",
     ]

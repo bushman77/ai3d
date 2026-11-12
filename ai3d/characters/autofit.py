@@ -1,6 +1,7 @@
-"""Conservative, non-destructive bounds-based starting fit for humanoid parts.
+"""Conservative, non-destructive landmark-box fitting for humanoid parts.
 
-This is a deterministic placement heuristic, not anatomical registration,
+This uses estimated body fractions and measured mesh extents, not detected
+joints, clothing projection, or anatomical registration.
 retopology, seam welding, skinning, or an artistic quality guarantee.
 The assembly GLB is exported separately from the source GLBs.
 """
@@ -14,7 +15,7 @@ import os
 from pathlib import Path
 import tempfile
 
-FIT_VERSION = 2
+FIT_VERSION = 3
 
 
 def _bounds(report: dict, part_id: str) -> dict:
@@ -65,6 +66,33 @@ def _place(part: dict, source: dict, *, size_by_axis: tuple[int, float],
         "scale": [round(scale, 7)] * 3,
     }
     part["status"] = "heuristic_fit_unverified"
+
+
+def _fit_to_landmark_box(part: dict, source: dict, *,
+                         center: tuple[float, float, float],
+                         width: float, depth: float, height: float) -> None:
+    """Fit a *copy* to an approximate anatomical box using separate XYZ scales.
+
+    The older code scaled outfits from X-width alone. A narrow pair of pants
+    could then extend above the head. Here both the target vertical extent
+    and the maximum lateral extent are explicit, and each axis is measured.
+    This is a visual fitting heuristic, not garment registration.
+    """
+    desired = (width, depth, height)
+    dimensions = source["size"]
+    if any(not math.isfinite(value) or value <= 1e-6 for value in dimensions):
+        raise RuntimeError(f"Degenerate {part['id']} mesh bounds")
+    scales = [desired[i] / dimensions[i] for i in range(3)]
+    if any(not math.isfinite(value) or not 0.001 < value < 1000
+           for value in scales):
+        raise RuntimeError(f"Implausible landmark fit scale for {part['id']}")
+    part["transform"] = {
+        "position": [round(center[i] - scales[i] * source["center"][i], 7)
+                     for i in range(3)],
+        "rotation_deg": [0.0, 0.0, 0.0],
+        "scale": [round(value, 7) for value in scales],
+    }
+    part["status"] = "landmark_box_fit_unverified"
 
 
 def _stamp(manifest: dict) -> dict:
@@ -118,35 +146,68 @@ def fit_manifest(manifest_path: Path, measurements_path: Path, *, refit: bool = 
         part["cut"] = {"mode": "apply", "plane_z": round(cut_z, 7),
                        "keep": side, "show_guide": False}
 
-    # A belt-style isolated prop can be placed around the waist, but may
-    # overlap existing coarse belt gear on the full-body reconstruction.
+    # Anatomical target regions are expressed as fractions of the existing
+    # full-body height. These are not recovered joints or segmentation masks.
+    # They intentionally prevent the lower outfit from covering the face.
+    body_width = body["size"][0]
+    body_depth = body["size"][1]
+    if body_width <= 1e-6 or body_depth <= 1e-6:
+        raise RuntimeError("Degenerate body width/depth")
+    if "upper_outfit" in parts:
+        _fit_to_landmark_box(
+            parts["upper_outfit"], raw["upper_outfit"],
+            center=(cx, cy, base + 0.72 * h),
+            width=0.96 * body_width,
+            depth=1.04 * body_depth,
+            height=0.36 * h,
+        )
+    if "lower_outfit" in parts:
+        _fit_to_landmark_box(
+            parts["lower_outfit"], raw["lower_outfit"],
+            center=(cx, cy, base + 0.29 * h),
+            width=min(0.50 * body_width, 0.34 * h),
+            depth=0.88 * body_depth,
+            height=0.54 * h,
+        )
+
+    if "hands" in parts:
+        # A pair of Hunyuan gloves is often one side-by-side mesh. Do not
+        # stretch the entire pair across the abdomen: it must be split into
+        # two spatial halves and positioned independently by Blender.
+        #
+        # The imported pair remains at its original measured transform;
+        # Blender applies this separate plan to WORKING copies only.
+        parts["hands"]["transform"] = {
+            "position": [0.0, 0.0, 0.0],
+            "rotation_deg": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+        }
+        wrist_x = 0.45 * body_width
+        parts["hands"]["pair_layout"] = {
+            "mode": "split_x_to_wrists_v1",
+            "left_wrist": [round(cx - wrist_x, 7), round(cy, 7),
+                           round(base + 0.55 * h, 7)],
+            "right_wrist": [round(cx + wrist_x, 7), round(cy, 7),
+                            round(base + 0.55 * h, 7)],
+            "hand_length": round(0.12 * h, 7),
+            "hand_width": round(0.09 * h, 7),
+        }
+        parts["hands"]["status"] = "glove_pair_split_planned"
+
+    # The existing full-body mesh may still include some suit/glove geometry.
+    # These placements overlay it until a body-surface replacement pass exists.
     if "equipment" in parts:
         _place(parts["equipment"], raw["equipment"], size_by_axis=(0, 0.27 * h),
-               target_center=[cx, cy - 0.04 * h, base + 0.56 * h])
-        # Fitting is only a placement suggestion. Duplicated accessories in
-        # generated body meshes must never be exported without review.
-        parts["equipment"]["visible"] = False
-        parts["equipment"]["include_in_preview"] = False
-        parts["equipment"]["status"] = "staged_for_attachment_review"
+               target_center=[cx, cy - 0.05 * h, base + 0.55 * h])
+        parts["equipment"]["status"] = "belt_and_pouches_fit_unverified"
 
-    # Region references, not guaranteed replacements. Keep in scene but
-    # exclude from export to avoid duplicate hands/hair/clothing.
-    region_targets = {
-        "hair": ((0, 0.17 * h), [cx, cy, 0.0], crown),
-        # Historical manifest compatibility: old monolithic outfit stays staged.
-        "outfit": ((0, 0.34 * h), [cx, cy, base + 0.71 * h], None),
-        # Design previews only: these rough dimensions are NOT a garment fit.
-        "upper_outfit": ((0, 0.35 * h), [cx, cy, base + 0.74 * h], None),
-        "lower_outfit": ((0, 0.46 * h), [cx, cy, base + 0.34 * h], None),
-        "hands": ((0, 0.58 * h), [cx, cy, base + 0.50 * h], None),
-    }
-    for part_id, (dimension, target, top) in region_targets.items():
-        if part_id in parts:
-            _place(parts[part_id], raw[part_id], size_by_axis=dimension,
-                   target_center=target, target_top=top)
-            parts[part_id]["visible"] = False
-            parts[part_id]["include_in_preview"] = False
-            parts[part_id]["status"] = "staged_for_manual_replacement"
+    # Preserve legacy part compatibility when explicitly present in old cards.
+    if "outfit" in parts:
+        _place(parts["outfit"], raw["outfit"], size_by_axis=(2, 0.37 * h),
+               target_center=[cx, cy, base + 0.71 * h])
+    if "hair" in parts:
+        _place(parts["hair"], raw["hair"], size_by_axis=(2, 0.18 * h),
+               target_center=[cx, cy, 0.0], target_top=crown)
 
     manifest["preview_layout"] = "overlay"
     manifest["auto_fit"] = {
@@ -156,8 +217,9 @@ def fit_manifest(manifest_path: Path, measurements_path: Path, *, refit: bool = 
         "warnings": [
             "Bounds-derived positions are approximate and not anatomical landmarks.",
             "Neck cuts create unsealed boundaries; inspect contours and materials.",
-            "Regions are staged, not exported, to avoid duplicate body geometry.",
-            "Equipment is staged but excluded from export pending clearance review.",
+            "Upper/lower clothing uses approximate height, width and depth target boxes.",
+            "Glove halves are split and placed by Blender; review finger orientations.",
+            "No automatic removal of underlying suit geometry or mannequin remnants.",
             "No rig, skinning, animation, retopology, or seam welding is performed.",
         ],
     }

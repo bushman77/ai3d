@@ -207,6 +207,17 @@ class WorkableAssemblyTests(unittest.TestCase):
                     ))
                     self.assertEqual(manifest["parts"][0]["cut"]["mode"], "apply")
                     self.assertEqual(manifest["parts"][1]["cut"]["mode"], "apply")
+                    self.assertEqual(manifest["auto_fit"]["version"], 3)
+                    upper = next(p for p in manifest["parts"]
+                                 if p["id"] == "upper_outfit")
+                    trousers = next(p for p in manifest["parts"]
+                                    if p["id"] == "lower_outfit")
+                    hands = next(p for p in manifest["parts"] if p["id"] == "hands")
+                    self.assertEqual(upper["status"], "landmark_box_fit_unverified")
+                    self.assertEqual(trousers["status"], "landmark_box_fit_unverified")
+                    self.assertEqual(hands["status"], "glove_pair_split_planned")
+                    self.assertEqual(hands["pair_layout"]["mode"],
+                                     "split_x_to_wrists_v1")
                     self.assertTrue((folder / "index.html").is_file())
                     self.assertNotIn("_hair_", (folder / "index.html").read_text())
                     self.assertEqual({ident: path.read_bytes() for ident, path

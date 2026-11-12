@@ -56,9 +56,9 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
-  --assemble-workable   Assemble the current six Mara parts from existing GLBs
-                        into a separate editable Blender scene, approximate
-                        placement, four renders and an HTML gallery; no AI
+  --assemble-workable   Assemble six existing GLBs with landmark-box outfit
+                        placement and split glove-to-wrist working copies;
+                        editable Blender scene + four renders; no AI
   --prototype-all-parts
                         Produce independent textured GLB + 4 Blender render PNGs
                         for every card component, including experimental regions
