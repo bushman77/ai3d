@@ -45,6 +45,7 @@ PROTOTYPE_ALL=0
 PROTOTYPE_RENDER_ONLY=0
 ASSEMBLE_WORKABLE=0
 REPLACE_UPPER_BODY=0
+RIG_PROTOTYPE=0
 
 usage() {
   cat <<'HELP'
@@ -57,6 +58,8 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
+  --rig-prototype       Add an editable humanoid A-pose armature to an existing
+                        workable assembly in a NEW Blender scene (no skinning)
   --assemble-workable   Assemble six existing GLBs with landmark-box outfit
                         placement and split glove-to-wrist working copies;
                         editable Blender scene + four renders; no AI
@@ -86,7 +89,7 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --quality PRESET       Paint3D quality: fast|low|medium|high|highest
   --game-faces NUMBER    Target for combined static GLB (default: 60000)
   --refit                Recalculate heuristic assembly transforms
-  --force                Regenerate stages or overwrite an existing thigh prototype
+  --force                Explicitly replace existing generated outputs (such as rig prototype)
   --dry-run              Print planned inference commands; write nothing
   --diagnose             Analyze saved thigh-hole scene; no rebuild/inference
   --diagnose-blend FILE  Source .blend (default: saved hole_in_thigh_exposed.blend)
@@ -143,6 +146,7 @@ while (($#)); do
     --outfit-references) OUTFIT_REFERENCES=1; shift;;
     --prototype-all-parts) PROTOTYPE_ALL=1; shift;;
     --assemble-workable) ASSEMBLE_WORKABLE=1; shift;;
+    --rig-prototype) RIG_PROTOTYPE=1; shift;;
     --replace-upper-body) REPLACE_UPPER_BODY=1; shift;;
 
     --render-only) PROTOTYPE_RENDER_ONLY=1; shift;;
@@ -162,6 +166,8 @@ done
 
 (( ! REPLACE_UPPER_BODY || ASSEMBLE_WORKABLE )) ||
   die "--replace-upper-body requires --assemble-workable"
+(( ! RIG_PROTOTYPE || (! DIAGNOSE && ! THIGH_PROTOTYPE) )) ||
+  die "--rig-prototype cannot combine with diagnostic/thigh operations"
 [[ "$PREFIX" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --prefix"
 ASSEMBLY="${ASSEMBLY:-${PREFIX}_assembly}"
 [[ "$ASSEMBLY" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --assembly"
@@ -235,6 +241,28 @@ fi
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 "$PYTHON" -m ai3d character validate "$CARD"
+
+# First rigging milestone: a separate skeleton-only Blender file derived from
+# the approved assembled scene. No inference, skinning or source GLB editing.
+if (( RIG_PROTOTYPE )); then
+  [[ -z "$MODULAR_STAGE" && $LEGACY_FULL -eq 0 && $BODY_ONLY -eq 0 &&
+     $OUTFIT_REFERENCES -eq 0 && $MODULAR_ALL -eq 0 &&
+     $PROTOTYPE_ALL -eq 0 && $PROTOTYPE_RENDER_ONLY -eq 0 &&
+     $ASSEMBLE_WORKABLE -eq 0 && $REPLACE_UPPER_BODY -eq 0 &&
+     $EXPERIMENTAL_REGION_MESH -eq 0 && ${#MODULAR_PARTS[@]} -eq 0 ]] ||
+    die "--rig-prototype cannot be combined with other build modes"
+  [[ -z "$BODY_SHAPE" && -z "$BODY_IMAGE" ]] ||
+    die "--rig-prototype needs an existing assembly, not a replacement body"
+  (( ! DRY_RUN || ! FORCE )) || die "Do not combine --force with --dry-run"
+  RIG=("$PYTHON" -m ai3d.rigging.prototype
+    --card "$CARD" --prefix "$PREFIX" --output-dir "$OUTPUT_DIR"
+    --blender "$BLENDER")
+  if (( ASSEMBLY_SPECIFIED )); then RIG+=(--assembly "$ASSEMBLY"); fi
+  if (( DRY_RUN )); then RIG+=(--dry-run); fi
+  if (( FORCE )); then RIG+=(--force); fi
+  "${RIG[@]}"
+  exit 0
+fi
 
 # Explicit non-destructive seven-part assembly using existing painted GLBs.
 # The prior body/head assembly remains unchanged; output goes to a new folder.
