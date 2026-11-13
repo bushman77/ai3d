@@ -82,11 +82,21 @@ class RigPrototypeCLITest(unittest.TestCase):
             "#!/usr/bin/env python3\n"
             "import json, pathlib, sys\n"
             "args = sys.argv\n"
-            "out = pathlib.Path(args[args.index('--output')+1])\n"
+            "script = pathlib.Path(args[args.index('--python')+1]).name\n"
+            "marker = pathlib.Path(__file__).with_suffix('.log')\n"
+            "with marker.open('a') as log: log.write(script + '\\n')\n"
             "report = pathlib.Path(args[args.index('--report')+1])\n"
-            "out.write_bytes(b'FAKE-RIG-SCENE')\n"
-            "report.write_text(json.dumps({'bones':[{'name':'root'}],"
-            "'skinned':False,'animated':False}))\n",
+            "if script == 'blender_prototype.py':\n"
+            "  out = pathlib.Path(args[args.index('--output')+1])\n"
+            "  out.write_bytes(b'FAKE-RIG-SCENE')\n"
+            "  report.write_text(json.dumps({'bones':[{'name':'root'}],"
+            "'component_objects':['body_mesh','head_mesh'],"
+            "'skinned':False,'animated':False}))\n"
+            "elif script == 'blender_verify.py':\n"
+            "  scene = pathlib.Path(args[args.index('--blend')+1])\n"
+            "  assert scene.read_bytes() == b'FAKE-RIG-SCENE'\n"
+            "  assert json.loads(report.read_text())['skinned'] is False\n"
+            "else: sys.exit(6)\n",
             encoding="utf-8",
         )
         fake.chmod(0o755)
@@ -108,6 +118,10 @@ class RigPrototypeCLITest(unittest.TestCase):
         blend = self.fake_blender()
         build(self.opts("--blender", str(blend)))
         self.assertEqual(paths["rig_blend"].read_bytes(), b"FAKE-RIG-SCENE")
+        self.assertEqual(
+            blend.with_suffix(".log").read_text().splitlines(),
+            ["blender_prototype.py", "blender_verify.py"],
+        )
         self.assertEqual(paths["assembly_blend"].read_bytes(), source)
         self.assertFalse(list(paths["target_folder"].glob("*.blend1")))
         report = json.loads(paths["report"].read_text())

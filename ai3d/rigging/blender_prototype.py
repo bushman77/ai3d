@@ -112,7 +112,14 @@ def main():
     if not source.is_file() or source.stat().st_size == 0:
         raise RuntimeError("Assembly Blender file is empty")
 
-    bpy.ops.wm.open_mainfile(filepath=str(source))
+    # Blender must open the assembly file as the command-line input,
+    # before this script runs. A script-local open_mainfile can reset context.
+    loaded = Path(bpy.data.filepath).resolve() if bpy.data.filepath else None
+    if loaded != source:
+        raise RuntimeError(
+            f"Wrong Blender scene loaded: expected {source}, got {loaded}. "
+            "Launch blender with the assembly .blend before --python."
+        )
     bpy.context.view_layer.update()
     body = bounds(component_meshes("body"), "body")
     heads = component_meshes("head")
@@ -132,6 +139,12 @@ def main():
     plan["component_objects"] = sorted(
         obj.name for obj in bpy.context.scene.objects if obj.type == "MESH"
     )
+    plan["component_mesh_count"] = len(plan["component_objects"])
+    plan["bone_count"] = len(arm.data.bones)
+    if plan["component_mesh_count"] < 2:
+        raise RuntimeError("Rig scene has too few character meshes; refusing to save")
+    if plan["bone_count"] != len(plan["bones"]):
+        raise RuntimeError("Actual armature bone count disagrees with the joint plan")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)

@@ -76,3 +76,18 @@ component requires repair.
 **Important:** `ai3d/optimization/blender_finalize.py` is currently a
 static-mesh optimizer and explicitly exports without skinning/animation.
 Do not use it to process a future rigged Mara until that pipeline is extended.
+
+## Saved-scene verification
+
+The rig builder now asks Blender to **open the existing assembly .blend
+before running any Python**, rather than loading it from inside a running
+script. It then opens the newly saved rig file in a **second Blender process**
+and checks that the expected armature, bone names, body hierarchy, and
+character meshes are all present. Invalid output is rejected and not
+published as a successful rig.
+
+If an earlier rig output opens as the factory Cube/Camera/Light scene, preserve
+it for diagnosis instead of saving over it. Check that the original
+`outputs/PREFIX_workable_character/preview.blend` contains the assembled
+character. Rename the old `PREFIX_rig_prototype` output directory to a
+backup, then regenerate the rig from the verified assembly.

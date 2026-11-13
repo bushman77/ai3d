@@ -19,6 +19,7 @@ from ai3d.characters.card import load_card
 from ai3d.output import run_directory
 
 BLENDER_SCRIPT = Path(__file__).with_name("blender_prototype.py")
+VERIFY_SCRIPT = Path(__file__).with_name("blender_verify.py")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 
@@ -87,8 +88,8 @@ def build(opts):
         raise RuntimeError("Rigging requires a body component")
     if not scene_file.is_file() or scene_file.stat().st_size == 0:
         raise RuntimeError("Missing assembled preview.blend: " + str(scene_file))
-    if not BLENDER_SCRIPT.is_file():
-        raise RuntimeError("Missing Blender rig prototype implementation")
+    if not BLENDER_SCRIPT.is_file() or not VERIFY_SCRIPT.is_file():
+        raise RuntimeError("Missing Blender rig prototype or validation implementation")
     blender = shutil.which(opts.blender)
     if blender is None:
         candidate = Path(opts.blender).expanduser()
@@ -113,8 +114,8 @@ def build(opts):
         blend = scratch / "rig_prototype.blend"
         report = scratch / "skeleton.json"
         command = [
-            blender, "--background", "--factory-startup", "--python-exit-code", "1",
-            "--python", str(BLENDER_SCRIPT), "--",
+            blender, "--background", "--factory-startup", str(scene_file),
+            "--python-exit-code", "1", "--python", str(BLENDER_SCRIPT), "--",
             "--source", str(scene_file),
             "--output", str(blend),
             "--report", str(report),
@@ -127,6 +128,17 @@ def build(opts):
         skeleton = json.loads(report.read_text(encoding="utf-8"))
         if not skeleton.get("bones") or skeleton.get("skinned") is not False:
             raise RuntimeError("Unexpected rig prototype report")
+        if len(skeleton.get("component_objects", [])) < 2:
+            raise RuntimeError("Rig report does not confirm Mara's character meshes")
+        # Reopen the Blender output in a new process and inspect real objects.
+        # The previous implementation only tested that a .blend file existed.
+        verify = [
+            blender, "--background", "--factory-startup", str(blend),
+            "--python-exit-code", "1", "--python", str(VERIFY_SCRIPT), "--",
+            "--blend", str(blend), "--report", str(report),
+        ]
+        print("[RIG PROTOTYPE] Reopening saved Blender file for verification", flush=True)
+        subprocess.run(verify, check=True)
         os.replace(blend, paths["rig_blend"])
         os.replace(report, paths["report"])
 
