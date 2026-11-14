@@ -132,6 +132,55 @@ class RigPrototypeCLITest(unittest.TestCase):
         build(self.opts("--blender", str(blend), "--force"))
         self.assertEqual(paths["assembly_blend"].read_bytes(), source)
 
+    def test_explicit_manual_scene_rigged_without_manifest_or_overwriting_old_rig(self):
+        # The exact hand-edited scene must take precedence over generated previews.
+        manual = self.root / "mara_complete_v1_landmark_v2" / "mara_manual_fit_v1.blend"
+        manual.parent.mkdir(parents=True)
+        manual.write_bytes(b"MANUAL-FITTED-MARA-SOURCE")
+        old_rig = self.root / (self.prefix + "_rig_prototype") / "rig_prototype.blend"
+        old_rig.parent.mkdir()
+        old_rig.write_bytes(b"EARLIER-RIG-UNCHANGED")
+        new_name = self.prefix + "_manual_fit_rig"
+        opts = self.opts(
+            "--source-blend", str(manual),
+            "--rig-name", new_name,
+            "--blender", str(self.fake_blender()),
+        )
+        paths = plan_paths(opts)
+        self.assertEqual(paths["assembly_blend"], manual.resolve())
+        self.assertIsNone(paths["assembly_manifest"])
+        self.assertEqual(paths["target_folder"].name, new_name)
+        build(opts)
+        self.assertEqual(paths["rig_blend"].read_bytes(), b"FAKE-RIG-SCENE")
+        self.assertEqual(manual.read_bytes(), b"MANUAL-FITTED-MARA-SOURCE")
+        self.assertEqual(old_rig.read_bytes(), b"EARLIER-RIG-UNCHANGED")
+        # Source must be the Blender scene passed before --python.
+        self.assertTrue(paths["report"].is_file())
+
+    def test_explicit_rig_source_must_be_blend_and_destination_must_differ(self):
+        manual = self.root / "manual" / "scene.blend"
+        with self.assertRaisesRegex(RuntimeError, "source scene directory"):
+            plan_paths(self.opts("--source-blend", str(manual),
+                                 "--rig-name", "manual"))
+        with self.assertRaisesRegex(RuntimeError, "must be a .blend"):
+            plan_paths(self.opts("--source-blend", str(manual.with_suffix(".glb"))))
+        with self.assertRaises(SystemExit):
+            self.opts("--source-blend", str(manual), "--assembly", "other_assembly")
+
+    def test_explicit_source_shell_dry_run_avoids_reconstruction(self):
+        manual = self.root / "mara_manual_fit_v1.blend"
+        name = "manually_fitted_mara_rig"
+        cmd = ["bash", str(ROOT / "build_character.sh"),
+               "--rig-prototype", "--prefix", self.prefix,
+               "--output-dir", str(self.root),
+               "--source-blend", str(manual),
+               "--rig-name", name, "--dry-run"]
+        run = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(str(manual), run.stdout)
+        self.assertIn(name, run.stdout)
+        self.assertFalse(self.root.exists())
+
     def test_wrong_character_is_rejected(self):
         paths = self.make_assembly()
         manifest = json.loads(paths["assembly_manifest"].read_text())

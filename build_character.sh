@@ -46,6 +46,8 @@ PROTOTYPE_RENDER_ONLY=0
 ASSEMBLE_WORKABLE=0
 REPLACE_UPPER_BODY=0
 RIG_PROTOTYPE=0
+RIG_SOURCE_BLEND=""
+RIG_NAME=""
 
 usage() {
   cat <<'HELP'
@@ -59,7 +61,11 @@ Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
   --rig-prototype       Add an editable humanoid A-pose armature to an existing
-                        workable assembly in a NEW Blender scene (no skinning)
+                        Blender scene in a NEW output directory (no skinning)
+  --source-blend FILE    With --rig-prototype: use this exact manually edited
+                        .blend file, without rebuilding its component meshes
+  --rig-name NAME       With --rig-prototype: separate destination folder
+                        (default PREFIX_rig_prototype; never overwrite source)
   --assemble-workable   Assemble six existing GLBs with landmark-box outfit
                         placement and split glove-to-wrist working copies;
                         editable Blender scene + four renders; no AI
@@ -118,7 +124,7 @@ need_value() { [[ $# -ge 2 && -n "$2" ]] || die "Missing value after $1"; }
 
 while (($#)); do
   case "$1" in
-    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset|--thigh-method|--stage|--part)
+    --card|--prefix|--assembly|--output-dir|--body-shape|--body-image|--quality|--game-faces|--diagnose-blend|--diagnose-object|--diagnose-side|--diagnose-report|--thigh-output|--thigh-inset|--thigh-method|--stage|--part|--source-blend|--rig-name)
       need_value "$@"
       case "$1" in
         --card) CARD="$2";;
@@ -136,6 +142,8 @@ while (($#)); do
         --thigh-output) THIGH_OUTPUT="$2"; THIGH_PROTOTYPE=1;;
         --thigh-inset) THIGH_INSET="$2"; THIGH_PROTOTYPE=1;;
         --thigh-method) THIGH_METHOD="$2"; THIGH_PROTOTYPE=1;;
+        --source-blend) RIG_SOURCE_BLEND="$2";;
+        --rig-name) RIG_NAME="$2";;
         --stage) MODULAR_STAGE="$2";;
         --part) MODULAR_PARTS+=("$2");;
       esac
@@ -168,6 +176,9 @@ done
   die "--replace-upper-body requires --assemble-workable"
 (( ! RIG_PROTOTYPE || (! DIAGNOSE && ! THIGH_PROTOTYPE) )) ||
   die "--rig-prototype cannot combine with diagnostic/thigh operations"
+if (( ! RIG_PROTOTYPE )) && [[ -n "$RIG_SOURCE_BLEND" || -n "$RIG_NAME" ]]; then
+  die "--source-blend and --rig-name require --rig-prototype"
+fi
 [[ "$PREFIX" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --prefix"
 ASSEMBLY="${ASSEMBLY:-${PREFIX}_assembly}"
 [[ "$ASSEMBLY" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || die "Invalid --assembly"
@@ -258,6 +269,8 @@ if (( RIG_PROTOTYPE )); then
     --card "$CARD" --prefix "$PREFIX" --output-dir "$OUTPUT_DIR"
     --blender "$BLENDER")
   if (( ASSEMBLY_SPECIFIED )); then RIG+=(--assembly "$ASSEMBLY"); fi
+  if [[ -n "$RIG_SOURCE_BLEND" ]]; then RIG+=(--source-blend "$RIG_SOURCE_BLEND"); fi
+  if [[ -n "$RIG_NAME" ]]; then RIG+=(--rig-name "$RIG_NAME"); fi
   if (( DRY_RUN )); then RIG+=(--dry-run); fi
   if (( FORCE )); then RIG+=(--force); fi
   "${RIG[@]}"

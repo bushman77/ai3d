@@ -4,7 +4,46 @@ This is the **first rigging milestone**, after the assembled character has
 been reviewed. It adds a visible Blender armature, but **does not yet skin,
 weight-paint, animate, merge, or re-export a game-ready character**.
 
-## Generate the skeleton scene
+## Rig the **manually fitted** Mara (preferred source)
+
+The approved hand-edited scene lives at:
+
+```text
+outputs/mara_complete_v1_landmark_v2/mara_manual_fit_v1.blend
+```
+
+Use this exact saved Blender scene, including its manual cuts, transforms,
+alignment, materials, and edits. Do **not** substitute `preview.blend`
+from `upper_coverage_v1` or regenerate the underlying six GLBs.
+
+```bash
+cd ~/ai3d
+./build_character.sh --rig-prototype --prefix mara_complete_v1 \
+  --source-blend outputs/mara_complete_v1_landmark_v2/mara_manual_fit_v1.blend \
+  --rig-name mara_complete_v1_manual_fit_rig --dry-run
+
+./build_character.sh --rig-prototype --prefix mara_complete_v1 \
+  --source-blend outputs/mara_complete_v1_landmark_v2/mara_manual_fit_v1.blend \
+  --rig-name mara_complete_v1_manual_fit_rig
+```
+
+This directly loads `mara_manual_fit_v1.blend` into Blender and appends only an
+editable humanoid prototype armature. The original manual file remains
+unchanged. A **separate** rig is saved to:
+
+```text
+outputs/mara_complete_v1_manual_fit_rig/rig_prototype.blend
+outputs/mara_complete_v1_manual_fit_rig/skeleton.json
+```
+
+The earlier `outputs/mara_complete_v1_rig_prototype` run stays untouched.
+The two-stage Blender validation checks real mesh and armature contents before
+publishing output. If the manual scene has no expected body hierarchy, it
+fails without publishing a misleading rig. Open the new rig in Blender,
+inspect the joint placements in front/side view and correct by hand before
+any skinning.
+
+## Generate the skeleton scene from a manifest-backed assembly (older mode)
 
 From the AI3D repository (no neural models or GPU inference are used):
 
