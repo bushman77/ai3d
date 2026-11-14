@@ -125,7 +125,7 @@ def build(opts):
     if folder.exists() and not folder.is_dir():
         raise RuntimeError("Rig output location is not a directory: " + str(folder))
     if folder.is_dir() and any(folder.iterdir()) and not opts.force:
-        raise RuntimeError("Rig output directory already contains files; choose a new --rig-name")
+        raise RuntimeError("Rig output directory already exists and contains files; choose a new --rig-name")
     for name in ("rig_blend", "report"):
         if paths[name].is_symlink():
             raise RuntimeError("Refusing symlink rig output: " + str(paths[name]))
