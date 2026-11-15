@@ -4,7 +4,7 @@
   "name": "Mara Venn",
   "category": "humanoid",
   "project": "space_nova",
-  "revision": 6,
+  "revision": 7,
   "identity": {
     "role": "Spaceport repair engineer",
     "species": "human",
@@ -25,7 +25,7 @@
   },
   "appearance": {
     "style": "stylized realistic 3D game character",
-    "silhouette": "Realistic human proportions, A-pose, arms slightly away, feet fully visible.",
+    "silhouette": "Realistic human proportions, T-pose, arms straight out horizontally at shoulder height, feet fully visible.",
     "face": "Sharp distinctive face with one subtly arched eyebrow, visible eyelids, nose bridge, lips and jaw.",
     "hair": "Chestnut-brown hair neatly tied back.",
     "clothing": "Fitted forest-green and charcoal-gray engineering jumpsuit, reinforced seams, work gloves, dark industrial boots.",
@@ -44,13 +44,13 @@
     ]
   },
   "prompts": {
-    "master": "Full-body character reference for a stylized-realistic science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she is the smartest technician in the room. Keep her attractive but believable, capable and recognizable, with anatomically realistic adult female proportions: natural bust definition, a gently defined waist, proportionate hips and an athletic, practical silhouette. No exaggerated anatomy. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit that follows her natural shape, with properly fitted torso panels, restrained metallic details and reinforced seams. Her chest area is unobstructed jumpsuit fabric and seams only. A practical utility belt at her waist holds compact repair tools and small pouches exclusively at the hips, not on her chest. She wears fitted work gloves and sturdy dark industrial boots. Her outfit shows mild signs of working around spacecraft, but she is unusually meticulous and tidy. Standing upright in a relaxed, symmetrical A-pose, arms slightly away from the torso, hands open and visible, legs separated slightly, feet fully visible. Entire character in frame from top of head to soles of boots with generous margins on all sides. One character only, straight-on frontal full-body studio view with minimal perspective distortion and accurate, symmetrical anatomy. Soft even studio lighting, clean light-gray seamless background, no scenery or shadows obscuring the feet. High-quality stylized-realistic 3D game character concept art, clearly separated clothing materials, crisp costume and facial details, suitable as a reference image for image-to-3D mesh reconstruction.",
+    "master": "Full-body character reference for a stylized-realistic science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she is the smartest technician in the room. Keep her attractive but believable, capable and recognizable, with anatomically realistic adult female proportions: natural bust definition, a gently defined waist, proportionate hips and an athletic, practical silhouette. No exaggerated anatomy. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit that follows her natural shape, with properly fitted torso panels, restrained metallic details and reinforced seams. Her chest area is unobstructed jumpsuit fabric and seams only. A practical utility belt at her waist holds compact repair tools and small pouches exclusively at the hips, not on her chest. She wears fitted work gloves and sturdy dark industrial boots. Her outfit shows mild signs of working around spacecraft, but she is unusually meticulous and tidy. Standing in a neutral symmetrical T-pose, both arms fully extended horizontally at shoulder height, elbows straight, palms down, all fingers visible; legs straight, hip-width apart, feet flat and pointing forward, both fingertips in frame. Entire character in frame from top of head to soles of boots with generous margins on all sides. One character only, straight-on frontal full-body studio view with minimal perspective distortion and accurate, symmetrical anatomy. Soft even studio lighting, clean light-gray seamless background, no scenery or shadows obscuring the feet. High-quality stylized-realistic 3D game character concept art, clearly separated clothing materials, crisp costume and facial details, suitable as a reference image for image-to-3D mesh reconstruction.",
     "negative": "No text, labels, watermark, collage, extra people, cropped body parts, missing feet, extra limbs or fingers, exaggerated caricature, dramatic action pose, kiosk, helmet, bulky backpack, tools held in hands, camera, chest-mounted camera, chest device, camera strap, chest harness, cross-body strap, pendant, necklace, hanging badge, chest ornament, chest armor, bulky chest equipment, or random objects covering the jumpsuit torso.",
     "reference_views": {
-      "front": "Neutral front view with upright A-pose and all body parts fully visible.",
-      "three_quarter": "Slight three-quarter view showing face, outfit and silhouette without occlusion.",
-      "side": "Clean orthographic side view with identical face and hairstyle.",
-      "back": "Straight back view consistent with other references.",
+      "front": "Orthographic straight-on full-body T-pose reference, arms horizontal at shoulder height with straight elbows and visible open hands, legs straight and hip-width apart, knees facing forward, feet flat and facing forward. Include entire head, hands, fingertips and feet with generous margins.",
+      "three_quarter": "Slight three-quarter full-body T-pose view, arms horizontal at shoulder height and legs straight, matching the front reference.",
+      "side": "Orthographic full-body side view maintaining the same T-pose and straight legs, accurate torso and limb depth; no cropping.",
+      "back": "Orthographic full-body back view maintaining the same T-pose, horizontal arms and straight separated legs; no cropping.",
       "head_closeup": "Single unified head-and-neck with full facial anatomy and complete attached hairstyle, including the visible pulled-back hair volume. Nearly front-facing, ears and hairline visible, one face only.",
       "hands_closeup": "Detailed close-up of only the gloved hands in a relaxed open pose, all fingers clearly visible, uniform studio lighting, no face, no torso.",
       "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait.",
@@ -68,9 +68,9 @@
       "attachment": null,
       "reference_ids": [],
       "prompts": {
-        "geometry": "Reconstruct a complete symmetric A-pose character in a fitted continuous engineering jumpsuit, with anatomically consistent waist, hips, thighs, arms, hands and feet. No equipment or separate props. The clothing surface must remain present underneath all future accessories. Prioritize unobstructed geometry, clean shoulders and legs, and continuous fitted fabric.",
+        "geometry": "Reconstruct a complete symmetric T-pose character with arms straight out horizontally at shoulder height in a fitted continuous engineering jumpsuit, with anatomically consistent waist, hips, thighs, arms, hands and feet. No equipment or separate props. The clothing surface must remain present underneath all future accessories. Prioritize unobstructed geometry, clean shoulders and legs, and continuous fitted fabric.",
         "texture": "Fitted forest-green and charcoal-gray jumpsuit with subtle panel seams, natural fabric folds and mild material variation. Smooth continuous material at waist and thighs; no equipment silhouettes or random pale/white blotches.",
-        "reference": "Full-body studio model sheet of one adult woman with a believable athletic feminine build, natural bust, gently defined waist, proportionate hips and limbs, and chestnut-brown hair smoothly pulled back from a recognizable expressive face. She wears a single close-fitting forest-green and charcoal-gray one-piece fabric jumpsuit covering her shoulders, neck, chest, entire abdomen, waist, hips, thighs, knees, shins and ankles. The fitted garment has broad continuous smooth fabric panels at the abdomen, waist, hips, outer thighs and inner thighs. Subtle stitched panel transitions follow the body surface, with gentle fabric folds at elbows and knees. Plain continuous fabric sleeves extend to the wrists. Her uncovered hands have five distinct relaxed fingers each, and her feet have closely fitted simple fabric foot coverings with a smooth silhouette. The garment fabric is clearly visible across every side of the torso and legs. Upright symmetrical A-pose with straight relaxed fingers, arms about 30 degrees away from the torso, legs slightly apart and feet facing forward. Entire body centered and completely visible from hair crown to toes with generous clear margin. Orthographic straight-on front view, even diffuse neutral studio lighting, light gray background, precise anatomical contour, clean crisp silhouette, consistent stylized-realistic 3D game character concept rendering. Prioritize natural human anatomy and continuous green fabric surfaces.",
+        "reference": "Full-body studio model sheet of one adult woman with a believable athletic feminine build, natural bust, gently defined waist, proportionate hips and limbs, and chestnut-brown hair smoothly pulled back from a recognizable expressive face. She wears a single close-fitting forest-green and charcoal-gray one-piece fabric jumpsuit covering her shoulders, neck, chest, entire abdomen, waist, hips, thighs, knees, shins and ankles. The fitted garment has broad continuous smooth fabric panels at the abdomen, waist, hips, outer thighs and inner thighs. Subtle stitched panel transitions follow the body surface, with gentle fabric folds at elbows and knees. Plain continuous fabric sleeves extend to the wrists. Her uncovered hands have five distinct relaxed fingers each, and her feet have closely fitted simple fabric foot coverings with a smooth silhouette. The garment fabric is clearly visible across every side of the torso and legs. Upright symmetrical T-pose with both arms straight out horizontally at shoulder height, elbows fully extended, palms down, five visible fingers per hand; legs straight, hip-width apart and feet facing forward. Entire body centered and completely visible from hair crown to toes with generous clear margin. Orthographic straight-on front view, even diffuse neutral studio lighting, light gray background, precise anatomical contour, clean crisp silhouette, consistent stylized-realistic 3D game character concept rendering. Prioritize natural human anatomy and continuous green fabric surfaces.",
         "negative": "No utility belt, waist belt, holsters, thigh rigs, pouches, tools, weapons, gadgets, repair equipment, pockets that project outward, separate gloves, separate boots, bulky armor, camera, chest device, straps, pendant, badge, necklace or any hanging objects. No missing fabric underneath the waist or thigh. No cropped feet or head, missing/extra limbs, extra fingers, distorted anatomy, crossed limbs, scenery, labels, text or watermark."
       },
       "generation": {
@@ -79,16 +79,17 @@
         "shape_steps": null,
         "target_triangles": null,
         "view_resolution": null,
-        "reference_width": 384,
-        "reference_height": 576,
+        "reference_width": 512,
+        "reference_height": 512,
         "reference_mode": "visual_only"
       },
       "quality_gates": [
         "No utility belt, pouches, holsters, tools or raised accessories in the Qwen reference",
         "Clean uninterrupted green jumpsuit silhouette around waist, both hips and thighs",
-        "Complete anatomically plausible A-pose; hands, legs and feet visible",
+        "Complete anatomically plausible T-pose with horizontal arms; hands, legs and feet visible",
         "Inspect untextured Hunyuan shape for embedded props, large holes and intersecting surfaces BEFORE painting",
-        "Only approve body for later detailed outfit, gloves, boots and equipment attachment after visual review"
+        "Only approve body for later detailed outfit, gloves, boots and equipment attachment after visual review",
+        "Reject lowered arms, cropped hands, asymmetric limbs or bent legs before proceeding to 3D"
       ],
       "notes": "Clean base-body geometry only. Positive-only visual reference mode deliberately omits occupation, personality and avoid-lists from Qwen's text prompt to reduce gear contamination. The full Mara design brief and equipment remain separate.",
       "reference_view": "front"
@@ -133,9 +134,9 @@
       "attachment": "torso and shoulder surface (fit not implemented)",
       "reference_ids": [],
       "prompts": {
-        "geometry": "A separate, fitted upper-garment surface that follows the base body at shoulders, chest, waist and both arms. Preserve a continuous waist joining edge for the lower garment. Geometry fitting to Mara's body is not implemented yet.",
+        "geometry": "A separate, fitted upper-garment surface that follows the base body at shoulders, chest, waist and both horizontally extended arms. Preserve a continuous waist joining edge for the lower garment. Geometry fitting to Mara's body is not implemented yet.",
         "texture": "Matte forest-green engineering fabric, charcoal side inserts and deliberate symmetrical seams. No white streaks or skin tones on fabric.",
-        "reference": "Isolated upper section of a fitted stylized-realistic female spacecraft engineer's jumpsuit on a neutral, featureless display mannequin. A slim high forest-green collar follows the neckline; clean contoured forest-green chest and abdomen with subtle charcoal-gray side panels, narrow symmetrical reinforced seams and modest sleeve detailing. Two long, fitted fabric sleeves extend to wrist cuffs, held in a gentle symmetrical A-pose with arms angled slightly downward and apart. The garment ends at a level waist joining edge to match separate trousers. Show the entire upper garment, collar, both sleeves and waist edge unobstructed in an orthographic frontal fashion-product view. Smooth matte clean fabric, balanced proportions, crisp material transitions, flat studio lighting, pale gray backdrop.",
+        "reference": "Isolated upper section of a fitted stylized-realistic female spacecraft engineer's jumpsuit on a neutral, featureless display mannequin. A slim high forest-green collar follows the neckline; clean contoured forest-green chest and abdomen with subtle charcoal-gray side panels, narrow symmetrical reinforced seams and modest sleeve detailing. Two long, fitted fabric sleeves extend to wrist cuffs, held in a symmetrical T-pose with both sleeves horizontal at shoulder height. The garment ends at a level waist joining edge to match separate trousers. Show the entire upper garment, collar, both sleeves and waist edge unobstructed in an orthographic frontal fashion-product view. Smooth matte clean fabric, balanced proportions, crisp material transitions, flat studio lighting, pale gray backdrop.",
         "negative": "No character face, bare skin, hands, utility belt, pockets, holsters, thigh straps, tools, boots, extra limbs, bulky armor, chest attachments, lettering or watermark."
       },
       "generation": {
@@ -167,7 +168,7 @@
       "prompts": {
         "geometry": "Separate fitted lower garment with continuous waist and two trouser legs following base-body hips, thighs, knees and shins. Retain matching waist seam to upper outfit, clear ankle hems and closed continuous cloth over thighs. Geometry fitting to Mara's body is not implemented yet.",
         "texture": "Same matte forest-green material and charcoal-gray side insets as upper garment. Smooth thigh and seat panel transitions, subtle reinforced knee construction without random pale streaks.",
-        "reference": "Isolated lower section of a fitted stylized-realistic female spacecraft engineer's forest-green jumpsuit on a neutral, featureless display form, shown from a clean level waistband through hips, both legs and close-fitting ankle cuffs. The fitted trousers have two complete, symmetrical legs gently separated in a standing A-pose; continuous smooth matte forest-green fabric across hips, seat, crotch and thighs, restrained charcoal-gray side inserts aligned vertically with the upper garment, subtle purposeful knee reinforcement and seams. The waist edge is level and precisely designed to meet a matching upper jumpsuit garment. Show the full waist, both legs and ankle cuffs in a straight-on orthographic fashion-product view, crisp material boundaries, neutral even studio lighting, pale gray seamless background.",
+        "reference": "Isolated lower section of a fitted stylized-realistic female spacecraft engineer's forest-green jumpsuit on a neutral, featureless display form, shown from a clean level waistband through hips, both legs and close-fitting ankle cuffs. The fitted trousers have two complete, symmetrical legs straight and hip-width apart in a neutral standing pose; continuous smooth matte forest-green fabric across hips, seat, crotch and thighs, restrained charcoal-gray side inserts aligned vertically with the upper garment, subtle purposeful knee reinforcement and seams. The waist edge is level and precisely designed to meet a matching upper jumpsuit garment. Show the full waist, both legs and ankle cuffs in a straight-on orthographic fashion-product view, crisp material boundaries, neutral even studio lighting, pale gray seamless background.",
         "negative": "No face, torso, utility belt, holsters, thigh pouches, badges, pockets, tools, shoes, boots, extra legs, bare skin, labels or text."
       },
       "generation": {
@@ -250,9 +251,9 @@
     "units": "meters",
     "up_axis": "+Z",
     "forward_axis": "-Y",
-    "rest_pose": "A-pose",
-    "rigging_required": false,
-    "notes": "Head-to-neck alignment is not yet automated. Approval of components precedes assembly."
+    "rest_pose": "T-pose",
+    "rigging_required": true,
+    "notes": "Use neutral symmetric T-pose references and skeleton rest pose: arms straight horizontal at shoulder height, legs straight and hip-width apart, feet flat forward. Review actual image before reconstructing mesh."
   },
   "provenance": {
     "creator": "Example adapted from the original Mara Venn prompt supplied by the project creator",
