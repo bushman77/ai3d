@@ -1,7 +1,10 @@
 # Skeleton-only rig prototype for Mara Venn
 
 This is the **first rigging milestone**, after the assembled character has
-been reviewed. It adds a visible Blender armature, but **does not yet skin,
+been reviewed. Start the new build using `./build_character.sh --start-tpose`.
+Inspect the reference image for horizontal arms, open uncut hands, straight
+legs and forward feet before advancing through shape/paint/game with the
+same root script. Text prompts cannot guarantee a correctly posed image. It adds a visible Blender armature, but **does not yet skin,
 weight-paint, animate, merge, or re-export a game-ready character**.
 
 ## Rig the **manually fitted** Mara (preferred source)
