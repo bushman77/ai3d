@@ -18,7 +18,7 @@ class MaraCleanBodyContractTest(unittest.TestCase):
             self.assertNotIn(disallowed, positive, f"positive body prompt includes {disallowed!r}")
         self.assertIn("jumpsuit", positive)
         self.assertIn("continuous", positive)
-        self.assertIn("a-pose", positive)
+        self.assertIn("t-pose", positive)
         self.assertEqual(view, "front")
         combined = compose_reference_prompt(card, body, view).lower()
         self.assertIn("clean studio visual reference", combined)
