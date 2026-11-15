@@ -188,7 +188,7 @@
     "units": "meters",
     "up_axis": "+Z",
     "forward_axis": "-Y",
-    "rest_pose": "A-pose",
+    "rest_pose": "T-pose",
     "rigging_required": false,
     "notes": "Attachment points are design intentions until alignment/assembly tooling exists."
   },
