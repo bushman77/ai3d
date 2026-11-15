@@ -36,6 +36,14 @@ class ModularShellTest(unittest.TestCase):
         self.assertIn("lower_outfit", result)
         self.assertIn("not conditioned on a master PNG", result)
 
+    def test_tpose_start_stops_at_reference_dry_run(self):
+        output = self.command("--start-tpose", "--dry-run")
+        self.assertIn("[T-POSE START]", output)
+        self.assertIn("T-pose", output)
+        self.assertIn("Dry run", output)
+        bad = self.command("--start-tpose", "--stage", "shape", "--dry-run", ok=False)
+        self.assertIn("cannot be combined", bad)
+
     def test_each_stage_has_component_selection_and_dry_run(self):
         for stage, part in [
             ("reference", "body"),
