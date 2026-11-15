@@ -24,7 +24,7 @@ class SkeletonLandmarksTest(unittest.TestCase):
         head = {"min": [-0.15, -0.15, 1.4], "max": [0.15, 0.15, 1.9]}
         plan = humanoid_bones(body, head)
         self.assertEqual(plan["axis"], {"up": "+Z", "forward": "-Y"})
-        self.assertEqual(plan["rest_pose"], "estimated_A_pose")
+        self.assertEqual(plan["rest_pose"], "estimated_T_pose")
         self.assertEqual(plan["height"], 1.9)
         bones = {bone["name"]: bone for bone in plan["bones"]}
         self.assertEqual(len(bones), 20)
@@ -42,6 +42,15 @@ class SkeletonLandmarksTest(unittest.TestCase):
             bones["upper_arm.L"]["tail"][0], -bones["upper_arm.R"]["tail"][0]
         )
         self.assertLess(bones["foot.L"]["tail"][1], 0)
+        # A neutral T-pose keeps shoulder, elbow, wrist and hand level.
+        for side in ("L", "R"):
+            shoulder = bones[f"upper_arm.{side}"]["head"]
+            elbow = bones[f"upper_arm.{side}"]["tail"]
+            wrist = bones[f"forearm.{side}"]["tail"]
+            fingertips = bones[f"hand.{side}"]["tail"]
+            self.assertAlmostEqual(shoulder[2], elbow[2])
+            self.assertAlmostEqual(elbow[2], wrist[2])
+            self.assertAlmostEqual(wrist[2], fingertips[2])
 
     def test_bad_bounds_rejected_before_blender(self):
         with self.assertRaisesRegex(ValueError, "finite and non-degenerate"):
