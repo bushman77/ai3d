@@ -48,6 +48,7 @@ REPLACE_UPPER_BODY=0
 RIG_PROTOTYPE=0
 RIG_SOURCE_BLEND=""
 RIG_NAME=""
+START_TPOSE=0
 
 usage() {
   cat <<'HELP'
@@ -57,6 +58,7 @@ Default behavior is a READ-ONLY modular build plan. Select one component
 and one stage, review its result, then explicitly advance to the next stage.
 Parts are processed serially (suitable for 6 GB VRAM); --resume is default.
 
+  --start-tpose         Start fresh Mara T-pose body-reference generation only
   --stage STAGE         plan|reference|shape|paint|game|preview
   --part ID             Process one card part (repeatable; not for preview)
   --all-parts           Generate ALL part references only (not meshes)
@@ -155,6 +157,7 @@ while (($#)); do
     --prototype-all-parts) PROTOTYPE_ALL=1; shift;;
     --assemble-workable) ASSEMBLE_WORKABLE=1; shift;;
     --rig-prototype) RIG_PROTOTYPE=1; shift;;
+    --start-tpose) START_TPOSE=1; shift;;
     --replace-upper-body) REPLACE_UPPER_BODY=1; shift;;
 
     --render-only) PROTOTYPE_RENDER_ONLY=1; shift;;
@@ -252,6 +255,32 @@ fi
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 "$PYTHON" -m ai3d character validate "$CARD"
+
+# A guarded first-stage alias: do not spend GPU time on geometry until the
+# produced T-pose image has been reviewed by a human.
+if (( START_TPOSE )); then
+  [[ -z "$MODULAR_STAGE" && ${#MODULAR_PARTS[@]} -eq 0 &&
+     $MODULAR_ALL -eq 0 && $OUTFIT_REFERENCES -eq 0 &&
+     $BODY_ONLY -eq 0 && $RIG_PROTOTYPE -eq 0 &&
+     $ASSEMBLE_WORKABLE -eq 0 && $PROTOTYPE_ALL -eq 0 &&
+     $LEGACY_FULL -eq 0 && $DIAGNOSE -eq 0 && $THIGH_PROTOTYPE -eq 0 ]] ||
+    die "--start-tpose cannot be combined with other stages or build modes"
+  "$PYTHON" - "$CARD" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    card = json.load(f)
+body = next((p for p in card["parts"] if p["id"] == "body"), None)
+reference = body["prompts"]["reference"] if body else ""
+front = card["prompts"]["reference_views"]["front"]
+if (card["assembly"]["rest_pose"] != "T-pose" or
+        "T-pose" not in reference or "T-pose" not in front):
+    raise SystemExit("ERROR: T-pose contract missing from card, body reference or front view")
+print("[T-POSE START] Validated T-pose source; generating body reference only")
+PY
+  MODULAR_STAGE="reference"
+  MODULAR_PARTS=("body")
+fi
 
 # First rigging milestone: a separate skeleton-only Blender file derived from
 # the approved assembled scene. No inference, skinning or source GLB editing.
