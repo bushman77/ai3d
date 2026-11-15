@@ -1,4 +1,4 @@
-"""Conservative humanoid A-pose landmarks based on assembled mesh bounds.
+"""Conservative humanoid T-pose landmarks based on assembled mesh bounds.
 
 This is a skeleton-placement *starting point*, not measured joints, retopology,
 skin weights, or a guarantee that the mesh has anatomical topology. World Z up,
@@ -25,7 +25,7 @@ def _check_bounds(bounds, label):
 
 
 def humanoid_bones(body_bounds, head_bounds=None):
-    """Return named parented edit-bone segments in the *world* A-pose.
+    """Return named parented edit-bone segments in the *world* T-pose.
 
     The body defines the center/ground. The separate head can extend the
     top-of-skull estimate, without using unrelated equipment/garment bounds.
@@ -65,20 +65,20 @@ def humanoid_bones(body_bounds, head_bounds=None):
     bone("neck", "chest", (0, 0, .81), (0, 0, .87))
     bone("head", "neck", (0, 0, .87), (0, 0, .97))
 
-    # A-pose arms point diagonally down and out. Side labels are Blender's
+    # T-pose arms extend horizontally at shoulder height. Side labels are Blender's
     # .L/.R names, using +X for left and -X for right in front view.
     for side, direction in (("L", 1), ("R", -1)):
         def arm(x, y, z):
             return (direction * x, y, z)
 
         bone(f"clavicle.{side}", "chest",
-             arm(.015, 0, .795), arm(.115, 0, .81))
+             arm(.015, 0, .805), arm(.110, 0, .805))
         bone(f"upper_arm.{side}", f"clavicle.{side}",
-             arm(.115, 0, .81), arm(.225, 0, .655))
+             arm(.110, 0, .805), arm(.275, 0, .805))
         bone(f"forearm.{side}", f"upper_arm.{side}",
-             arm(.225, 0, .655), arm(.305, 0, .525))
+             arm(.275, 0, .805), arm(.435, 0, .805))
         bone(f"hand.{side}", f"forearm.{side}",
-             arm(.305, 0, .525), arm(.345, 0, .485))
+             arm(.435, 0, .805), arm(.515, 0, .805))
 
         bone(f"thigh.{side}", "pelvis",
              arm(.078, 0, .50), arm(.086, 0, .29))
@@ -97,7 +97,7 @@ def humanoid_bones(body_bounds, head_bounds=None):
     return {
         "height": round(height, 6),
         "axis": {"up": "+Z", "forward": "-Y"},
-        "rest_pose": "estimated_A_pose",
+        "rest_pose": "estimated_T_pose",
         "bones": bones,
         "warnings": [
             "Bone positions use height proportions, not anatomy landmarks.",
