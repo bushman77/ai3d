@@ -120,6 +120,16 @@ def generate_character(
     dry_run: bool = False,
 ) -> list[dict]:
     """Generate one character's parts *serially* to respect limited VRAM."""
+    # MARA_APPROVED_IMAGE_GUARD_V1: never run text-only inference on locked cards.
+    if not dry_run and any(
+        part.get("generation", {}).get("approved_master_required") is True
+        for part in card.get("parts", [])
+    ):
+        raise RuntimeError(
+            "Approved-master anatomical card is LOCKED: implement and verify "
+            "image-conditioned component references before GPU generation. "
+            "Use --dry-run for planning."
+        )
     if resume and force:
         raise RuntimeError("Use either --resume or --force, not both")
     if any(

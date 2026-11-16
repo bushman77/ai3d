@@ -8,6 +8,14 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
+# AI3D_MARA_QUALITY_FIRST_DISPATCH_V1
+# Additive quality workflow. The standard anatomical generation guards remain intact.
+if [[ "${1:-}" == "--quality-first" ]]; then
+  shift
+  exec "${PYTHON:-python3}" "$ROOT/tools/mara_quality_pipeline.py" --root "$ROOT" "$@"
+fi
+
+
 PYTHON="${PYTHON:-python3}"
 BLENDER="${BLENDER:-blender}"
 CARD="examples/space_nova/characters/mara_venn.json"
@@ -255,6 +263,30 @@ fi
 command -v "$PYTHON" >/dev/null || die "Python not found: $PYTHON"
 [[ -f "$CARD" ]] || die "Missing card: $CARD"
 "$PYTHON" -m ai3d character validate "$CARD"
+# MARA_APPROVED_IMAGE_GUARD_V1: keep the approved-master anatomy card read-only
+# until the reference adapter, geometry alignment and rigging are implemented.
+# This safeguards wrapper-specific paths as well as Python batch/reference paths.
+if (( ! DRY_RUN )); then
+  "$PYTHON" - "$CARD" "${MODULAR_STAGE:-plan}" \
+    "$RIG_PROTOTYPE" "$ASSEMBLE_WORKABLE" "$PROTOTYPE_ALL" \
+    "$LEGACY_FULL" "$OUTFIT_REFERENCES" "$START_TPOSE" "$BODY_ONLY" <<'PY_GUARD'
+import json
+import sys
+card_file, stage, *mode_flags = sys.argv[1:]
+with open(card_file, encoding="utf-8") as file:
+    card = json.load(file)
+locked = any(
+    part.get("generation", {}).get("approved_master_required") is True
+    for part in card.get("parts", [])
+)
+if locked and (stage != "plan" or any(value == "1" for value in mode_flags)):
+    raise SystemExit(
+        "ERROR: Approved-master anatomical card is LOCKED. "
+        "Only --stage plan and --dry-run are permitted until "
+        "verified image-conditioned references and fitting are implemented."
+    )
+PY_GUARD
+fi
 
 # A guarded first-stage alias: do not spend GPU time on geometry until the
 # produced T-pose image has been reviewed by a human.

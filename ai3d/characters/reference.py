@@ -98,6 +98,16 @@ def run_reference(
     resume: bool = False, force: bool = False, dry_run: bool = False,
 ) -> Path:
     """Generate a standalone PNG reference under outputs/<run-name>/."""
+    # MARA_APPROVED_IMAGE_GUARD_V1: do not replace the canonical Qwen identity.
+    if not dry_run and any(
+        part.get("generation", {}).get("approved_master_required") is True
+        for part in card.get("parts", [])
+    ):
+        raise RuntimeError(
+            "Approved-master anatomical card is LOCKED: the current Qwen "
+            "reference command is text-to-image only, not image-conditioned. "
+            "Use --dry-run for planning."
+        )
     if min(width, height, steps) <= 0:
         raise RuntimeError("Width, height and steps must be positive")
     part, selected_view = select_part_and_view(card, part_id, view)

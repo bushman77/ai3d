@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "id": "mara_venn",
+  "name": "Mara Venn",
+  "category": "humanoid",
+  "project": "space_nova",
+  "revision": 8,
+  "identity": {
+    "role": "Spaceport repair engineer",
+    "species": "human",
+    "age_group": "adult",
+    "personality_traits": [
+      "confident",
+      "aloof",
+      "meticulous",
+      "subtly snobbish",
+      "faintly unimpressed"
+    ],
+    "backstory": "Adult engineer working at a science-fiction spaceport repair facility.",
+    "continuity_rules": [
+      "Keep Mara's facial proportions, eye shape and hairstyle consistent across references.",
+      "Keep costume colors and equipment consistent across all views.",
+      "Inspect head geometry in solid shading before painting."
+    ]
+  },
+  "appearance": {
+    "style": "stylized realistic 3D game character",
+    "silhouette": "Realistic human proportions, T-pose, arms straight out horizontally at shoulder height, feet fully visible.",
+    "face": "Sharp distinctive face with one subtly arched eyebrow, visible eyelids, nose bridge, lips and jaw.",
+    "hair": "Chestnut-brown hair neatly tied back.",
+    "clothing": "Fitted forest-green and charcoal-gray engineering jumpsuit, reinforced seams, work gloves, dark industrial boots.",
+    "equipment": "Practical utility belt with small repair-tool attachments; no handheld props.",
+    "palette": [
+      "forest green",
+      "charcoal gray",
+      "chestnut brown",
+      "restrained metallic details"
+    ],
+    "recognition_traits": [
+      "sharp face",
+      "one arched eyebrow",
+      "confident, unimpressed expression",
+      "meticulous uniform"
+    ]
+  },
+  "prompts": {
+    "master": "Full-body character reference for a stylized-realistic science-fiction video game NPC, Mara Venn, an adult human female repair engineer working at a spaceport repair facility. She has a sharp, distinctive face, chestnut-brown hair neatly tied back, a slightly raised chin and one subtly arched eyebrow. Her expression is confident, aloof, snobbish and faintly unimpressed, as if she is the smartest technician in the room. Keep her attractive but believable, capable and recognizable, with anatomically realistic adult female proportions: natural bust definition, a gently defined waist, proportionate hips and an athletic, practical silhouette. No exaggerated anatomy. She wears a fitted, functional forest-green and charcoal-gray engineering jumpsuit that follows her natural shape, with properly fitted torso panels, restrained metallic details and reinforced seams. Her chest area is unobstructed jumpsuit fabric and seams only. A practical utility belt at her waist holds compact repair tools and small pouches exclusively at the hips, not on her chest. She wears fitted work gloves and sturdy dark industrial boots. Her outfit shows mild signs of working around spacecraft, but she is unusually meticulous and tidy. Standing in a neutral symmetrical T-pose, both arms fully extended horizontally at shoulder height, elbows straight, palms down, all fingers visible; legs straight, hip-width apart, feet flat and pointing forward, both fingertips in frame. Entire character in frame from top of head to soles of boots with generous margins on all sides. One character only, straight-on frontal full-body studio view with minimal perspective distortion and accurate, symmetrical anatomy. Soft even studio lighting, clean light-gray seamless background, no scenery or shadows obscuring the feet. High-quality stylized-realistic 3D game character concept art, clearly separated clothing materials, crisp costume and facial details, suitable as a reference image for image-to-3D mesh reconstruction.",
+    "negative": "No text, labels, watermark, collage, extra people, cropped body parts, missing feet, extra limbs or fingers, exaggerated caricature, dramatic action pose, kiosk, helmet, bulky backpack, tools held in hands, camera, chest-mounted camera, chest device, camera strap, chest harness, cross-body strap, pendant, necklace, hanging badge, chest ornament, chest armor, bulky chest equipment, or random objects covering the jumpsuit torso.",
+    "reference_views": {
+      "front": "Orthographic straight-on full-body T-pose reference, arms precisely horizontal at shoulder height with straight elbows, wrists straight, hands fully open, five distinct fingers on each hand including the thumb, fingers slightly separated, legs straight, feet slightly wider than hip-width apart, clear visible separation between the inner thighs and lower legs, knees facing forward, feet flat and facing forward. Include entire head, hands, fingertips and feet with generous margins.",
+      "three_quarter": "Slight three-quarter full-body T-pose view, arms horizontal at shoulder height and legs straight, matching the front reference.",
+      "side": "Orthographic full-body side view maintaining the same T-pose and straight legs, accurate torso and limb depth; no cropping.",
+      "back": "Orthographic full-body back view maintaining the same T-pose, horizontal arms and straight separated legs; no cropping.",
+      "head_closeup": "Single unified head-and-neck with full facial anatomy and complete attached hairstyle, including the visible pulled-back hair volume. Nearly front-facing, ears and hairline visible, one face only.",
+      "hands_closeup": "Detailed close-up of only the gloved hands in a relaxed open pose, all fingers clearly visible, uniform studio lighting, no face, no torso.",
+      "equipment_closeup": "Isolated spaceport engineer utility belt with small tools and pouches; neutral studio product view with all parts visible, no person or facial portrait.",
+      "upper_outfit_closeup": "Upper outfit ONLY, isolated collar-through-waist tunic and both sleeves with full wrist cuffs in frame. Straight-on orthographic fashion garment product view. Use the forest-green and charcoal fabric design shared with the lower outfit.",
+      "lower_outfit_closeup": "Lower outfit ONLY, isolated level waist-to-ankle trousers with both legs fully visible. Straight-on orthographic garment product view, coordinated forest-green and charcoal fabric shared with the upper outfit.",
+      "torso_pelvis_detail": "Single component only: neutral front, T-pose alignment. Maintain master image identity and T-pose coordinate frame.",
+      "left_arm_detail": "Single component only: anatomical left, fully extended horizontally. Maintain master image identity and T-pose coordinate frame.",
+      "right_arm_detail": "Single component only: anatomical right, fully extended horizontally. Maintain master image identity and T-pose coordinate frame.",
+      "left_hand_detail": "Single component only: anatomical left, palm orientation to match the approved reference. Maintain master image identity and T-pose coordinate frame.",
+      "right_hand_detail": "Single component only: anatomical right, palm orientation to match the approved reference. Maintain master image identity and T-pose coordinate frame.",
+      "left_leg_detail": "Single component only: anatomical left, straight leg, forward knee. Maintain master image identity and T-pose coordinate frame.",
+      "right_leg_detail": "Single component only: anatomical right, straight leg, forward knee. Maintain master image identity and T-pose coordinate frame.",
+      "left_foot_detail": "Single component only: anatomical left, sole flat, toes forward. Maintain master image identity and T-pose coordinate frame.",
+      "right_foot_detail": "Single component only: anatomical right, sole flat, toes forward. Maintain master image identity and T-pose coordinate frame."
+    }
+  },
+  "references": [
+    {
+      "id": "mara_master_front",
+      "path": "approved_references/mara_body_front_approved.png",
+      "purpose": "Approved Qwen character identity and anatomical proportion anchor",
+      "view": "front",
+      "notes": "Immutable approved source. SHA-256: 144d06916502ecb524e4113f8bc11b9ab80bfa6714290773a7046d23bd4e2791; do not regenerate or overwrite."
+    }
+  ],
+  "parts": [
+    {
+      "id": "torso_pelvis",
+      "label": "Torso and pelvis",
+      "kind": "mesh",
+      "parent": null,
+      "attachment": null,
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only the collar-to-hip torso and pelvis, with clean neck, shoulder and hip joining borders. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only the collar-to-hip torso and pelvis, with clean neck, shoulder and hip joining borders. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "torso_pelvis_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "neutral front, T-pose alignment. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "head",
+      "label": "Head, face and hairstyle",
+      "kind": "mesh",
+      "parent": "torso_pelvis",
+      "attachment": "neck (planned; not automatically merged)",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "geometry": "Reconstruct one unified head-and-neck shape with a single face, scalp, complete chestnut-brown side-swept hairstyle tied back, hairline, hair volume, eye sockets, eyelids, nose, lips, ears and jaw. The hairstyle is part of this head reconstruction, not a second head or separate head covering. Preserve Mara's identity.",
+        "texture": "Natural skin with consistent eyes, expression and hairline; chestnut-brown hair texture over the attached hairstyle, preserving clean separation between scalp, strands, forehead and eyes.",
+        "reference": "Portrait-quality isolated head-and-neck reference of Mara Venn with her complete hairstyle included as one continuous head subject. Show her entire chestnut-brown side-swept hair from the hairline to the neatly tied-back rear hair volume, with the full top and back silhouette visible; frame her face, ears, hairstyle and neck without cropping the rear hair. Only one face, scalp and head in the image, not a separate hairstyle display or wig. Nearly front-facing with both eyes and ears visible; believable facial proportions, sharp cheekbones, slightly raised chin, one arched eyebrow and a confident aloof expression. Clearly formed upper and lower eyelids, eye sockets, nose, lips and jaw. Soft neutral studio lighting, light-gray background, crisp stylized-realistic 3D reconstruction reference.",
+        "negative": "No duplicate head, no extra face, no second person, no separate wig or floating head covering, no full body, legs or hands, no detached hair mesh, no helmet, no text or watermark."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": 50,
+        "target_triangles": 80000,
+        "view_resolution": 384,
+        "reference_width": 384,
+        "reference_height": 384,
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Eyes and eyelids readable in solid shading",
+        "Nose, mouth, ears and jaw clearly formed",
+        "Recognizable expression and facial silhouette",
+        "Inspect front and profile geometry before texture painting",
+        "Complete attached hairstyle and hairline with no second head or separate hair component"
+      ],
+      "notes": "One unified head reconstruction contains face, scalp and attached tied-back chestnut hair; no independent hair/head-covering asset. Inspect front and profile before paint. Master PNG is an identity anchor; an image-conditioned reference stage is still required.",
+      "reference_view": "head_closeup"
+    },
+    {
+      "id": "left_arm",
+      "label": "Left arm",
+      "kind": "mesh",
+      "parent": "torso_pelvis",
+      "attachment": "left_shoulder",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's LEFT upper and lower arm from shoulder to wrist; shoulder and wrist joining edges visible, no hand or torso. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's LEFT upper and lower arm from shoulder to wrist; shoulder and wrist joining edges visible, no hand or torso. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "left_arm_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical left, fully extended horizontally. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "right_arm",
+      "label": "Right arm",
+      "kind": "mesh",
+      "parent": "torso_pelvis",
+      "attachment": "right_shoulder",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's RIGHT upper and lower arm from shoulder to wrist; shoulder and wrist joining edges visible, no hand or torso. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's RIGHT upper and lower arm from shoulder to wrist; shoulder and wrist joining edges visible, no hand or torso. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "right_arm_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical right, fully extended horizontally. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "left_hand",
+      "label": "Left hand",
+      "kind": "mesh",
+      "parent": "left_arm",
+      "attachment": "left_wrist",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's LEFT hand and fingers, separate from the sleeve, five anatomically distinct digits. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's LEFT hand and fingers, separate from the sleeve, five anatomically distinct digits. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "left_hand_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical left, palm orientation to match the approved reference. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "right_hand",
+      "label": "Right hand",
+      "kind": "mesh",
+      "parent": "right_arm",
+      "attachment": "right_wrist",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's RIGHT hand and fingers, separate from the sleeve, five anatomically distinct digits. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's RIGHT hand and fingers, separate from the sleeve, five anatomically distinct digits. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "right_hand_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical right, palm orientation to match the approved reference. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "left_leg",
+      "label": "Left leg",
+      "kind": "mesh",
+      "parent": "torso_pelvis",
+      "attachment": "left_hip",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's LEFT thigh, knee and calf ending at the ankle, separate from the pelvis and foot. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's LEFT thigh, knee and calf ending at the ankle, separate from the pelvis and foot. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "left_leg_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical left, straight leg, forward knee. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "right_leg",
+      "label": "Right leg",
+      "kind": "mesh",
+      "parent": "torso_pelvis",
+      "attachment": "right_hip",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's RIGHT thigh, knee and calf ending at the ankle, separate from the pelvis and foot. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's RIGHT thigh, knee and calf ending at the ankle, separate from the pelvis and foot. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "right_leg_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical right, straight leg, forward knee. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "left_foot",
+      "label": "Left foot",
+      "kind": "mesh",
+      "parent": "left_leg",
+      "attachment": "left_ankle",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's LEFT foot in its industrial boot, independent from the lower leg. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's LEFT foot in its industrial boot, independent from the lower leg. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "left_foot_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical left, sole flat, toes forward. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "right_foot",
+      "label": "Right foot",
+      "kind": "mesh",
+      "parent": "right_leg",
+      "attachment": "right_ankle",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "reference": "Isolated orthographic reconstruction reference of only Mara's RIGHT foot in its industrial boot, independent from the lower leg. Match the identity, material boundaries, proportions and exact colors of the approved Mara Venn master reference. Keep the full component and both joining borders visible. A single component, neutral gray studio backdrop, not a complete person. No extra arms, fingers, legs, hands, heads, props or duplicate geometry.",
+        "geometry": "Reconstruct only Mara's RIGHT foot in its industrial boot, independent from the lower leg. Preserve clean anatomical joint borders; do not generate neighboring components.",
+        "texture": "Match the approved Mara reference: forest-green and charcoal engineering fabric where applicable, realistic material transitions and no incidental equipment.",
+        "negative": "No full human body, duplicate component, detached extra geometry, accessories, watermark or background objects."
+      },
+      "reference_view": "right_foot_detail",
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only",
+        "approved_master_required": true
+      },
+      "quality_gates": [
+        "Reference crop or image-conditioned edit must be verified against the approved master PNG before inference",
+        "One and only one anatomically correct component is present",
+        "Correct anatomical side; no unrequested mirror replacement",
+        "Joint boundaries are preserved and measured for later attachment",
+        "Inspect mesh silhouette and joining surfaces before texturing"
+      ],
+      "notes": "anatomical right, sole flat, toes forward. Draft geometry definition only. Existing text-to-image generation does not preserve identity from master PNG. No automatic fitting or seam welding yet."
+    },
+    {
+      "id": "upper_outfit",
+      "label": "Upper engineering jumpsuit garment — collar, torso and sleeves",
+      "kind": "region",
+      "parent": "torso_pelvis",
+      "attachment": "torso and shoulder surface (fit not implemented)",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "geometry": "A separate, fitted upper-garment surface that follows the base body at shoulders, chest, waist and both horizontally extended arms. Preserve a continuous waist joining edge for the lower garment. Geometry fitting to Mara's body is not implemented yet.",
+        "texture": "Matte forest-green engineering fabric, charcoal side inserts and deliberate symmetrical seams. No white streaks or skin tones on fabric.",
+        "reference": "Isolated upper section of a fitted stylized-realistic female spacecraft engineer's jumpsuit on a neutral, featureless display mannequin. A slim high forest-green collar follows the neckline; clean contoured forest-green chest and abdomen with subtle charcoal-gray side panels, narrow symmetrical reinforced seams and modest sleeve detailing. Two long, fitted fabric sleeves extend to wrist cuffs, held in a symmetrical T-pose with both sleeves horizontal at shoulder height. The garment ends at a level waist joining edge to match separate trousers. Show the entire upper garment, collar, both sleeves and waist edge unobstructed in an orthographic frontal fashion-product view. Smooth matte clean fabric, balanced proportions, crisp material transitions, flat studio lighting, pale gray backdrop.",
+        "negative": "No character face, bare skin, hands, utility belt, pockets, holsters, thigh straps, tools, boots, extra limbs, bulky armor, chest attachments, lettering or watermark."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 512,
+        "reference_height": 512,
+        "reference_mode": "visual_only"
+      },
+      "quality_gates": [
+        "Reference shows a distinct complete collar, torso, two sleeves and clearly visible level waist joining edge",
+        "Forest-green fabric and charcoal panels continue smoothly and symmetrically to side seams; no pale slabs or random stripes",
+        "No embedded belt, tools, holsters, pockets or external equipment",
+        "Treat as a design reference until independent mesh fitting, collision clearance and visual checks are implemented"
+      ],
+      "notes": "Designed to pair with lower_outfit through a shared waist material/edge. Region-only: isolated shape generation is experimental and does not automatically produce a wearable fitted surface.",
+      "reference_view": "upper_outfit_closeup"
+    },
+    {
+      "id": "lower_outfit",
+      "label": "Lower engineering jumpsuit garment — waist, trouser legs and ankle cuffs",
+      "kind": "region",
+      "parent": "torso_pelvis",
+      "attachment": "hips, waist and legs surface (fit not implemented)",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "geometry": "Separate fitted lower garment with continuous waist and two trouser legs following base-body hips, thighs, knees and shins. Retain matching waist seam to upper outfit, clear ankle hems and closed continuous cloth over thighs. Geometry fitting to Mara's body is not implemented yet.",
+        "texture": "Same matte forest-green material and charcoal-gray side insets as upper garment. Smooth thigh and seat panel transitions, subtle reinforced knee construction without random pale streaks.",
+        "reference": "Isolated lower section of a fitted stylized-realistic female spacecraft engineer's forest-green jumpsuit on a neutral, featureless display form, shown from a clean level waistband through hips, both legs and close-fitting ankle cuffs. The fitted trousers have two complete, symmetrical legs straight and hip-width apart in a neutral standing pose; continuous smooth matte forest-green fabric across hips, seat, crotch and thighs, restrained charcoal-gray side inserts aligned vertically with the upper garment, subtle purposeful knee reinforcement and seams. The waist edge is level and precisely designed to meet a matching upper jumpsuit garment. Show the full waist, both legs and ankle cuffs in a straight-on orthographic fashion-product view, crisp material boundaries, neutral even studio lighting, pale gray seamless background.",
+        "negative": "No face, torso, utility belt, holsters, thigh pouches, badges, pockets, tools, shoes, boots, extra legs, bare skin, labels or text."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 576,
+        "reference_mode": "visual_only"
+      },
+      "quality_gates": [
+        "Reference shows one complete waist opening, hips, two distinct full-length trouser legs and ankle cuffs",
+        "Smooth continuous fabric over waist, crotch, hips, inner/outer thighs and knees; no embedded pouches or holsters",
+        "Matching forest-green/charcoal palette and compatible side-panel layout with upper_outfit",
+        "Treat as a design reference until geometry is fitted against Mara's measured body and intersections are inspected"
+      ],
+      "notes": "Designed to pair with upper_outfit. This is a reference-only region; generating an isolated Hunyuan shape does not fit it to the body.",
+      "reference_view": "lower_outfit_closeup"
+    },
+    {
+      "id": "equipment",
+      "label": "Equipment / accessories",
+      "kind": "attachment",
+      "parent": "torso_pelvis",
+      "attachment": "to be defined",
+      "reference_ids": [
+        "mara_master_front"
+      ],
+      "prompts": {
+        "geometry": "Separate small tool pouches and equipment attached at the belt, no handheld items.",
+        "texture": "",
+        "reference": "Isolated detailed view of practical spacecraft repair belt equipment: pouches, holsters and small metallic repair tools, clean and functional geometry, on a neutral studio background without a full person.",
+        "negative": "No full person, no duplicated tools, no text, no watermark, no kiosk."
+      },
+      "generation": {
+        "geometry_backend": null,
+        "texture_backend": null,
+        "shape_steps": null,
+        "target_triangles": null,
+        "view_resolution": null,
+        "reference_width": 384,
+        "reference_height": 384
+      },
+      "quality_gates": [
+        "Accessories do not intersect the body unexpectedly"
+      ],
+      "notes": "Add or remove accessories as needed; parent and attachment are descriptive for now.",
+      "reference_view": "equipment_closeup"
+    }
+  ],
+  "assembly": {
+    "units": "meters",
+    "up_axis": "+Z",
+    "forward_axis": "-Y",
+    "rest_pose": "T-pose",
+    "rigging_required": true,
+    "notes": "Anatomical T-pose, metres, +Z up and -Y forward. Modular component frames and joining landmarks must be established and reviewed before rigging. Existing two-part body/head assembly is incompatible with this card until adapted."
+  },
+  "provenance": {
+    "creator": "Example adapted from the original Mara Venn prompt supplied by the project creator",
+    "license": "",
+    "notes": "No copyrighted image assets are included with this public example."
+  },
+  "notes": [
+    "This is a consumer example; AI3D itself remains project-independent.",
+    "Reference images and generated GLBs are intentionally not bundled with this source card.",
+    "Reference locked to the original approved Qwen image; do not invoke the text-only reference stage for component production."
+  ]
+}
