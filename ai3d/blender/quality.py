@@ -211,13 +211,27 @@ def main():
             arm = armatures[0]
             if arm.animation_data is None:
                 arm.animation_data_create()
-            arm.animation_data.action = bpy.data.actions[0]
-            frames = [int(f) for f in a.frames.split(",") if f.strip()]
-            for f in frames:
-                bpy.context.scene.frame_set(f)
-                out = a.previews / f"{stem}_pose{f:03d}.png"
-                render_view(cam, meshes, "threequarter", out)
-                rendered.append(out.name)
+            by_name = {act.name: act for act in bpy.data.actions}
+            test = next((act for name, act in by_name.items() if "pose_test" in name), None)
+            idle = next((act for name, act in by_name.items() if name.startswith("idle")), None)
+            if idle is not None:
+                arm.animation_data.action = idle
+                for f in (1, 49):
+                    bpy.context.scene.frame_set(f)
+                    out = a.previews / f"{stem}_idle{f:03d}.png"
+                    render_view(cam, meshes, "threequarter", out)
+                    rendered.append(out.name)
+            if test is not None:
+                arm.animation_data.action = test
+                frames = [int(f) for f in a.frames.split(",") if f.strip()]
+                for f in frames:
+                    bpy.context.scene.frame_set(f)
+                    out = a.previews / f"{stem}_pose{f:03d}.png"
+                    render_view(cam, meshes, "threequarter", out)
+                    rendered.append(out.name)
+            arm.animation_data.action = None
+            for pbone in arm.pose.bones:
+                pbone.rotation_quaternion = (1, 0, 0, 0)
             bpy.context.scene.frame_set(0)
         for view in ("front", "side", "back"):
             out = a.previews / f"{stem}_{view}.png"

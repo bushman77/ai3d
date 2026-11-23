@@ -18,6 +18,13 @@ BLENDER = os.environ.get("AI3D_BLENDER") or shutil.which("blender")
 FIXTURE = Path(__file__).with_name("blender_fixture.py")
 
 
+def gltf_json(path):
+    import struct
+    data = Path(path).read_bytes()
+    length = struct.unpack("<I", data[12:16])[0]
+    return json.loads(data[20:20 + length])
+
+
 def blender(script_cmd):
     result = subprocess.run(script_cmd, capture_output=True, text=True, timeout=900)
     if result.returncode != 0:
@@ -76,6 +83,10 @@ class BlenderStageTests(unittest.TestCase):
         self.assertFalse(r["turned_to_face_minus_y"])
         self.assertEqual(r["arm_leak"], 0.0)
         self.assertTrue(rigged.with_suffix(".blend").is_file())
+        self.assertEqual(r["actions"], ["idle", "ai3d_pose_test"])
+        self.assertGreaterEqual(r["idle_arm_angle_deg"], 12.0)
+        names = [anim["name"] for anim in gltf_json(rigged)["animations"]]
+        self.assertIn("idle", names)
 
         self.stage("quality.py", ["--mesh", rigged, "--stats", self.dir / "q.json"])
         q = self.stats("q.json")
@@ -122,6 +133,7 @@ class BlenderStageTests(unittest.TestCase):
         r = self.stats("back_rig.json")
         self.assertTrue(r["turned_to_face_minus_y"])
         self.assertIsNone(r["test_action"])
+        self.assertEqual(r["actions"], ["idle"])
 
 
 if __name__ == "__main__":

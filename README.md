@@ -121,6 +121,11 @@ Foot, ToeBase). Three.js strips the colon, so tracks named
 Mixamo's T-pose. The character is turned to face −Y (glTF forward) if the
 toes point the other way. `07_rigged.blend` is there for hand fixes.
 
+The GLB carries two animations: **`idle`** (8 s seamless loop: arms relaxed
+at the sides, angled to clear the hips; breathing; a slow look around) for
+use in game, and `ai3d_pose_test` for the report's deformation check. For a
+game build with smaller textures: `--set retopo.texture_size=1024`.
+
 ## Models you need
 
 Already used before: Qwen-Image-2512 GGUF + Qwen2.5-VL + VAE,

@@ -80,8 +80,10 @@ def slab(points, z, half):
 
 
 def torso_half_width(points, z, H):
+    # Gap tolerance must exceed the vertex spacing of an ~8k-quad mesh (a few
+    # cm across the belly), yet stay below the torso-to-arm gap.
     xs = [p.x for p in slab(points, z, 0.01 * H)]
-    for group in runs(xs, 0.012 * H):
+    for group in runs(xs, 0.03 * H):
         if group[0] <= 0.0 <= group[-1]:
             return max(abs(group[0]), abs(group[-1]))
     return 0.11 * H
@@ -181,6 +183,7 @@ def landmarks(obj):
     chest_half = torso_half_width(pts, chest_z, H)
     shoulder_guess_z = zmin + 0.815 * H
     lm["Hips"] = Vector((0.0, torso_y, hip_z + 0.01 * H))
+    lm["_hip_half"] = max(torso_half_width(pts, crotch + k * 0.03 * H, H) for k in range(5))
     lm["Spine"] = Vector((0.0, torso_y, hip_z + 0.07 * H))
     lm["Spine1"] = Vector((0.0, torso_y, hip_z + 0.14 * H))
     lm["Spine2"] = Vector((0.0, torso_y, hip_z + 0.21 * H))
@@ -495,6 +498,80 @@ def world_rotation_to_local(pbone, axis, degrees):
     return (rest.inverted() @ q @ rest).to_quaternion()
 
 
+def hang_angle(lm, side):
+    """Degrees out from vertical so the hanging hand clears the hips."""
+    H = lm["_height"]
+    root, tip = lm[f"{side}Arm"], lm[f"{side}HandEnd"]
+    length = max((tip - root).length, 1e-6)
+    clear = lm["_hip_half"] + 0.04 * H - abs(root.x)  # hip edge + hand thickness
+    need = math.degrees(math.asin(max(-1.0, min(1.0, clear / length))))
+    return max(12.0, min(35.0, need + 3.0))
+
+
+def add_idle_action(arm, prefix, lm, seconds=8.0, fps=24):
+    """Looping game idle: arms relaxed at the sides, breathing, slow look-around.
+
+    Arms are rotated from their rest direction (T or A pose) to hang down and
+    slightly out, so the hands clear the hips. Every curve starts and ends on
+    the same value, so the clip loops seamlessly.
+    """
+    select_only([arm])
+    bpy.ops.object.mode_set(mode="POSE")
+    action = bpy.data.actions.new("idle")
+    action.use_fake_user = True
+    arm.animation_data_create()
+    arm.animation_data.action = action
+    pb = arm.pose.bones
+    frames = int(seconds * fps)
+
+    def world_quat_to_local(pbone, q):
+        rest = pbone.bone.matrix_local.to_3x3()
+        return (rest.inverted() @ q.to_matrix() @ rest).to_quaternion()
+
+    hang = {}
+    for side, s in SIDES:
+        bone = pb.get(prefix + side + "Arm")
+        if bone is None:
+            continue
+        d = (bone.bone.tail_local - bone.bone.head_local).normalized()
+        angle = math.radians(hang_angle(lm, side))
+        target = Vector((s * math.sin(angle), 0.0, -math.cos(angle)))
+        hang[bone.name] = world_quat_to_local(bone, d.rotation_difference(target))
+
+    def pose_at(t):
+        """Rotations (local quaternions) at time t seconds."""
+        phase = 2 * math.pi * t / seconds
+        out = dict(hang)
+        breathe = math.sin(phase * 2)          # two breaths per loop
+        look = math.sin(phase)                 # one slow look left/right per loop
+        for name, axis, deg in (
+            ("Spine1", (1, 0, 0), 1.2 * breathe),
+            ("Spine2", (1, 0, 0), 1.0 * breathe),
+            ("Neck", (0, 0, 1), 6.0 * look),
+            ("Head", (0, 0, 1), 8.0 * look),
+            ("Head", (1, 0, 0), 3.0 * math.sin(phase * 3)),
+            ("Hips", (0, 0, 1), 1.5 * math.sin(phase)),
+        ):
+            bone = pb.get(prefix + name)
+            if bone is None:
+                continue
+            q = world_rotation_to_local(bone, Vector(axis), deg)
+            out[bone.name] = out[bone.name] @ q if bone.name in out else q
+        return out
+
+    for frame in range(1, frames + 2, 6):
+        t = (frame - 1) / fps
+        rots = pose_at(t % seconds)
+        for bone in pb:
+            bone.rotation_mode = "QUATERNION"
+            bone.rotation_quaternion = rots.get(bone.name, Quaternion())
+            bone.keyframe_insert("rotation_quaternion", frame=frame)
+    for bone in pb:
+        bone.rotation_quaternion = Quaternion()
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return action.name
+
+
 def add_test_action(arm, prefix):
     select_only([arm])
     bpy.ops.object.mode_set(mode="POSE")
@@ -596,11 +673,14 @@ def main():
     bpy.ops.object.mode_set(mode="OBJECT")
     unweighted, max_inf, unused = weight_report(body, deform)
 
-    action = None
+    actions = [add_idle_action(arm, a.prefix, lm)]
     if not a.no_test_animation:
-        action = add_test_action(arm, a.prefix)
+        actions.append(add_test_action(arm, a.prefix))
+    for act in bpy.data.actions:
+        act.use_fake_user = True
+    action = actions[-1]
 
-    export_glb(a.output, [body, arm], animations=action is not None, apply_modifiers=False)
+    export_glb(a.output, [body, arm], animations=True, apply_modifiers=False)
     blend = a.output.with_suffix(".blend")
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
 
@@ -624,7 +704,9 @@ def main():
         "vertices_trimmed": trimmed,
         "max_influences": max_inf,
         "deform_bones_without_vertices": unused,
-        "test_action": action,
+        "test_action": action if not a.no_test_animation else None,
+        "actions": actions,
+        "idle_arm_angle_deg": round(hang_angle(lm, "Left"), 1),
         "height_m": round(H, 4),
         "blend": str(blend),
     }
