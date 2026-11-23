@@ -66,7 +66,8 @@ class BlenderStageTests(unittest.TestCase):
 
         self.stage("rig.py", ["--input", game, "--output", rigged, "--stats", self.dir / "rig.json"])
         r = self.stats("rig.json")
-        self.assertTrue(r["heat_weights_ok"])
+        self.assertEqual(r["weight_method"], "heat")
+        self.assertLess(r["unweighted_after_heat_fraction"], 0.02)
         self.assertEqual(r["unweighted_final"], 0)
         self.assertLessEqual(r["max_influences"], 4)
         self.assertEqual(r["deform_bones"], 22)
@@ -80,6 +81,19 @@ class BlenderStageTests(unittest.TestCase):
         self.assertEqual(q["mesh"]["boundary_edges"], 0)
         self.assertEqual(q["rig"]["bones"], 25)
         self.assertAlmostEqual(q["mesh"]["size_m"][2], 1.74, delta=0.05)
+
+    def test_decimated_triangle_mesh_still_gets_heat_weights(self):
+        # Regression: glTF splits vertices at UV seams; heat weighting failed on
+        # 100% of vertices for decimated meshes until the rig stage welded them.
+        src = self.dir / "mannequin-y.glb"
+        game, rigged = self.dir / "dec_game.glb", self.dir / "dec_rigged.glb"
+        self.stage("retopo_bake.py", ["--input", src, "--output", game, "--method", "decimate",
+                                      "--target-faces", 4000, "--texture-size", 128, "--samples", 1])
+        self.stage("rig.py", ["--input", game, "--output", rigged, "--no-test-animation",
+                              "--stats", self.dir / "dec_rig.json"])
+        r = self.stats("dec_rig.json")
+        self.assertLess(r["unweighted_after_heat_fraction"], 0.02)
+        self.assertEqual(r["unweighted_final"], 0)
 
     def test_backwards_character_is_turned(self):
         src = self.dir / "mannequin+y.glb"

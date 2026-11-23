@@ -290,8 +290,65 @@ def weight_report(mesh_obj, deform_names):
     return unweighted, max_inf, sorted(set(deform_names) - used)
 
 
+def weld(obj):
+    """Join vertices glTF split at UV seams and drop degenerate faces.
+
+    Heat weighting fails outright ("failed to find solution") on a mesh cut
+    into islands along its UV seams. Blender keeps UVs per face corner, so
+    welding does not damage the texture layout.
+    """
+    select_only([obj])
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.remove_doubles(threshold=1e-4)
+    bpy.ops.mesh.dissolve_degenerate(threshold=1e-4)
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def heat(mesh_obj, arm):
+    select_only([mesh_obj, arm], active=arm)
+    bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+
+
+def heat_via_proxy(body, arm, deform_names, height):
+    """Heat-weight a voxel-remeshed copy, then copy weights to the real mesh."""
+    from mathutils.kdtree import KDTree
+    proxy = body.copy()
+    proxy.data = body.data.copy()
+    bpy.context.collection.objects.link(proxy)
+    proxy.parent = None
+    proxy.modifiers.clear()
+    proxy.vertex_groups.clear()
+    select_only([proxy])
+    proxy.data.remesh_voxel_size = 0.006 * height
+    bpy.ops.object.voxel_remesh()
+    weld(proxy)
+    heat(proxy, arm)
+    tree = KDTree(len(proxy.data.vertices))
+    for v in proxy.data.vertices:
+        tree.insert(proxy.matrix_world @ v.co, v.index)
+    tree.balance()
+    names = {g.index: g.name for g in proxy.vertex_groups}
+    source = [[(names[g.group], g.weight) for g in v.groups if names.get(g.group) in deform_names]
+              for v in proxy.data.vertices]
+    for g in list(body.vertex_groups):
+        body.vertex_groups.remove(g)
+    mw = body.matrix_world
+    for v in body.data.vertices:
+        total = {}
+        for _co, idx, dist in tree.find_n(mw @ v.co, 3):
+            w = 1.0 / (dist + 1e-4)
+            for name, weight in source[idx]:
+                total[name] = total.get(name, 0.0) + weight * w
+        for name, weight in total.items():
+            group = body.vertex_groups.get(name) or body.vertex_groups.new(name=name)
+            group.add([v.index], weight, "REPLACE")
+    bpy.data.objects.remove(proxy, do_unlink=True)
+
+
 def fill_unweighted(mesh_obj, arm, deform_names):
-    """Give vertices heat weighting missed to their nearest deform bone."""
+    """Last resort for vertices with no weight: blend the two nearest bones."""
     groups = {g.index: g.name for g in mesh_obj.vertex_groups}
     segments = []
     for bone in arm.data.bones:
@@ -304,9 +361,12 @@ def fill_unweighted(mesh_obj, arm, deform_names):
         if any(g.weight > 1e-4 and groups.get(g.group) in deform_names for g in v.groups):
             continue
         p = mw @ v.co
-        name = min(segments, key=lambda s: segment_distance(p, s[1], s[2]))[0]
-        group = mesh_obj.vertex_groups.get(name) or mesh_obj.vertex_groups.new(name=name)
-        group.add([v.index], 1.0, "REPLACE")
+        near = sorted((segment_distance(p, s[1], s[2]), s[0]) for s in segments)[:2]
+        inv = [(1.0 / (d + 1e-4) ** 4, name) for d, name in near]
+        total = sum(w for w, _ in inv)
+        for w, name in inv:
+            group = mesh_obj.vertex_groups.get(name) or mesh_obj.vertex_groups.new(name=name)
+            group.add([v.index], w / total, "REPLACE")
         fixed += 1
     return fixed
 
@@ -383,19 +443,23 @@ def main():
     select_only([body])
     bpy.ops.object.transform_apply(location=True)
 
+    weld(body)
     lm = landmarks(body)
     arm = build_armature(lm, a.prefix)
     deform = {b.name for b in arm.data.bones if b.use_deform}
 
-    select_only([body, arm], active=arm)
-    heat_ok = True
+    method = "heat"
     try:
-        bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+        heat(body, arm)
     except RuntimeError as exc:
-        heat_ok = False
         print("[rig] automatic weights failed:", exc, flush=True)
         select_only([body, arm], active=arm)
         bpy.ops.object.parent_set(type="ARMATURE_NAME")
+    missed, _, _ = weight_report(body, deform)
+    if missed / max(1, len(body.data.vertices)) > 0.05:
+        print(f"[rig] heat weights missed {missed} vertices; retrying on a voxel proxy", flush=True)
+        heat_via_proxy(body, arm, deform, lm["_height"])
+        method = "heat (voxel proxy)"
     unweighted_heat, _, _ = weight_report(body, deform)
     filled = fill_unweighted(body, arm, deform)
 
@@ -421,7 +485,7 @@ def main():
         "bone_prefix": a.prefix,
         "turned_to_face_minus_y": turned,
         "facing_detected": {1: "+Y", -1: "-Y", 0: "unknown (assumed -Y)"}[sign],
-        "heat_weights_ok": heat_ok,
+        "weight_method": method,
         "vertices": total,
         "unweighted_after_heat_fraction": round(unweighted_heat / max(1, total), 4),
         "nearest_bone_filled": filled,

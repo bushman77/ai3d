@@ -433,8 +433,9 @@ def warnings_for(stats: dict) -> list[str]:
     r = stats.get("rig", {})
     if r:
         if r.get("unweighted_after_heat_fraction", 0) > 0.02:
-            out.append("automatic weights missed some vertices (filled by nearest bone); "
-                       "check the pose previews")
+            pct = round(100 * r["unweighted_after_heat_fraction"])
+            out.append(f"automatic weights missed {pct}% of vertices (filled from the two "
+                       "nearest bones); check the pose previews")
         if r.get("facing_detected", "").startswith("unknown"):
             out.append("could not tell which way the character faces; assumed -Y")
         if r.get("deform_bones_without_vertices"):
