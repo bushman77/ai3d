@@ -36,6 +36,7 @@ def build_hunyuan_shape_command(
     model: str = "mini", model_path: Path | None = None, steps: int = 30,
     octree_resolution: int = 256, num_chunks: int = 8000,
     guidance_scale: float = 5.0, seed: int = 42, remove_floaters: bool = True,
+    low_vram: bool = False,
 ) -> list[str]:
     """Command for the tracked backends/hunyuan_shape.py (single or multi-view)."""
     if model not in ("mini", "mini-turbo", "mv", "mv-turbo"):
@@ -59,4 +60,6 @@ def build_hunyuan_shape_command(
         cmd += ["--model-path", str(model_path)]
     if not remove_floaters:
         cmd.append("--keep-floaters")
+    if low_vram:
+        cmd.append("--low-vram")
     return cmd

@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
                 model_path=plan.hunyuan_model_path(model), steps=S["steps"],
                 octree_resolution=S["octree_resolution"], num_chunks=S["num_chunks"],
                 guidance_scale=S["guidance_scale"], seed=seed,
-                remove_floaters=S["remove_floaters"])
+                remove_floaters=S["remove_floaters"], low_vram=S["low_vram"])
             env = os.environ.copy()
             env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
             runner.run_cmd("shape", [front_cut, *side_views.values(), SHAPE_SCRIPT], [raw],

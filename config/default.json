@@ -33,13 +33,14 @@
     "cfg_scale": 2.5
   },
   "shape": {
-    "_about": "model: auto picks mv (multi-view) when side/back views exist, otherwise mini. Choices: auto, mini, mini-turbo, mv, mv-turbo.",
+    "_about": "model: auto picks mv (multi-view) when side/back views exist, otherwise mini. Choices: auto, mini, mini-turbo, mv, mv-turbo. low_vram keeps only the diffusion model on the GPU while sampling (needed on 6 GB). num_chunks only affects mesh extraction after sampling.",
     "model": "auto",
     "steps": 30,
     "octree_resolution": 256,
     "num_chunks": 8000,
     "guidance_scale": 5.0,
-    "remove_floaters": true
+    "remove_floaters": true,
+    "low_vram": true
   },
   "paint_mesh": {
     "target_faces": 40000

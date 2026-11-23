@@ -38,6 +38,10 @@ def parse():
     p.add_argument("--guidance-scale", type=float, default=5.0)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--keep-floaters", action="store_true")
+    p.add_argument("--low-vram", action="store_true",
+                   help="Keep only the diffusion model on the GPU while sampling: the image "
+                        "encoder leaves the GPU after encoding, the shape decoder joins it "
+                        "only after sampling (saves ~1 GB)")
     a = p.parse_args()
     if a.front is None:
         p.error("--front is required")
@@ -58,6 +62,36 @@ def parse():
     return a
 
 
+def enable_low_vram(pipe, torch):
+    """Swap pipeline parts on/off the GPU around the sampling loop.
+
+    pipe.device stays cuda (latents and conditions are created there); only the
+    modules move. Wraps encode_cond and _export, which __call__ looks up on the
+    instance.
+    """
+    pipe.vae.to("cpu")
+    torch.cuda.empty_cache()
+    encode_cond, export = pipe.encode_cond, pipe._export
+
+    def encode_then_free(*args, **kwargs):
+        out = encode_cond(*args, **kwargs)
+        pipe.conditioner.to("cpu")
+        torch.cuda.empty_cache()
+        print(f"[shape] low-vram: encoder off GPU, "
+              f"{torch.cuda.memory_allocated() / 2**30:.2f} GiB in use for sampling", flush=True)
+        return out
+
+    def free_then_export(*args, **kwargs):
+        pipe.model.to("cpu")
+        torch.cuda.empty_cache()
+        pipe.vae.to("cuda")
+        return export(*args, **kwargs)
+
+    pipe.encode_cond = encode_then_free
+    pipe._export = free_then_export
+    print("[shape] low-vram mode on", flush=True)
+
+
 def main():
     a = parse()
     import torch
@@ -75,6 +109,9 @@ def main():
     )
     if turbo and hasattr(pipe, "enable_flashvdm"):
         pipe.enable_flashvdm()
+
+    if a.low_vram:
+        enable_low_vram(pipe, torch)
 
     if multiview:
         image = {v: Image.open(getattr(a, v)).convert("RGBA") for v in VIEWS if getattr(a, v)}

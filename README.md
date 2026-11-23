@@ -148,11 +148,21 @@ build must support Qwen-Image-Edit: `sd-cli --help` should list `-r` and
 
 **6 GB notes.** Hunyuan3D-2mv is 1.1B parameters, the same size as
 standard Hunyuan3D-2, which Tencent rates at 6 GB for shape. That's tight
-on a 6 GB card. If it runs out of memory, try in this order:
-`--set shape.num_chunks=4000`, `--set shape.model=mv-turbo`, then
-`--set shape.model=mini` (front view only). Paint3D defaults are higher than
-before (4 views at 384 px, 2K texture). If Paint3D runs out of memory, use
-`--config config/fast_6gb.json`.
+on a 6 GB card, so `shape.low_vram` (on by default) keeps only the diffusion
+model on the GPU while it samples. If shape still runs out of memory, try in
+this order:
+
+1. Fewer views: `--set 'views.angles=["left","back"]'`
+2. The guidance-distilled turbo model, which runs one pass per step instead
+   of two (another download):
+   `hf download tencent/Hunyuan3D-2mv --include "hunyuan3d-dit-v2-mv-turbo/*" --local-dir ~/ai3d/models/Hunyuan3D-2mv`
+   then `--set shape.model=mv-turbo --set shape.steps=10`
+3. Front view only: `--set shape.model=mini`
+
+`shape.num_chunks` only matters after sampling, when the mesh is extracted.
+
+Paint3D defaults are higher than before (4 views at 384 px, 2K texture). If
+Paint3D runs out of memory, use `--config config/fast_6gb.json`.
 
 ## Other commands
 
