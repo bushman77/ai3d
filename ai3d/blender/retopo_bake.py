@@ -77,8 +77,16 @@ def non_manifold_count(obj):
 
 
 def make_manifold(obj, rounds=4):
-    """Remove the pinched vertices/edges voxel remesh leaves where thin parts touch."""
+    """Remove the pinched vertices/edges voxel remesh leaves where thin parts touch.
+
+    Also collapses near-zero-length edges: QuadriFlow refuses any mesh with an
+    edge shorter than 1e-4, and voxel remesh produces a few of those.
+    """
     select_only([obj])
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.dissolve_degenerate(threshold=2e-4)
+    bpy.ops.object.mode_set(mode="OBJECT")
     for _ in range(rounds):
         if non_manifold_count(obj) == 0:
             # QuadriFlow also rejects inconsistent face winding.
@@ -120,7 +128,7 @@ def quadriflow(obj, faces, seed):
             smooth_normals=False, mode="FACES", seed=seed,
         )
     except RuntimeError as exc:
-        print("[retopo] QuadriFlow error:", exc, flush=True)
+        print("[retopo] QuadriFlow error:", str(exc).strip(), flush=True)
         return False
     after = len(obj.data.polygons)
     ok = "FINISHED" in result and after > 0 and after != before
