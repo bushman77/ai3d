@@ -354,6 +354,8 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             "--method", G["method"], "--voxel-ratio", G["voxel_ratio"],
             "--texture-size", G["texture_size"], "--samples", G["bake_samples"],
             "--cage-ratio", G["cage_ratio"], "--device", G["device"], "--seed", seed,
+            "--head-boost", G["head_boost"], "--image-format", G["image_format"],
+            "--jpeg-quality", G["jpeg_quality"],
             "--stats", stats_dir / "game.json"])
     else:
         cmd = build_finalize_command(plan.blender, FINALIZE_SCRIPT, painted, game,
@@ -366,6 +368,7 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
     rigged = home / "07_rigged.glb"
     if cfg["rig"]["enabled"]:
         args = ["--input", game, "--output", rigged, "--prefix", cfg["rig"]["bone_prefix"],
+                "--image-format", G["image_format"], "--jpeg-quality", G["jpeg_quality"],
                 "--stats", stats_dir / "rig.json"]
         if not cfg["rig"]["test_animation"]:
             args.append("--no-test-animation")
@@ -427,6 +430,9 @@ def warnings_for(stats: dict) -> list[str]:
     g = stats.get("game", {})
     if str(g.get("method", "")).startswith("decimate (quadriflow"):
         out.append("QuadriFlow failed; the game mesh was decimated instead (triangles, not quads)")
+    if g.get("low_pieces") and g.get("shape_pieces") and g["low_pieces"] > g["shape_pieces"]:
+        out.append(f"game mesh has {g['low_pieces']} pieces but the shape had "
+                   f"{g['shape_pieces']}: a limb came loose")
     if (g.get("surface_error_max") or 0) > 0.03:
         out.append(f"low-poly mesh misses detail: max surface error {g['surface_error_max']:.3f} "
                    "of height; raise retopo.target_faces")

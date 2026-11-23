@@ -80,7 +80,7 @@ class MakeTests(unittest.TestCase):
         full = pipe.calls[2]
         self.assertNotIn("--stop-after", full)
         self.assertIn("--resume", full)
-        self.assertIn("retopo.texture_size=1024", sets(full))
+        self.assertIn("retopo.texture_size=2048", sets(full))
         installed = self.sunracer / "apps/sunracer_web/priv/static/images/game/station/mara_venn.glb"
         self.assertEqual(installed.read_bytes(), (self.home / "07_rigged.glb").read_bytes())
         self.assertIn(self.home / "index.html", self.opened)

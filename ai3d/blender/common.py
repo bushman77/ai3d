@@ -60,14 +60,24 @@ def triangle_count(obj) -> int:
     return sum(len(p.vertices) - 2 for p in obj.data.polygons)
 
 
-def export_glb(path: Path, objects, *, animations: bool = False, apply_modifiers: bool = True) -> None:
-    """Export only `objects`. Never apply modifiers on skinned exports."""
+def export_glb(path: Path, objects, *, animations: bool = False, apply_modifiers: bool = True,
+               image_format: str = "AUTO", jpeg_quality: int = 90) -> None:
+    """Export only `objects`. Never apply modifiers on skinned exports.
+
+    image_format JPEG makes textures several times smaller than PNG (a 2048 px
+    character fits a 5 MB budget). Options missing from older Blender
+    versions are simply not passed.
+    """
     select_only(objects)
     path.parent.mkdir(parents=True, exist_ok=True)
+    known = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
+    kwargs = {"export_image_format": image_format, "export_jpeg_quality": jpeg_quality,
+              "export_image_quality": jpeg_quality}
+    kwargs = {k: v for k, v in kwargs.items() if k in known}
     bpy.ops.export_scene.gltf(
         filepath=str(path), export_format="GLB", use_selection=True,
         export_apply=apply_modifiers, export_animations=animations,
-        export_yup=True,
+        export_yup=True, **kwargs,
     )
 
 

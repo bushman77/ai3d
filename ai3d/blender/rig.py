@@ -38,6 +38,8 @@ def parse():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--prefix", default="mixamorig:")
     p.add_argument("--no-test-animation", action="store_true")
+    p.add_argument("--image-format", choices=("JPEG", "AUTO"), default="JPEG")
+    p.add_argument("--jpeg-quality", type=int, default=90)
     p.add_argument("--stats", type=Path)
     a = p.parse_args(script_args())
     if a.input.resolve() == a.output.resolve():
@@ -680,7 +682,8 @@ def main():
         act.use_fake_user = True
     action = actions[-1]
 
-    export_glb(a.output, [body, arm], animations=True, apply_modifiers=False)
+    export_glb(a.output, [body, arm], animations=True, apply_modifiers=False,
+               image_format=a.image_format, jpeg_quality=a.jpeg_quality)
     blend = a.output.with_suffix(".blend")
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
 

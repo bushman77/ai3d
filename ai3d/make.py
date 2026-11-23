@@ -10,7 +10,7 @@ What it does, in order (everything we learned building Mara):
    them, or name the ones to redo (each redo uses a new random seed).
    What to look for is printed next to the prompt.
 2. Builds the rest: shape -> paint -> game mesh -> rig -> report, with game
-   textures at 1024 px by default.
+   textures at 2048 px (JPEG) by default.
 3. If the shape stage runs out of GPU memory it retries, in order: fewer
    views (left + back), mv-turbo (only if downloaded), front-only mini.
    If Paint3D runs out of memory it retries with the light 6 GB settings.
@@ -67,8 +67,8 @@ def arguments(argv):
                    help="Copy the result to SunRacer as station/NAME.glb (e.g. mara_venn)")
     p.add_argument("--sunracer", type=Path, default=SUNRACER,
                    help="SunRacer checkout (default: ~/SunRacer)")
-    p.add_argument("--texture-size", type=int, default=1024,
-                   help="Game texture size (default 1024 for the game's 5 MB target)")
+    p.add_argument("--texture-size", type=int, default=2048,
+                   help="Game texture size (default 2048; JPEG keeps it near the 5 MB target)")
     p.add_argument("--config", type=Path, help="Profile merged over config/default.json")
     p.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE")
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
@@ -268,7 +268,7 @@ class Maker:
         size = target.stat().st_size / 1e6
         self.say(f"\n=== 4. Installed ===\n  {target}  ({size:.1f} MB)")
         if size > SIZE_TARGET_MB:
-            self.say(f"  Over the {SIZE_TARGET_MB:.0f} MB target; try --texture-size 512.")
+            self.say(f"  Over the {SIZE_TARGET_MB:.0f} MB target; try --texture-size 1024.")
         self.say("  Reload the game and walk to the character. To ship it:\n"
                  f"    cd {self.a.sunracer}\n    git add {STATION_DIR / target.name}\n"
                  f"    git commit -m \"Add {name} model\"")

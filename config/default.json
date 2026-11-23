@@ -57,7 +57,7 @@
     "debug": false
   },
   "retopo": {
-    "_about": "Builds a clean, watertight low-poly mesh and bakes the painted high-poly colour, normal and roughness onto it. method: quadriflow (quads) or decimate (old behaviour).",
+    "_about": "Builds a clean, watertight low-poly mesh and bakes the painted high-poly colour, normal and roughness onto it. method: quadriflow (quads) or decimate (old behaviour). head_boost gives the head this many times more texture per centimetre (1 = off). image_format JPEG keeps 2048 px textures under ~5 MB; AUTO keeps PNG.",
     "enabled": true,
     "method": "quadriflow",
     "target_faces": 8000,
@@ -65,7 +65,10 @@
     "texture_size": 2048,
     "bake_samples": 4,
     "cage_ratio": 0.012,
-    "device": "CPU"
+    "device": "CPU",
+    "head_boost": 2.5,
+    "image_format": "JPEG",
+    "jpeg_quality": 90
   },
   "rig": {
     "_about": "Mixamo-compatible humanoid skeleton with Blender automatic (heat) weights. Bone names use the prefix so Mixamo animations retarget by name in Three.js.",

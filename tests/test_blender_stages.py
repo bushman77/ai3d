@@ -66,6 +66,10 @@ class BlenderStageTests(unittest.TestCase):
                                       "--stats", self.dir / "game.json"])
         g = self.stats("game.json")
         self.assertEqual(set(g["baked"]), {"basecolor", "normal", "roughness"})
+        self.assertEqual(g["low_pieces"], 1)
+        self.assertEqual(g["shape_pieces"], 1)
+        self.assertGreater(g["head_uv_share"], 0.15)  # head boost on
+        self.assertGreater(g["source_gutters_filled"]["fixture_albedo"], 0.1)
         if g["method"] == "quadriflow":
             self.assertGreater(g["low_quads_fraction"], 0.95)
         self.assertLess(g["surface_error_mean"], 0.01)

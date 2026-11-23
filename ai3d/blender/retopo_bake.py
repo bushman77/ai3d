@@ -43,6 +43,12 @@ def parse():
                    help="Bake ray distance as a fraction of the model height")
     p.add_argument("--device", choices=("CPU", "GPU"), default="CPU")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--head-boost", type=float, default=2.5,
+                   help="Scale the head's UV islands by this before packing, so the face "
+                        "gets more texture pixels (1 = off)")
+    p.add_argument("--image-format", choices=("JPEG", "AUTO"), default="JPEG",
+                   help="Texture format inside the GLB (JPEG is ~5x smaller than PNG)")
+    p.add_argument("--jpeg-quality", type=int, default=90)
     p.add_argument("--stats", type=Path)
     a = p.parse_args(script_args())
     if a.target_faces < 100 or a.texture_size < 64:
@@ -74,6 +80,31 @@ def non_manifold_count(obj):
     bad = sum(1 for e in bm.edges if not e.is_manifold) + sum(1 for v in bm.verts if not v.is_manifold)
     bm.free()
     return bad
+
+
+def count_pieces(obj):
+    """Connected pieces of a mesh (vertices at the same spot count as joined)."""
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bm.verts.ensure_lookup_table()
+    seen, pieces = set(), 0
+    for v in bm.verts:
+        if v.index in seen:
+            continue
+        pieces += 1
+        stack = [v]
+        seen.add(v.index)
+        while stack:
+            x = stack.pop()
+            for e in x.link_edges:
+                w = e.other_vert(x)
+                if w.index not in seen:
+                    seen.add(w.index)
+                    stack.append(w)
+    bm.free()
+    return pieces
 
 
 def make_manifold(obj, rounds=4):
@@ -145,13 +176,129 @@ def shrinkwrap(obj, target):
     bpy.ops.object.modifier_apply(modifier=mod.name)
 
 
-def unwrap(obj):
+def uv_islands(bm, uv):
+    """Faces grouped into UV islands (faces sharing an edge with matching UVs)."""
+    parent = list(range(len(bm.faces)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    bm.faces.index_update()
+    for edge in bm.edges:
+        faces = edge.link_faces
+        if len(faces) != 2:
+            continue
+        uvs = []
+        for f in faces:
+            pair = {}
+            for loop in f.loops:
+                if loop.vert in edge.verts:
+                    pair[loop.vert.index] = loop[uv].uv.copy()
+            uvs.append(pair)
+        if all((uvs[0][k] - uvs[1][k]).length < 1e-6 for k in uvs[0]):
+            parent[find(faces[0].index)] = find(faces[1].index)
+    groups = {}
+    for f in bm.faces:
+        groups.setdefault(find(f.index), []).append(f)
+    return list(groups.values())
+
+
+def boost_head_uvs(obj, boost):
+    """Enlarge UV islands above the neck; returns the head's share of UV area."""
+    import bmesh
+    bm = bmesh.from_edit_mesh(obj.data)
+    uv = bm.loops.layers.uv.verify()
+    zs = [v.co.z for v in bm.verts]
+    zmin, height = min(zs), (max(zs) - min(zs)) or 1.0
+    neck = zmin + 0.83 * height
+
+    def area(faces):
+        total = 0.0
+        for f in faces:
+            pts = [loop[uv].uv for loop in f.loops]
+            total += abs(sum(a.x * b.y - b.x * a.y for a, b in zip(pts, pts[1:] + pts[:1]))) / 2
+        return total
+
+    head_area = all_area = 0.0
+    for island in uv_islands(bm, uv):
+        mean_z = sum(f.calc_center_median().z for f in island) / len(island)
+        a = area(island)
+        all_area += a
+        if mean_z < neck:
+            continue
+        if boost != 1.0:
+            loops = [loop for f in island for loop in f.loops]
+            cx = sum(lp[uv].uv.x for lp in loops) / len(loops)
+            cy = sum(lp[uv].uv.y for lp in loops) / len(loops)
+            for lp in loops:
+                lp[uv].uv.x = cx + (lp[uv].uv.x - cx) * boost
+                lp[uv].uv.y = cy + (lp[uv].uv.y - cy) * boost
+        head_area += a * boost * boost
+    bmesh.update_edit_mesh(obj.data)
+    rest = all_area - head_area / (boost * boost) if boost else all_area
+    return head_area / max(1e-9, head_area + rest)
+
+
+def unwrap(obj, head_boost=1.0):
     select_only([obj])
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.004)
-    bpy.ops.uv.pack_islands(margin=0.004)
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.008)
+    share = boost_head_uvs(obj, head_boost)
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.pack_islands(margin=0.008)
     bpy.ops.object.mode_set(mode="OBJECT")
+    return share
+
+
+def dilate_images(obj, iterations=24):
+    """Grow each texture's painted areas outward into the empty gutters.
+
+    Paint3D leaves black gaps between its UV islands. Sampling near an island
+    edge blends that black in, which bakes into dark 'stitch' lines on the
+    game mesh. Filling the gaps with the nearest painted colour first removes
+    them. Works on the in-memory copies only; files on disk are untouched.
+    """
+    import numpy as np
+    seen, filled = set(), {}
+    for slot in obj.material_slots:
+        mat = slot.material
+        if not mat or not mat.use_nodes:
+            continue
+        for node in mat.node_tree.nodes:
+            img = getattr(node, "image", None)
+            if img is None or img.name in seen or img.size[0] == 0:
+                continue
+            seen.add(img.name)
+            w, h = img.size
+            px = np.empty(w * h * 4, dtype=np.float32)
+            img.pixels.foreach_get(px)
+            px = px.reshape(h, w, 4)
+            mask = (px[..., :3].max(axis=2) > 1.5 / 255) & (px[..., 3] > 0.5)
+            empty = int((~mask).sum())
+            if empty == 0 or mask.sum() == 0:
+                continue
+            rgb = px[..., :3] * mask[..., None]
+            for _ in range(iterations):
+                if mask.all():
+                    break
+                total = np.zeros_like(rgb)
+                count = np.zeros(mask.shape, dtype=np.float32)
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                    total += np.roll(rgb, (dy, dx), axis=(0, 1))
+                    count += np.roll(mask, (dy, dx), axis=(0, 1))
+                grow = (~mask) & (count > 0)
+                rgb[grow] = total[grow] / count[grow][:, None]
+                mask = mask | grow
+            px[..., :3] = np.where(mask[..., None], rgb, px[..., :3])
+            px[..., 3] = 1.0
+            img.pixels.foreach_set(px.ravel())
+            img.update()
+            filled[img.name] = round(empty / (w * h), 3)
+    return filled
 
 
 def new_image(name, size, colour, non_color):
@@ -185,6 +332,7 @@ def main():
     t0 = time.monotonic()
     reset_scene()
     high = join_meshes(import_glb(a.input), "AI3D_HIGH")
+    gutters = dilate_images(high)
     height = max(high.dimensions) or 1.0
     high_tris = triangle_count(high)
 
@@ -196,6 +344,7 @@ def main():
     voxel_remesh(shell, voxel)
     voxel_faces = len(shell.data.polygons)
     area = sum(p.area for p in shell.data.polygons)
+    shell_pieces = count_pieces(shell)
 
     method = a.method
     attempts = []
@@ -212,7 +361,13 @@ def main():
             voxel_remesh(candidate, size)
             make_manifold(candidate)
             ok = quadriflow(candidate, a.target_faces, a.seed)
-            attempts.append({"voxel_m": round(size, 5), "ok": ok})
+            pieces = count_pieces(candidate) if ok else None
+            if ok and pieces > shell_pieces:
+                # QuadriFlow can cut thin limbs (forearms) off the body.
+                print(f"[retopo] QuadriFlow split the mesh into {pieces} pieces "
+                      f"(shape has {shell_pieces}); trying again", flush=True)
+                ok = False
+            attempts.append({"voxel_m": round(size, 5), "ok": ok, "pieces": pieces})
             if ok:
                 low = candidate
                 break
@@ -230,7 +385,7 @@ def main():
     shrinkwrap(low, shell)
     select_only([low])
     bpy.ops.object.shade_smooth()
-    unwrap(low)
+    head_share = unwrap(low, a.head_boost)
 
     # --- bake setup -------------------------------------------------------
     scene = bpy.context.scene
@@ -241,7 +396,7 @@ def main():
     bake.use_selected_to_active = True
     bake.cage_extrusion = a.cage_ratio * height
     bake.max_ray_distance = a.cage_ratio * height * 4
-    bake.margin = 16
+    bake.margin = max(16, a.texture_size // 64)
 
     size = a.texture_size
     images = {
@@ -301,7 +456,7 @@ def main():
 
     mean_d, max_d = surface_distance(low, shell, height)
     bpy.data.objects.remove(shell, do_unlink=True)
-    export_glb(a.output, [low])
+    export_glb(a.output, [low], image_format=a.image_format, jpeg_quality=a.jpeg_quality)
     quads = sum(1 for p in low.data.polygons if len(p.vertices) == 4)
     stats = {
         "method": method,
@@ -310,10 +465,15 @@ def main():
         "voxel_faces": voxel_faces,
         "quadriflow_attempts": attempts,
         "low_faces": len(low.data.polygons),
+        "low_pieces": count_pieces(low),
+        "shape_pieces": shell_pieces,
         "low_quads_fraction": round(quads / max(1, len(low.data.polygons)), 3),
         "low_triangles": triangle_count(low),
         "texture_size": size,
+        "head_uv_share": round(head_share, 3),
+        "image_format": a.image_format,
         "baked": baked,
+        "source_gutters_filled": gutters,
         "surface_error_mean": None if mean_d is None else round(mean_d, 5),
         "surface_error_max": None if max_d is None else round(max_d, 5),
         "seconds": round(time.monotonic() - t0, 1),

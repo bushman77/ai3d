@@ -97,13 +97,14 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(warnings_for({}), [])
         w = warnings_for({
             "quality_game": {"silhouette_iou": 0.6, "mesh": {"pieces": 3, "boundary_edges": 5}},
-            "game": {"method": "decimate (quadriflow failed)", "surface_error_max": 0.05},
+            "game": {"method": "decimate (quadriflow failed)", "surface_error_max": 0.05,
+                     "low_pieces": 3, "shape_pieces": 1},
             "rig": {"unweighted_after_heat_fraction": 0.1, "arm_leak": 0.4,
                     "shoulder_height_fraction": 0.6, "hip_height_fraction": 0.3, "facing_detected": "unknown (assumed -Y)",
                     "deform_bones_without_vertices": ["mixamorig:LeftToeBase"]},
         })
         text = " | ".join(w)
-        for needle in ("silhouette", "3 separate pieces", "holes", "QuadriFlow failed",
+        for needle in ("silhouette", "3 separate pieces", "holes", "QuadriFlow failed", "limb came loose",
                        "misses detail", "automatic weights", "below the armpits", "shoulder joints", "hip joint", "faces", "LeftToeBase"):
             self.assertIn(needle, text)
 

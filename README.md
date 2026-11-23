@@ -34,7 +34,8 @@ bash make_character.sh --name mara_v1 \
 1. **Views:** makes left / back / right views and opens them. Press Enter if
    they're right, type the ones to redo (`back`, `left right`, ...; each
    redo is a new seed), `none` to build from the front only, or `q` to stop.
-2. **Build:** shape → paint → game mesh (1024 px textures) → rig with
+2. **Build:** shape → paint → game mesh (2048 px JPEG textures, extra
+   texture for the face) → rig with
    `idle` → report. Out of GPU memory in shape? It retries with two views,
    then mv-turbo (if downloaded), then front-only. In Paint3D? It retries
    with the light 6 GB settings.
@@ -46,7 +47,7 @@ bash make_character.sh --name mara_v1 \
 
 It always resumes, so after `q` (or a crash) run the same command again.
 `--yes` answers everything for you, `--fresh` starts over,
-`--texture-size 512` for smaller files, `--sunracer PATH` if SunRacer lives
+`--texture-size 1024` for smaller files, `--sunracer PATH` if SunRacer lives
 elsewhere. Same as `python3 -m ai3d make ...`.
 
 ## Step by step (Mara)
@@ -153,6 +154,11 @@ The GLB carries two animations: **`idle`** (8 s seamless loop: arms relaxed
 at the sides, angled to clear the hips; breathing; a slow look around) for
 use in game, and `ai3d_pose_test` for the report's deformation check. For a
 game build with smaller textures: `--set retopo.texture_size=1024`.
+
+Texture quality in the game mesh: the painted texture's black gaps between
+UV pieces are filled before baking (no dark "stitch" seams), the head gets
+2.5x the texture density of the body (`retopo.head_boost`), and textures are
+stored as JPEG so 2048 px stays near 5 MB (`retopo.image_format`).
 
 ## Models you need
 

@@ -52,6 +52,9 @@ for s in (1, -1):
     reach = 0.62
     hand = (s * (0.19 + reach * math.cos(drop)), 0, 1.40 - reach * math.sin(drop))
     elbow = tuple((sh[i] + hand[i]) / 2 for i in range(3))
+    # Shoulder ball joins the arm to the torso (otherwise the arm floats).
+    add(bpy.ops.mesh.primitive_uv_sphere_add, segments=16, ring_count=8, radius=0.075,
+        location=(s * 0.15, 0, 1.38))
     limb(sh, elbow, 0.045)
     limb(elbow, hand, 0.038)
     hp = add(bpy.ops.mesh.primitive_uv_sphere_add, segments=12, ring_count=8, radius=1, location=hand)
@@ -80,21 +83,34 @@ bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.01)
 bpy.ops.object.mode_set(mode="OBJECT")
 
-img = bpy.data.images.new("fixture_albedo", 256, 256)
-px = []
-for y in range(256):
-    for x in range(256):
-        c = ((x // 32) + (y // 32)) % 2
-        px += [0.15 + 0.6 * c, 0.45, 0.2 + 0.5 * (1 - c), 1.0]
-img.pixels = px
-img.pack()
+# Like Paint3D: colour only inside the UV islands, black gutters between
+# them. Baked from a procedural checker with no margin.
+img = bpy.data.images.new("fixture_albedo", 512, 512)
+img.generated_color = (0, 0, 0, 1)
 mat = bpy.data.materials.new("fixture")
 mat.use_nodes = True
-tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+nodes, links = mat.node_tree.nodes, mat.node_tree.links
+bsdf = nodes["Principled BSDF"]
+checker = nodes.new("ShaderNodeTexChecker")
+checker.inputs["Scale"].default_value = 12
+checker.inputs["Color1"].default_value = (0.75, 0.45, 0.20, 1)
+checker.inputs["Color2"].default_value = (0.20, 0.45, 0.70, 1)
+coords = nodes.new("ShaderNodeTexCoord")
+links.new(coords.outputs["Object"], checker.inputs["Vector"])
+links.new(checker.outputs["Color"], bsdf.inputs["Base Color"])
+tex = nodes.new("ShaderNodeTexImage")
 tex.image = img
-bsdf = mat.node_tree.nodes["Principled BSDF"]
-mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
 body.data.materials.append(mat)
+scene = bpy.context.scene
+scene.render.engine = "CYCLES"
+scene.cycles.samples = 1
+scene.render.bake.margin = 0
+body.select_set(True)
+bpy.context.view_layer.objects.active = body
+nodes.active = tex
+bpy.ops.object.bake(type="DIFFUSE", pass_filter={"COLOR"})
+img.pack()
+links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
 
 out.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=str(out), export_format="GLB")
