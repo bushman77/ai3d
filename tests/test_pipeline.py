@@ -32,18 +32,34 @@ class PipelineTests(unittest.TestCase):
 
     def test_stage_order(self):
         self.assertEqual(STAGES, ("reference", "views", "cutout", "shape", "paint-mesh",
-                                  "paint", "game", "rig", "report"))
+                                  "paint", "texture-views", "game", "rig", "report"))
 
     def test_dry_run_plans_every_stage_and_writes_nothing(self):
         text = run("--name", "plan", "--image", str(self.image),
                    "--output-dir", str(self.outputs), "--dry-run")
         for label in ("views-left", "views-back", "views-right", "cutout-back", "shape",
-                      "paint-mesh", "paint", "game", "rig", "report-game", "report-rigged"):
+                      "paint-mesh", "paint", "texture-views-front", "texture-views-back",
+                      "texture-cutout-left", "game", "rig", "report-game", "report-rigged"):
             self.assertIn(f"[PLAN] {label}", text)
         self.assertIn("--model mv", text)
         self.assertIn("retopo_bake.py", text)
         self.assertIn("rig.py", text)
+        game = text.split("[PLAN] game")[1].split("[PLAN]")[0]
+        for kind in ("front", "left", "back", "right"):
+            self.assertIn(f"--view {kind}=", game)
+            self.assertIn(f"02_hd_cutout_{kind}.png", game)
         self.assertFalse(self.outputs.exists())
+
+    def test_texture_views_can_use_plain_cutouts_or_be_off(self):
+        text = run("--name", "p", "--image", str(self.image), "--output-dir", str(self.outputs),
+                   "--set", "texture_views.upscale=false", "--dry-run")
+        self.assertNotIn("texture-views-front", text)
+        game = text.split("[PLAN] game")[1].split("[PLAN]")[0]
+        self.assertIn("front=", game)
+        self.assertIn("02_cutout_back.png", game)
+        text = run("--name", "p", "--image", str(self.image), "--output-dir", str(self.outputs),
+                   "--set", "texture_views.enabled=false", "--dry-run")
+        self.assertNotIn("--view front", text)
 
     def test_no_views_uses_single_view_model(self):
         text = run("--name", "p", "--image", str(self.image), "--no-views",
@@ -98,13 +114,14 @@ class PipelineTests(unittest.TestCase):
         w = warnings_for({
             "quality_game": {"silhouette_iou": 0.6, "mesh": {"pieces": 3, "boundary_edges": 5}},
             "game": {"method": "decimate (quadriflow failed)", "surface_error_max": 0.05,
-                     "low_pieces": 3, "shape_pieces": 1},
+                     "low_pieces": 3, "shape_pieces": 1,
+                     "projected_views": [{"view": "back", "skipped": True}]},
             "rig": {"unweighted_after_heat_fraction": 0.1, "arm_leak": 0.4,
                     "shoulder_height_fraction": 0.6, "hip_height_fraction": 0.3, "facing_detected": "unknown (assumed -Y)",
                     "deform_bones_without_vertices": ["mixamorig:LeftToeBase"]},
         })
         text = " | ".join(w)
-        for needle in ("silhouette", "3 separate pieces", "holes", "QuadriFlow failed", "limb came loose",
+        for needle in ("silhouette", "3 separate pieces", "holes", "QuadriFlow failed", "limb came loose", "not projected",
                        "misses detail", "automatic weights", "below the armpits", "shoulder joints", "hip joint", "faces", "LeftToeBase"):
             self.assertIn(needle, text)
 

@@ -4,7 +4,7 @@ Local, one-command pipeline: **one front image of a character in → one
 rigged, textured, game-ready GLB out**, on a 6 GB GPU.
 
 ```text
-reference → views → cutout → shape → paint-mesh → paint → game → rig → report
+reference → views → cutout → shape → paint-mesh → paint → texture-views → game → rig → report
 ```
 
 | Stage | Tool | Output |
@@ -15,7 +15,8 @@ reference → views → cutout → shape → paint-mesh → paint → game → r
 | shape | **Hunyuan3D-2mv** builds the mesh from all views (2mini if front only) | `03_shape.glb` |
 | paint-mesh | Blender clean-up + reduction | `04_paint_mesh.glb` |
 | paint | Paint3D texturing | `05_painted.glb` |
-| game | Blender: watertight **quad** mesh, baked colour / normal / roughness | `06_game.glb` |
+| texture-views | Qwen-Image-Edit redraws each view at 1024 px (same content, sharper) | `01_hd_*.png`, `02_hd_cutout_*.png` |
+| game | Blender: watertight **quad** mesh, baked colour / normal / roughness, colour **painted straight from the sharp views** | `06_game.glb` |
 | rig | Blender: **Mixamo-named skeleton**, automatic weights, test animation | `07_rigged.glb`, `07_rigged.blend` |
 | report | measurements, silhouette match, preview renders | `report.json`, `index.html`, `previews/` |
 
@@ -34,11 +35,12 @@ bash make_character.sh --name mara_v1 \
 1. **Views:** makes left / back / right views and opens them. Press Enter if
    they're right, type the ones to redo (`back`, `left right`, ...; each
    redo is a new seed), `none` to build from the front only, or `q` to stop.
-2. **Build:** shape → paint → game mesh (2048 px JPEG textures, extra
-   texture for the face) → rig with
+2. **Build:** shape → paint → sharp 1024 px copies of the views → game mesh
+   painted from those views (2048 px JPEG, extra texture for the face) → rig with
    `idle` → report. Out of GPU memory in shape? It retries with two views,
    then mv-turbo (if downloaded), then front-only. In Paint3D? It retries
-   with the light 6 GB settings.
+   with the light 6 GB settings. If sharpening the views does, it projects
+   the 512 px views as they are.
 3. **Review:** prints the numbers and warnings, opens the gallery, asks if
    the poses look right.
 4. **Install:** copies the GLB to
@@ -155,7 +157,16 @@ at the sides, angled to clear the hips; breathing; a slow look around) for
 use in game, and `ai3d_pose_test` for the report's deformation check. For a
 game build with smaller textures: `--set retopo.texture_size=1024`.
 
-Texture quality in the game mesh: the painted texture's black gaps between
+Texture quality in the game mesh: the colour comes straight from the sharp
+1024 px views. Each surface takes the view that faces it most directly and
+can see it (an arm in front doesn't paint the body); Paint3D's colour only
+fills what no view sees (top of the head, under the arms). Each view's
+outline is fitted to the mesh and side views flip to whichever side
+matches; a view that doesn't line up (match < 0.7) is skipped and
+reported. Turn off with `texture_views.enabled=false`; use the 512 px views
+without redrawing with `texture_views.upscale=false`.
+
+Also: Paint3D's black gaps between
 UV pieces are filled before baking (no dark "stitch" seams), the head gets
 2.5x the texture density of the body (`retopo.head_boost`), and textures are
 stored as JPEG so 2048 px stays near 5 MB (`retopo.image_format`).

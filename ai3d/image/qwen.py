@@ -63,6 +63,14 @@ VIEW_SUFFIX = (
 )
 
 
+UPSCALE_PROMPT = (
+    "Recreate this exact image at a higher resolution with crisp, sharp detail. Keep the "
+    "identical character, pose, framing, proportions, colours, lighting and background. "
+    "Sharpen the face, eyes, eyebrows, lips, hair strands, seams and the edges of the "
+    "fabric panels. Do not add, remove or move anything."
+)
+
+
 def view_prompt(angle: str) -> str:
     if angle not in VIEW_PROMPTS:
         raise ValueError(f"Unknown view angle {angle!r}; choose from {sorted(VIEW_PROMPTS)}")

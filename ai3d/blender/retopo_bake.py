@@ -49,8 +49,18 @@ def parse():
     p.add_argument("--image-format", choices=("JPEG", "AUTO"), default="JPEG",
                    help="Texture format inside the GLB (JPEG is ~5x smaller than PNG)")
     p.add_argument("--jpeg-quality", type=int, default=90)
+    p.add_argument("--view", action="append", default=[], metavar="KIND=PATH",
+                   help="Sharp character view to project onto the colour (KIND: front, back, "
+                        "left, right; PATH: a cutout PNG with transparency). Repeatable.")
     p.add_argument("--stats", type=Path)
     a = p.parse_args(script_args())
+    views = []
+    for item in a.view:
+        kind, _, path = item.partition("=")
+        if kind not in ("front", "back", "left", "right") or not Path(path).is_file():
+            p.error(f"--view expects front|back|left|right=existing.png, got {item}")
+        views.append((kind, path))
+    a.views = views
     if a.target_faces < 100 or a.texture_size < 64:
         p.error("target-faces must be >= 100 and texture-size >= 64")
     if a.input.resolve() == a.output.resolve():
@@ -386,6 +396,7 @@ def main():
     select_only([low])
     bpy.ops.object.shade_smooth()
     head_share = unwrap(low, a.head_boost)
+    uv_main = low.data.uv_layers.active.name
 
     # --- bake setup -------------------------------------------------------
     scene = bpy.context.scene
@@ -435,6 +446,16 @@ def main():
             if key == "basecolor":
                 raise
 
+    projected = []
+    if a.views:
+        from project import project
+        start = time.monotonic()
+        projected = project(low, a.views, images["basecolor"], uv_main, samples=1)
+        print(f"[project] {len(projected)} views in {time.monotonic() - start:.1f}s: "
+              f"{projected}", flush=True)
+        scene.render.bake.use_selected_to_active = True
+        nodes.active = tex["basecolor"]
+
     tex_dir = a.output.parent / (a.output.stem + "_textures")
     tex_dir.mkdir(parents=True, exist_ok=True)
     for key, img in images.items():
@@ -474,6 +495,7 @@ def main():
         "image_format": a.image_format,
         "baked": baked,
         "source_gutters_filled": gutters,
+        "projected_views": projected,
         "surface_error_mean": None if mean_d is None else round(mean_d, 5),
         "surface_error_max": None if max_d is None else round(max_d, 5),
         "seconds": round(time.monotonic() - t0, 1),

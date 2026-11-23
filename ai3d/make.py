@@ -9,11 +9,13 @@ What it does, in order (everything we learned building Mara):
 1. Generates the left / back / right views and opens them. You approve
    them, or name the ones to redo (each redo uses a new random seed).
    What to look for is printed next to the prompt.
-2. Builds the rest: shape -> paint -> game mesh -> rig -> report, with game
-   textures at 2048 px (JPEG) by default.
+2. Builds the rest: shape -> paint -> sharp 1024 px copies of the views ->
+   game mesh painted from those views -> rig -> report, with game textures at
+   2048 px (JPEG) by default.
 3. If the shape stage runs out of GPU memory it retries, in order: fewer
    views (left + back), mv-turbo (only if downloaded), front-only mini.
-   If Paint3D runs out of memory it retries with the light 6 GB settings.
+   If Paint3D runs out of memory it retries with the light 6 GB settings; if
+   the view sharpening does, it projects the 512 px views as they are.
 4. Prints the report numbers and warnings and opens the gallery, then asks
    whether the poses look right.
 5. Copies the rigged GLB into SunRacer's station folder (--install-as NAME)
@@ -189,6 +191,9 @@ class Maker:
             return steps
         if stage == "paint":
             return [("light Paint3D settings (6 GB profile)", PAINT_LIGHT)]
+        if stage.startswith("texture-views"):
+            return [("the 512 px views as they are (no sharpening)",
+                     ["texture_views.upscale=false"])]
         return []
 
     def step_build(self) -> bool:
@@ -201,6 +206,8 @@ class Maker:
             except RuntimeError as error:
                 stage, log = self.failed_stage_log(error)
                 options = self.fallbacks(stage)
+                if stage.startswith("texture-views"):
+                    stage = "texture-views"
                 attempt = tried.get(stage, 0)
                 if not (self.out_of_memory(log) and attempt < len(options)):
                     self.say(f"\nERROR: {error}")

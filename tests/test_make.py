@@ -102,6 +102,11 @@ class MakeTests(unittest.TestCase):
         self.assertEqual(m.go(), 0)
         self.assertIn("paint.max_views=2", sets(pipe.calls[-1]))
 
+    def test_view_sharpening_out_of_memory_projects_plain_views(self):
+        m, pipe = self.maker(["", "y", ""], fail_with=[("texture-views-front", "CUDA out of memory")])
+        self.assertEqual(m.go(), 0)
+        self.assertIn("texture_views.upscale=false", sets(pipe.calls[-1]))
+
     def test_other_failures_stop_without_retrying(self):
         m, pipe = self.maker([""], fail_with=[("rig", "Traceback: something else")])
         self.assertEqual(m.go(), 1)

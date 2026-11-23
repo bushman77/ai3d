@@ -10,7 +10,9 @@ cutout      background removal for every view
 shape       Hunyuan3D-2mv from all views (Hunyuan3D-2mini if front only)
 paint-mesh  Blender clean-up and reduction for Paint3D
 paint       Paint3D texturing
-game        Blender: watertight quad mesh + baked colour/normal/roughness
+texture-views  Qwen-Image-Edit redraws every view at 1024 px (same content)
+game        Blender: watertight quad mesh + baked colour/normal/roughness,
+            colour painted straight from the sharp views
 rig         Blender: Mixamo-named skeleton + automatic weights + test action
 report      Blender: measurements, silhouette match, preview renders,
             report.json and index.html
@@ -40,14 +42,17 @@ from ai3d.common import ensure_file, resolve  # noqa: E402
 from ai3d.config import load_profile, repo_path  # noqa: E402
 from ai3d.export.validation import readable_glb  # noqa: E402
 from ai3d.geometry.hunyuan import build_hunyuan_shape_command  # noqa: E402
-from ai3d.image.qwen import build_qwen_command, build_qwen_edit_command, view_prompt  # noqa: E402
+from ai3d.image.qwen import (  # noqa: E402
+    UPSCALE_PROMPT, build_qwen_command, build_qwen_edit_command, view_prompt,
+)
 from ai3d.optimization.blender import build_finalize_command  # noqa: E402
 from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory  # noqa: E402
 from ai3d.pipeline_runner import Runner  # noqa: E402
 from ai3d.textures.diagnostics import expected_debug_images, paint_debug_environment  # noqa: E402
 from ai3d.textures.paint3d import build_texture_command  # noqa: E402
 
-STAGES = ("reference", "views", "cutout", "shape", "paint-mesh", "paint", "game", "rig", "report")
+STAGES = ("reference", "views", "cutout", "shape", "paint-mesh", "paint", "texture-views",
+          "game", "rig", "report")
 ANGLES = ("left", "back", "right")
 SHAPE_SCRIPT = PROJECT_ROOT / "backends" / "hunyuan_shape.py"
 CUTOUT_SCRIPT = PROJECT_ROOT / "backends" / "cutout.py"
@@ -185,10 +190,15 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         plan.need("sd-cli", plan.sd_cli)
         for k, path in plan.qwen.items():
             plan.need(f"Qwen {k}", path)
-    if gen_views:
+    TV = cfg["texture_views"]
+    upscale = (TV["enabled"] and TV["upscale"] and wants("texture-views")
+               and bool(a.image or a.prompt_file))
+    if gen_views or upscale:
         plan.need("sd-cli", plan.sd_cli)
         for k, path in plan.edit.items():
             plan.need(f"Qwen-Image-Edit {k} (views)", path)
+    if upscale and need_mesh_stages:
+        plan.need("Hunyuan3D-2 python", plan.hy_python)
     if need_mesh_stages and wants("cutout"):
         plan.need("Hunyuan3D-2 python", plan.hy_python)
     if need_mesh_stages and wants("paint-mesh"):
@@ -342,8 +352,36 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         env = paint_debug_environment(env, home, enabled=T["debug"])
         outputs = [painted, *expected_debug_images(home)] if T["debug"] else [painted]
         runner.run_cmd("paint", [paint_mesh, front_cut], outputs, {"paint": T}, cmd, cwd=plan.kit, env=env)
-    if not wants("game"):
+    if not wants("texture-views"):
         return finish(a, home, f"Textured GLB: {painted}")
+
+    # ---- texture-views: sharp copies of every view for projection ---------------
+    project_views: list[tuple[str, Path]] = []
+    sources = []
+    if TV["enabled"] and (a.image or a.prompt_file):
+        sources = [("front", reference, front_cut)]
+        for angle in ANGLES:
+            if angle in views:
+                sources.append((angle, views[angle], cutouts.get(angle)))
+    for kind, image, cut in sources:
+        if TV["upscale"]:
+            hd = home / f"01_hd_{kind}.png"
+            cmd = build_qwen_edit_command(
+                plan.sd_cli, reference=image, prompt=UPSCALE_PROMPT, output=hd,
+                size=TV["size"], steps=TV["steps"], cfg_scale=TV["cfg_scale"], seed=seed,
+                ram_limit=cfg["reference"]["ram_limit"],
+                swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
+            runner.run_cmd(f"texture-views-{kind}", [image, *plan.edit.values()], [hd],
+                           {"texture_views": TV, "seed": seed}, cmd, cwd=plan.sd_cli.parent)
+            hd_cut = home / f"02_hd_cutout_{kind}.png"
+            cmd = [plan.hy_python, CUTOUT_SCRIPT, hd, hd_cut, "auto"]
+            runner.run_cmd(f"texture-cutout-{kind}", [hd, plan.hy_python], [hd_cut], {}, cmd,
+                           cwd=plan.hunyuan)
+            project_views.append((kind, hd_cut))
+        elif cut is not None:
+            project_views.append((kind, cut))
+    if not wants("game"):
+        return finish(a, home, "Texture views: " + ", ".join(str(p) for _, p in project_views))
 
     # ---- game: retopo + bake ----------------------------------------------------
     game = home / "06_game.glb"
@@ -356,11 +394,13 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             "--cage-ratio", G["cage_ratio"], "--device", G["device"], "--seed", seed,
             "--head-boost", G["head_boost"], "--image-format", G["image_format"],
             "--jpeg-quality", G["jpeg_quality"],
-            "--stats", stats_dir / "game.json"])
+            "--stats", stats_dir / "game.json",
+            *[arg for kind, path in project_views for arg in ("--view", f"{kind}={path}")]])
     else:
         cmd = build_finalize_command(plan.blender, FINALIZE_SCRIPT, painted, game,
                                      G["target_faces"] * 2)
-    runner.run_cmd("game", [painted], [game], {"retopo": G, "seed": seed}, cmd)
+    runner.run_cmd("game", [painted, *[p for _, p in project_views]], [game],
+                   {"retopo": G, "seed": seed, "views": [k for k, _ in project_views]}, cmd)
     if not wants("rig"):
         return finish(a, home, f"Game mesh: {game}")
 
@@ -433,6 +473,10 @@ def warnings_for(stats: dict) -> list[str]:
     if g.get("low_pieces") and g.get("shape_pieces") and g["low_pieces"] > g["shape_pieces"]:
         out.append(f"game mesh has {g['low_pieces']} pieces but the shape had "
                    f"{g['shape_pieces']}: a limb came loose")
+    skipped = [v["view"] for v in g.get("projected_views", []) if v.get("skipped")]
+    if skipped:
+        out.append("views not projected (outline did not match the mesh): " + ", ".join(skipped)
+                   + "; those sides keep the Paint3D colour")
     if (g.get("surface_error_max") or 0) > 0.03:
         out.append(f"low-poly mesh misses detail: max surface error {g['surface_error_max']:.3f} "
                    "of height; raise retopo.target_faces")

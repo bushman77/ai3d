@@ -127,6 +127,46 @@ class BlenderStageTests(unittest.TestCase):
         self.assertLess(r["arm_leak_before_trim"], 0.05)
         self.assertEqual(r["arm_leak"], 0.0)
 
+    def test_views_are_projected_sharper_than_paint3d(self):
+        views = self.dir / "views"
+        views.mkdir(exist_ok=True)
+        blender([BLENDER, "--background", "--factory-startup", "--python-exit-code", "1",
+                 "--python", str(Path(__file__).with_name("blender_views.py")), "--",
+                 str(self.dir / "wide_tpose.glb"), str(views)])
+        blurry = views / "blurry.glb"
+        common = ["--input", blurry, "--target-faces", 2500, "--texture-size", 512,
+                  "--samples", 1, "--image-format", "AUTO"]
+        self.stage("retopo_bake.py", [*common, "--output", self.dir / "plain.glb",
+                                      "--stats", self.dir / "plain.json"])
+        args = [a for k in ("front", "back", "left", "right")
+                for a in ("--view", f"{k}={views / f'view_{k}.png'}")]
+        self.stage("retopo_bake.py", [*common, *args, "--output", self.dir / "proj.glb",
+                                      "--stats", self.dir / "proj.json"])
+        projected = {v["view"]: v for v in self.stats("proj.json")["projected_views"]}
+        self.assertEqual(projected["left"]["camera"], [1.0, 0.0, 0.0])
+        self.assertEqual(projected["right"]["camera"], [-1.0, 0.0, 0.0])
+        for v in projected.values():
+            self.assertGreater(v["outline_match"], 0.9)
+
+        def sharpness(png):
+            # mean absolute neighbour difference of the baked colour
+            # mean neighbour difference inside painted areas only (island borders
+            # against the empty background are excluded with an eroded mask)
+            code = (
+                "import bpy,numpy as n;i=bpy.data.images.load(%r);"
+                "p=n.array(i.pixels[:]).reshape(i.size[1],i.size[0],4)[...,:3];"
+                "m=p.max(axis=2)>0.02\n"
+                "for _ in range(3): m=m&n.roll(m,1,0)&n.roll(m,-1,0)&n.roll(m,1,1)&n.roll(m,-1,1)\n"
+                "d=n.abs(n.diff(p,axis=1)).sum(axis=2);mm=m[:,1:]&m[:,:-1]\n"
+                "print('SHARP',float(d[mm].mean()))" % str(png))
+            out = blender([BLENDER, "--background", "--factory-startup", "--python-expr", code])
+            return float(out.split("SHARP", 1)[1].split()[0])
+
+        plain = sharpness(self.dir / "plain_textures" / "basecolor.png")
+        proj = sharpness(self.dir / "proj_textures" / "basecolor.png")
+        self.assertLess(plain, 0.01, "grey source bakes flat")
+        self.assertGreater(proj, 0.03, f"projected views carry the checker detail ({proj})")
+
     def test_backwards_character_is_turned(self):
         src = self.dir / "mannequin+y.glb"
         game, rigged = self.dir / "back_game.glb", self.dir / "back_rigged.glb"
