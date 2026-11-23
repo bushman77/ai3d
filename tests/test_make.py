@@ -102,10 +102,18 @@ class MakeTests(unittest.TestCase):
         self.assertEqual(m.go(), 0)
         self.assertIn("paint.max_views=2", sets(pipe.calls[-1]))
 
-    def test_view_sharpening_out_of_memory_projects_plain_views(self):
-        m, pipe = self.maker(["", "y", ""], fail_with=[("texture-views-front", "CUDA out of memory")])
+    def test_view_sharpening_out_of_memory_steps_down(self):
+        # the real stable-diffusion.cpp message from Brad's 6 GB card
+        sdcpp = ("[WARN ] model_manager.cpp:1694 - model manager cannot make enough memory "
+                 "available on CUDA0: need 7803.85 MB device / 7803.85 MB budget\n"
+                 "[ERROR ] ggml_runner.cpp:847 - wan_vae segment 1/1 (graph) failed during "
+                 "weight preparation")
+        m, pipe = self.maker(["", "y", ""], fail_with=[("texture-views-front", sdcpp),
+                                                     ("texture-views-left", sdcpp)])
         self.assertEqual(m.go(), 0)
-        self.assertIn("texture_views.upscale=false", sets(pipe.calls[-1]))
+        full = [c for c in pipe.calls if "--stop-after" not in c]
+        self.assertIn("texture_views.size=768", sets(full[1]))
+        self.assertIn("texture_views.upscale=false", sets(full[2]))
 
     def test_other_failures_stop_without_retrying(self):
         m, pipe = self.maker([""], fail_with=[("rig", "Traceback: something else")])

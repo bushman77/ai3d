@@ -30,7 +30,8 @@
     "llm_vision": "mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf",
     "size": 512,
     "steps": 20,
-    "cfg_scale": 2.5
+    "cfg_scale": 2.5,
+    "vae_tiling": true
   },
   "texture_views": {
     "_about": "Paints the game mesh straight from the character views (sharper than Paint3D, which repaints at view_resolution). upscale: Qwen-Image-Edit first redraws each view at `size` px with the same content. Paint3D still fills what no view sees.",
@@ -38,7 +39,8 @@
     "upscale": true,
     "size": 1024,
     "steps": 20,
-    "cfg_scale": 2.5
+    "cfg_scale": 2.5,
+    "vae_tiling": true
   },
   "shape": {
     "_about": "model: auto picks mv (multi-view) when side/back views exist, otherwise mini. Choices: auto, mini, mini-turbo, mv, mv-turbo. low_vram keeps only the diffusion model on the GPU while sampling (needed on 6 GB). num_chunks only affects mesh extraction after sampling.",

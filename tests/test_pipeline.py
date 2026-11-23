@@ -135,6 +135,7 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("-r") + 1], "/r.png")
         self.assertEqual(cmd[cmd.index("--llm_vision") + 1], "/m/mmproj.gguf")
         self.assertEqual(cmd[cmd.index("--seed") + 1], "7")
+        self.assertIn("--vae-tiling", cmd)
         prompt = cmd[len(cmd) - 1 - cmd[::-1].index("-p") + 1]  # last -p (first is systemd's)
         self.assertIn("behind", prompt)
         with self.assertRaises(ValueError):

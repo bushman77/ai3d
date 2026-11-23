@@ -81,8 +81,13 @@ def build_qwen_edit_command(
     sd_cli: Path, *, diffusion_model: Path, llm: Path, llm_vision: Path, vae: Path,
     reference: Path, prompt: str, output: Path, size: int = 512, steps: int = 20,
     cfg_scale: float = 2.5, seed: int = 42, ram_limit: str = "10G", swap_limit: str = "1G",
+    vae_tiling: bool = True,
 ) -> list[str]:
-    """Qwen-Image-Edit (2509/2511) with the front image as reference (sd-cli -r)."""
+    """Qwen-Image-Edit (2509/2511) with the front image as reference (sd-cli -r).
+
+    vae_tiling: encode/decode images in tiles. Without it the VAE needs ~7.8 GB
+    in one block at 1024 px, more than a 6 GB card has.
+    """
     if min(size, steps) <= 0:
         raise ValueError("size and steps must be positive")
     return [
@@ -92,7 +97,8 @@ def build_qwen_edit_command(
         "--llm", str(llm), "--llm_vision", str(llm_vision), "--vae", str(vae),
         "-r", str(reference),
         "--backend", "cuda0", "--params-backend", "disk", "--max-vram", "-1",
-        "--diffusion-fa", "--cfg-scale", str(cfg_scale), "--sampling-method", "euler",
+        "--diffusion-fa", *(["--vae-tiling"] if vae_tiling else []),
+        "--cfg-scale", str(cfg_scale), "--sampling-method", "euler",
         "--flow-shift", "3", "--steps", str(steps), "-t", "4",
         "-W", str(size), "-H", str(size), "--seed", str(seed),
         "-p", prompt, "-o", str(output),

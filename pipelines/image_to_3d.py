@@ -274,10 +274,14 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             cmd = build_qwen_edit_command(
                 plan.sd_cli, reference=reference, prompt=view_prompt(angle), output=out,
                 size=V["size"], steps=V["steps"], cfg_scale=V["cfg_scale"], seed=angle_seed,
+                vae_tiling=V["vae_tiling"],
                 ram_limit=cfg["reference"]["ram_limit"],
                 swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
             runner.run_cmd(f"views-{angle}", [reference, *plan.edit.values()], [out],
-                           {"views": V, "seed": angle_seed, "angle": angle}, cmd,
+                           # vae_tiling changes memory use, not the picture: leave it out
+                           # so --resume keeps views generated before it existed
+                           {"views": {k: v for k, v in V.items() if k != "vae_tiling"},
+                            "seed": angle_seed, "angle": angle}, cmd,
                            cwd=plan.sd_cli.parent)
             views[angle] = out
         if not wants("cutout"):
@@ -369,6 +373,7 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             cmd = build_qwen_edit_command(
                 plan.sd_cli, reference=image, prompt=UPSCALE_PROMPT, output=hd,
                 size=TV["size"], steps=TV["steps"], cfg_scale=TV["cfg_scale"], seed=seed,
+                vae_tiling=TV["vae_tiling"],
                 ram_limit=cfg["reference"]["ram_limit"],
                 swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
             runner.run_cmd(f"texture-views-{kind}", [image, *plan.edit.values()], [hd],

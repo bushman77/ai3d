@@ -136,7 +136,10 @@ class Maker:
 
     @staticmethod
     def out_of_memory(log: str) -> bool:
-        return "OutOfMemoryError" in log or "CUDA out of memory" in log
+        markers = ("OutOfMemoryError", "CUDA out of memory",           # PyTorch
+                   "cannot make enough memory available",             # stable-diffusion.cpp
+                   "failed during weight preparation", "out of memory")
+        return any(m in log for m in markers)
 
     def views_enabled(self) -> bool:
         return bool(self.cfg["views"]["enabled"]) and "views.enabled=false" not in self.extra
@@ -192,7 +195,8 @@ class Maker:
         if stage == "paint":
             return [("light Paint3D settings (6 GB profile)", PAINT_LIGHT)]
         if stage.startswith("texture-views"):
-            return [("the 512 px views as they are (no sharpening)",
+            return [("sharpening at 768 px instead of 1024", ["texture_views.size=768"]),
+                    ("the 512 px views as they are (no sharpening)",
                      ["texture_views.upscale=false"])]
         return []
 
