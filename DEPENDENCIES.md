@@ -97,7 +97,7 @@ These are *downloaded separately*, sometimes automatically by the upstream tools
 | Qwen2.5-VL text encoder / LLM GGUF | `~/models/Qwen-Image-2512/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf` | Stage 1 prompt/conditioning |
 | Qwen image VAE | `~/models/Qwen-Image-2512/qwen_image_vae.safetensors` | Stage 1 image decoding |
 | Qwen-Image-Edit-2509 GGUF | `~/models/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Q3_K_M.gguf` (QuantStack) | Side/back views |
-| Qwen2.5-VL mmproj | `~/models/Qwen-Image-Edit-2509/mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf` | Lets Qwen-Image-Edit see the front image |
+| Qwen2.5-VL mmproj | `~/models/Qwen-Image-Edit-2509/mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf` | Lets Qwen-Image-Edit see the front image (from `QuantStack/Qwen-Image-Edit-GGUF`) |
 | Hunyuan3D-2mv | `~/ai3d/models/Hunyuan3D-2mv/hunyuan3d-dit-v2-mv/` (auto-downloads if missing) | Multi-view shape |
 | Hunyuan3D-2mini | `~/ai3d/models/Hunyuan3D-2mini/hunyuan3d-dit-v2-mini/model.fp16.safetensors` (with supporting model config files) | Stage 3 shape generation |
 | Background remover checkpoint | `rembg`/Hunyuan model cache | Stage 2 cutout |

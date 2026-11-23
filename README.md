@@ -120,9 +120,11 @@ Hunyuan3D-2 checkout and venv, Hunyuan3D-2mini, AiGameKit Paint3D, Blender.
 New for multi-view:
 
 ```bash
-# Qwen-Image-Edit-2509 (side/back views) + its vision projector
-hf download QuantStack/Qwen-Image-Edit-2509-GGUF \
-  Qwen-Image-Edit-2509-Q3_K_M.gguf mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf \
+# Qwen-Image-Edit-2509 (side/back views)
+hf download QuantStack/Qwen-Image-Edit-2509-GGUF Qwen-Image-Edit-2509-Q3_K_M.gguf \
+  --local-dir ~/models/Qwen-Image-Edit-2509
+# its vision projector (1.35 GB) lives in QuantStack's older Qwen-Image-Edit repo
+hf download QuantStack/Qwen-Image-Edit-GGUF mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf \
   --local-dir ~/models/Qwen-Image-Edit-2509
 
 # Hunyuan3D-2mv (multi-view shape). Without this folder it downloads itself.
