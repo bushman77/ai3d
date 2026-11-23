@@ -25,6 +25,7 @@ import argparse
 import html
 import json
 import os
+import secrets
 from pathlib import Path
 import shutil
 import subprocess
@@ -67,6 +68,9 @@ def arguments(argv: list[str] | None = None, *, prog: str | None = None) -> argp
     for angle in ANGLES:
         p.add_argument(f"--view-{angle}", type=Path, help=f"Your own {angle} view image")
     p.add_argument("--no-views", action="store_true", help="Front image only (Hunyuan3D-2mini)")
+    p.add_argument("--redo-view", action="append", choices=ANGLES, default=[],
+                   help="Regenerate this view with a new random seed (repeatable); "
+                        "use with --resume so the other views are kept")
     p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB")
     p.add_argument("--painted-mesh", type=Path, help="Reuse an existing painted GLB (skips to game)")
     p.add_argument("--config", type=Path, help="Profile merged over config/default.json")
@@ -158,6 +162,9 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
     if cfg["paint"]["debug"] and a.painted_mesh:
         raise RuntimeError("--paint-debug needs a Paint3D run; --painted-mesh skips painting")
     given_views = {k: getattr(a, f"view_{k}") for k in ANGLES if getattr(a, f"view_{k}")}
+    clash = set(a.redo_view) & set(given_views)
+    if clash:
+        raise RuntimeError(f"--redo-view {', '.join(sorted(clash))} conflicts with your own --view-* image")
     if given_views and not (a.image or a.prompt_file):
         raise RuntimeError("--view-* images need a front --image or --prompt-file too")
 
@@ -242,15 +249,26 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
                        lambda s=src, d=dst: runner.copy(s, d))
             views[angle] = dst
         V = cfg["views"]
+        seeds_file = home / "view_seeds.json"
+        view_seeds = json.loads(seeds_file.read_text()) if seeds_file.is_file() else {}
+        for angle in a.redo_view:
+            view_seeds[angle] = secrets.randbelow(2**31)
+            print(f"[redo] {angle} view with seed {view_seeds[angle]}")
+            if not a.dry_run:
+                (home / f"01_view_{angle}.png").unlink(missing_ok=True)
+        if a.redo_view and not a.dry_run:
+            seeds_file.write_text(json.dumps(view_seeds, indent=2) + "\n")
         for angle in gen_views:
             out = home / f"01_view_{angle}.png"
+            angle_seed = view_seeds.get(angle, seed)
             cmd = build_qwen_edit_command(
                 plan.sd_cli, reference=reference, prompt=view_prompt(angle), output=out,
-                size=V["size"], steps=V["steps"], cfg_scale=V["cfg_scale"], seed=seed,
+                size=V["size"], steps=V["steps"], cfg_scale=V["cfg_scale"], seed=angle_seed,
                 ram_limit=cfg["reference"]["ram_limit"],
                 swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
             runner.run_cmd(f"views-{angle}", [reference, *plan.edit.values()], [out],
-                           {"views": V, "seed": seed, "angle": angle}, cmd, cwd=plan.sd_cli.parent)
+                           {"views": V, "seed": angle_seed, "angle": angle}, cmd,
+                           cwd=plan.sd_cli.parent)
             views[angle] = out
         if not wants("cutout"):
             names = ", ".join(str(v) for v in views.values()) or "none"

@@ -57,8 +57,16 @@ python3 -m ai3d generate --name mara_v1 \
   --image approved_references/mara_body_front_approved.png --resume
 ```
 
-Bad view? Edit or redraw it yourself and pass it in; your own views
-always win over generated ones:
+Bad view? Regenerate just that one with a new random seed (the others are kept):
+
+```bash
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png \
+  --stop-after views --resume --redo-view back
+```
+
+Or edit/redraw it yourself and pass it in; your own views always win over
+generated ones:
 
 ```bash
 python3 -m ai3d generate --name mara_v1 \

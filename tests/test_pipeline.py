@@ -151,3 +151,42 @@ class BuilderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RedoViewTests(unittest.TestCase):
+    def test_redo_view_only_reruns_that_view_with_new_seed(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            image = tmp / "front.png"
+            image.write_bytes(b"png")
+            home = tmp / "out" / "r"
+            home.mkdir(parents=True)
+            for angle in ("left", "back", "right"):
+                (home / f"01_view_{angle}.png").write_bytes(b"old")
+            fake_sd = tmp / "sd-cli"
+            fake_sd.write_text("")
+            models = tmp / "m"
+            models.mkdir()
+            for name in ("edit.gguf", "mm.gguf", "llm.gguf", "vae.st"):
+                (models / name).write_bytes(b"x")
+            common = ["--name", "r", "--image", str(image), "--output-dir", str(tmp / "out"),
+                      "--set", f"paths.sd_cli={fake_sd}",
+                      "--set", f"paths.qwen_model_dir={models}",
+                      "--set", f"paths.qwen_edit_model_dir={models}",
+                      "--set", "views.diffusion_model=edit.gguf",
+                      "--set", "views.llm_vision=mm.gguf",
+                      "--set", "reference.llm=llm.gguf", "--set", "reference.vae=vae.st"]
+            text = run(*common, "--redo-view", "back", "--dry-run")
+            self.assertIn("[redo] back view with seed", text)
+            self.assertTrue((home / "01_view_back.png").exists())  # dry run deletes nothing
+            with self.assertRaisesRegex(RuntimeError, "conflicts"):
+                run(*common, "--redo-view", "back", "--view-back", str(image), "--dry-run")
+            seeds = {"back": 123}
+            (home / "view_seeds.json").write_text(json.dumps(seeds))
+            text = run(*common, "--dry-run")
+            back_cmd = text.split("[PLAN] views-back")[1].split("[PLAN]")[0]
+            left_cmd = text.split("[PLAN] views-left")[1].split("[PLAN]")[0]
+            self.assertIn("--seed 123", back_cmd)
+            self.assertIn("--seed 42", left_cmd)
+            self.assertIn("feet point away", back_cmd)

@@ -43,9 +43,12 @@ VIEW_PROMPTS = {
         "hairstyle, outfit, colours, body proportions and the same arm pose."
     ),
     "back": (
-        "Show this exact same character from directly behind: rotate the camera 180 degrees "
-        "around the character so we see the full back. Keep the identical hairstyle, outfit, "
-        "colours, body proportions and the same arm pose."
+        "Rear view of this exact same character, seen from directly behind. Her whole body "
+        "is turned away from the camera, not just her head: we see the back of her head, "
+        "the back of her neck, her shoulder blades and spine, her buttocks, the backs of her "
+        "knees and her heels. Her face, chest and toes are not visible; her feet point away "
+        "from the camera. Keep the identical hairstyle, outfit, colours, body proportions "
+        "and the same arm pose, arms mirrored as seen from behind."
     ),
     "right": (
         "Show this exact same character from the right side: rotate the camera 90 degrees "
