@@ -347,9 +347,83 @@ def heat_via_proxy(body, arm, deform_names, height):
     bpy.data.objects.remove(proxy, do_unlink=True)
 
 
-def fill_unweighted(mesh_obj, arm, deform_names):
+def bone_regions(lm, prefix):
+    """Where each limb bone may have influence (Blender coords, facing -Y).
+
+    Heat weighting lets a T-posed arm bone 'see' the flank and hips below it,
+    so raising the arm drags the hips out. Arm bones are therefore limited to
+    skin near the arm itself, legs to below the hips, head to above the neck.
+    Returns {bone name: predicate(point) -> bool}; unlisted bones are free.
+    """
+    H = lm["_height"]
+    rules = {}
+    for side, s in SIDES:
+        chain = [lm[f"{side}Arm"], lm[f"{side}ForeArm"], lm[f"{side}Hand"], lm[f"{side}HandEnd"]]
+        root = lm[f"{side}Arm"]
+
+        def near_arm(p, chain=chain, root=root, s=s):
+            if s * p.x <= 0:
+                return False
+            if (p - root).length < 0.10 * H:
+                return True
+            return min(segment_distance(p, a, b) for a, b in zip(chain, chain[1:])) < 0.075 * H
+
+        for name in ("Arm", "ForeArm", "Hand"):
+            rules[prefix + side + name] = near_arm
+        rules[prefix + side + "Shoulder"] = (
+            lambda p, s=s, z=root.z: s * p.x > 0 and p.z > z - 0.10 * H)
+        top = lm["Hips"].z + 0.08 * H
+        for name in ("UpLeg", "Leg", "Foot", "ToeBase"):
+            rules[prefix + side + name] = lambda p, s=s, top=top: s * p.x > -0.015 * H and p.z < top
+    rules[prefix + "Head"] = lambda p, z=lm["Neck"].z - 0.02 * H: p.z > z
+    return rules
+
+
+def apply_regions(mesh_obj, arm, deform_names, rules):
+    """Remove weights outside each bone's region; renormalise. Returns #changed."""
+    names = {g.index: g.name for g in mesh_obj.vertex_groups}
+    groups = {g.name: g for g in mesh_obj.vertex_groups}
+    mw = mesh_obj.matrix_world
+    changed = 0
+    for v in mesh_obj.data.vertices:
+        p = mw @ v.co
+        bad = [g for g in v.groups if g.weight > 0 and names.get(g.group) in rules
+               and not rules[names[g.group]](p)]
+        if not bad:
+            continue
+        changed += 1
+        for g in bad:
+            groups[names[g.group]].remove([v.index])
+        keep = [(names[g.group], g.weight) for g in v.groups
+                if names.get(g.group) in deform_names and g.weight > 0]
+        total = sum(w for _, w in keep)
+        for name, w in keep:
+            groups[name].add([v.index], w / total, "REPLACE")
+    return changed
+
+
+def arm_leak(mesh_obj, lm, prefix, rules):
+    """Largest arm-bone weight on body skin away from the arms (should be 0).
+
+    Measured on vertices below the armpits that are not near either arm, so
+    hands hanging low in an A-pose do not count.
+    """
+    names = {g.index: g.name for g in mesh_obj.vertex_groups}
+    arm_bones = {prefix + side + n for side, _ in SIDES for n in ("Arm", "ForeArm", "Hand")}
+    near = [rules[prefix + side + "Arm"] for side, _ in SIDES]
+    limit = min(lm["LeftArm"].z, lm["RightArm"].z) - 0.15 * lm["_height"]
+    worst = 0.0
+    for v in mesh_obj.data.vertices:
+        p = mesh_obj.matrix_world @ v.co
+        if p.z < limit and not any(rule(p) for rule in near):
+            worst = max(worst, sum(g.weight for g in v.groups if names.get(g.group) in arm_bones))
+    return round(worst, 4)
+
+
+def fill_unweighted(mesh_obj, arm, deform_names, rules=None):
     """Last resort for vertices with no weight: blend the two nearest bones."""
     groups = {g.index: g.name for g in mesh_obj.vertex_groups}
+    rules = rules or {}
     segments = []
     for bone in arm.data.bones:
         if bone.name in deform_names:
@@ -361,7 +435,8 @@ def fill_unweighted(mesh_obj, arm, deform_names):
         if any(g.weight > 1e-4 and groups.get(g.group) in deform_names for g in v.groups):
             continue
         p = mw @ v.co
-        near = sorted((segment_distance(p, s[1], s[2]), s[0]) for s in segments)[:2]
+        allowed = [s for s in segments if s[0] not in rules or rules[s[0]](p)] or segments
+        near = sorted((segment_distance(p, s[1], s[2]), s[0]) for s in allowed)[:2]
         inv = [(1.0 / (d + 1e-4) ** 4, name) for d, name in near]
         total = sum(w for w, _ in inv)
         for w, name in inv:
@@ -461,7 +536,17 @@ def main():
         heat_via_proxy(body, arm, deform, lm["_height"])
         method = "heat (voxel proxy)"
     unweighted_heat, _, _ = weight_report(body, deform)
-    filled = fill_unweighted(body, arm, deform)
+    rules = bone_regions(lm, a.prefix)
+    leak_before = arm_leak(body, lm, a.prefix, rules)
+    trimmed = apply_regions(body, arm, deform, rules)
+    filled = fill_unweighted(body, arm, deform, rules)
+    # Soften the edges the trim left, then trim again so nothing leaks back.
+    select_only([body])
+    bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+    bpy.ops.object.vertex_group_smooth(group_select_mode="ALL", factor=0.5, repeat=2)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    apply_regions(body, arm, deform, rules)
+    fill_unweighted(body, arm, deform, rules)
 
     select_only([body])
     bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
@@ -490,6 +575,9 @@ def main():
         "unweighted_after_heat_fraction": round(unweighted_heat / max(1, total), 4),
         "nearest_bone_filled": filled,
         "unweighted_final": unweighted,
+        "arm_leak_before_trim": leak_before,
+        "arm_leak": arm_leak(body, lm, a.prefix, rules),
+        "vertices_trimmed": trimmed,
         "max_influences": max_inf,
         "deform_bones_without_vertices": unused,
         "test_action": action,

@@ -98,12 +98,12 @@ class PipelineTests(unittest.TestCase):
         w = warnings_for({
             "quality_game": {"silhouette_iou": 0.6, "mesh": {"pieces": 3, "boundary_edges": 5}},
             "game": {"method": "decimate (quadriflow failed)", "surface_error_max": 0.05},
-            "rig": {"unweighted_after_heat_fraction": 0.1, "facing_detected": "unknown (assumed -Y)",
+            "rig": {"unweighted_after_heat_fraction": 0.1, "arm_leak": 0.4, "facing_detected": "unknown (assumed -Y)",
                     "deform_bones_without_vertices": ["mixamorig:LeftToeBase"]},
         })
         text = " | ".join(w)
         for needle in ("silhouette", "3 separate pieces", "holes", "QuadriFlow failed",
-                       "misses detail", "automatic weights", "faces", "LeftToeBase"):
+                       "misses detail", "automatic weights", "below the armpits", "faces", "LeftToeBase"):
             self.assertIn(needle, text)
 
 

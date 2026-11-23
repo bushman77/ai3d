@@ -436,6 +436,9 @@ def warnings_for(stats: dict) -> list[str]:
             pct = round(100 * r["unweighted_after_heat_fraction"])
             out.append(f"automatic weights missed {pct}% of vertices (filled from the two "
                        "nearest bones); check the pose previews")
+        if (r.get("arm_leak") or 0) > 0.05:
+            out.append(f"arm bones still move skin below the armpits (weight {r['arm_leak']}); "
+                       "hips/flanks will distort when the arms move")
         if r.get("facing_detected", "").startswith("unknown"):
             out.append("could not tell which way the character faces; assumed -Y")
         if r.get("deform_bones_without_vertices"):

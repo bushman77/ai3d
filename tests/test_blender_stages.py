@@ -73,6 +73,7 @@ class BlenderStageTests(unittest.TestCase):
         self.assertEqual(r["deform_bones"], 22)
         self.assertEqual(r["deform_bones_without_vertices"], [])
         self.assertFalse(r["turned_to_face_minus_y"])
+        self.assertEqual(r["arm_leak"], 0.0)
         self.assertTrue(rigged.with_suffix(".blend").is_file())
 
         self.stage("quality.py", ["--mesh", rigged, "--stats", self.dir / "q.json"])
