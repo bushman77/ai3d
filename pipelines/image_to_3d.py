@@ -479,7 +479,8 @@ def write_gallery(home: Path, report: dict) -> None:
     q = report["stats"].get("quality_game", {})
     rows = "".join(f"<li>{html.escape(w)}</li>" for w in report["warnings"]) or "<li>none</li>"
     cards = "".join(
-        f'<figure><img src="{html.escape(str(p.relative_to(home)))}"><figcaption>'
+        f'<figure><img src="{html.escape(str(p.relative_to(home)))}?v={int(p.stat().st_mtime)}">'
+        f'<figcaption>'
         f"{html.escape(p.name)}</figcaption></figure>" for p in imgs)
     summary = {
         "silhouette match": q.get("silhouette_iou"),
