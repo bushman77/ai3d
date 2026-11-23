@@ -1,6 +1,6 @@
 """Build a crude textured humanoid GLB for exercising the Blender stages.
 
-blender --background --factory-startup --python tests/blender_fixture.py -- OUT.glb [--pose a|t] [--face +y|-y]
+blender --background --factory-startup --python tests/blender_fixture.py -- OUT.glb [--pose a|t] [--face +y|-y] [--hips narrow|wide]
 
 Not a unit test (needs Blender). The mannequin is overlapping primitives,
 like a raw Hunyuan mesh: several intersecting shells, 1.75 m tall, feet on
@@ -16,6 +16,7 @@ args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 out = Path(args[0]) if args else Path("/tmp/ai3d_mannequin.glb")
 pose = args[args.index("--pose") + 1] if "--pose" in args else "a"
 face = args[args.index("--face") + 1] if "--face" in args else "-y"
+hips = args[args.index("--hips") + 1] if "--hips" in args else "narrow"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 parts = []
@@ -44,7 +45,7 @@ add(bpy.ops.mesh.primitive_cylinder_add, vertices=16, radius=0.05, depth=0.12, l
 torso = add(bpy.ops.mesh.primitive_uv_sphere_add, segments=24, ring_count=16, radius=1, location=(0, 0, 1.18))
 torso.scale = (0.19, 0.12, 0.32)
 pelvis = add(bpy.ops.mesh.primitive_uv_sphere_add, segments=24, ring_count=16, radius=1, location=(0, 0, 0.93))
-pelvis.scale = (0.17, 0.11, 0.14)
+pelvis.scale = (0.17, 0.11, 0.14) if hips == "narrow" else (0.24, 0.12, 0.22)
 drop = 0.0 if pose == "t" else math.radians(40)
 for s in (1, -1):
     sh = (s * 0.19, 0, 1.40)

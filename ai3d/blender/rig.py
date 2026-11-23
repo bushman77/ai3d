@@ -113,6 +113,51 @@ def find_crotch(points, zmin, H):
     return zmin + 0.47 * H
 
 
+def track_arm(points, s, chest_half, H):
+    """Follow one arm from the fingertip inward to the shoulder.
+
+    Steps inward in thin X slices; in each slice it keeps only the cluster of
+    points closest in height to the previous slice, so wide hips or thighs at
+    the same X never get mixed into the arm (they sit far lower). Returns the
+    fingertip and the arm centreline from the tip inward, or (None, []).
+    """
+    side = [p for p in points if s * p.x > chest_half and p.z > min(q.z for q in points) + 0.3 * H]
+    if len(side) < 10:
+        return None, []
+    tip = max(side, key=lambda p: s * p.x)
+    step = 0.02 * H
+    x = s * tip.x - step
+    prev = tip
+    line = []
+    while x > chest_half:
+        slab = [p for p in side if abs(s * p.x - x) <= step / 2]
+        if slab:
+            clusters = []
+            for group in runs([p.z for p in slab], 0.02 * H):
+                lo, hi = group[0], group[-1]
+                clusters.append([p for p in slab if lo <= p.z <= hi])
+            best = min(clusters, key=lambda c: abs(centre(c, prev).z - prev.z))
+            c = centre(best, prev)
+            if abs(c.z - prev.z) < 0.08 * H:  # still the same limb
+                line.append(c)
+                prev = c
+        x -= step
+    return tip, line
+
+
+def along(line, fraction):
+    """Point at `fraction` of the polyline's length (line[0] = start)."""
+    if len(line) == 1:
+        return line[0].copy()
+    lengths = [(b - a).length for a, b in zip(line, line[1:])]
+    target = sum(lengths) * fraction
+    for (a, b), seg in zip(zip(line, line[1:]), lengths):
+        if target <= seg and seg > 0:
+            return a.lerp(b, target / seg)
+        target -= seg
+    return line[-1].copy()
+
+
 def limb_centre(points, origin, direction, distance, half):
     """Centre of the limb cross-section `distance` along `direction`."""
     sel = [p for p in points if abs((p - origin).dot(direction) - distance) <= half]
@@ -142,21 +187,17 @@ def landmarks(obj):
 
     shoulder_zs = []
     for side, s in SIDES:
-        arm = [p for p in pts if s * p.x > chest_half * 1.05 and p.z > zmin + 0.38 * H]
         root_guess = Vector((s * chest_half, torso_y, shoulder_guess_z))
-        if len(arm) < 10:
+        tip, line = track_arm(pts, s, chest_half * 1.05, H)
+        if tip is None or len(line) < 3:
             tip = root_guess + Vector((s * 0.35 * H, 0, -0.25 * H))
-            root = root_guess
-        else:
-            tip = max(arm, key=lambda p: (p - root_guess).length)
-            near = [p for p in arm if s * p.x < chest_half + 0.05 * H]
-            root = centre(near, root_guess)
-            root.x = s * chest_half * 0.92
-        length = (tip - root).length
-        d = (tip - root).normalized()
-        sample = [p for p in arm] or pts
-        elbow = limb_centre(sample, root, d, length * 0.45, 0.02 * H)
-        wrist = limb_centre(sample, root, d, length * 0.80, 0.015 * H)
+            line = [tip, root_guess]
+        path = [*reversed(line), tip]            # shoulder -> fingertip
+        root = path[0].copy()
+        root.x = s * chest_half * 0.92
+        path[0] = root
+        elbow = along(path, 0.42)
+        wrist = along(path, 0.80)
         lm[f"{side}Arm"] = root
         lm[f"{side}ForeArm"] = elbow
         lm[f"{side}Hand"] = wrist
@@ -576,6 +617,9 @@ def main():
         "nearest_bone_filled": filled,
         "unweighted_final": unweighted,
         "arm_leak_before_trim": leak_before,
+        "shoulder_height_fraction": round(
+            (min(lm["LeftArm"].z, lm["RightArm"].z) - lm["_zmin"]) / lm["_height"], 3),
+        "hip_height_fraction": round((lm["Hips"].z - lm["_zmin"]) / lm["_height"], 3),
         "arm_leak": arm_leak(body, lm, a.prefix, rules),
         "vertices_trimmed": trimmed,
         "max_influences": max_inf,

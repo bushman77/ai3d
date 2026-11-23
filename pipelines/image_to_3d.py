@@ -436,6 +436,13 @@ def warnings_for(stats: dict) -> list[str]:
             pct = round(100 * r["unweighted_after_heat_fraction"])
             out.append(f"automatic weights missed {pct}% of vertices (filled from the two "
                        "nearest bones); check the pose previews")
+        sh = r.get("shoulder_height_fraction")
+        if sh is not None and not 0.72 <= sh <= 0.9:
+            out.append(f"shoulder joints placed at {sh:.2f} of the height (expected 0.72-0.90); "
+                       "the arm bones are probably in the wrong place")
+        hip = r.get("hip_height_fraction")
+        if hip is not None and not 0.40 <= hip <= 0.62:
+            out.append(f"hip joint placed at {hip:.2f} of the height (expected 0.40-0.62)")
         if (r.get("arm_leak") or 0) > 0.05:
             out.append(f"arm bones still move skin below the armpits (weight {r['arm_leak']}); "
                        "hips/flanks will distort when the arms move")

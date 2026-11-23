@@ -31,10 +31,11 @@ class BlenderStageTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.dir = Path(cls.tmp.name)
-        for face in ("-y", "+y"):
-            out = cls.dir / f"mannequin{face}.glb"
+        for name, extra in (("mannequin-y", ["--face", "-y"]), ("mannequin+y", ["--face", "+y"]),
+                            ("wide_tpose", ["--hips", "wide", "--pose", "t"])):
+            out = cls.dir / f"{name}.glb"
             blender([BLENDER, "--background", "--factory-startup", "--python-exit-code", "1",
-                     "--python", str(FIXTURE), "--", str(out), "--face", face])
+                     "--python", str(FIXTURE), "--", str(out), *extra])
 
     @classmethod
     def tearDownClass(cls):
@@ -95,6 +96,21 @@ class BlenderStageTests(unittest.TestCase):
         r = self.stats("dec_rig.json")
         self.assertLess(r["unweighted_after_heat_fraction"], 0.02)
         self.assertEqual(r["unweighted_final"], 0)
+
+    def test_wide_hips_do_not_pull_the_shoulders_down(self):
+        # Regression (Mara): hips wider than the chest were averaged into the
+        # shoulder joint, so the arm bones sat by the hips and moved them.
+        src = self.dir / "wide_tpose.glb"
+        game, rigged = self.dir / "wide_game.glb", self.dir / "wide_rigged.glb"
+        self.stage("retopo_bake.py", ["--input", src, "--output", game, "--target-faces", 3000,
+                                      "--texture-size", 128, "--samples", 1])
+        self.stage("rig.py", ["--input", game, "--output", rigged, "--no-test-animation",
+                              "--stats", self.dir / "wide_rig.json"])
+        r = self.stats("wide_rig.json")
+        # fixture shoulders at 1.40 m of 1.74 m = 0.80
+        self.assertAlmostEqual(r["shoulder_height_fraction"], 0.80, delta=0.03)
+        self.assertLess(r["arm_leak_before_trim"], 0.05)
+        self.assertEqual(r["arm_leak"], 0.0)
 
     def test_backwards_character_is_turned(self):
         src = self.dir / "mannequin+y.glb"
