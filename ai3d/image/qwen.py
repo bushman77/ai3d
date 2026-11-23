@@ -31,3 +31,58 @@ def build_qwen_command(
         "-W", str(width), "-H", str(height),
         "--seed", "42", "-p", prompt, "-o", str(output),
     ]
+
+
+# --------------------------------------------------------------------------
+# Multi-view: side/back views of the SAME character from the front image.
+
+VIEW_PROMPTS = {
+    "left": (
+        "Show this exact same character from the left side: rotate the camera 90 degrees "
+        "around the character so we see a full side profile. Keep the identical face, "
+        "hairstyle, outfit, colours, body proportions and the same arm pose."
+    ),
+    "back": (
+        "Show this exact same character from directly behind: rotate the camera 180 degrees "
+        "around the character so we see the full back. Keep the identical hairstyle, outfit, "
+        "colours, body proportions and the same arm pose."
+    ),
+    "right": (
+        "Show this exact same character from the right side: rotate the camera 90 degrees "
+        "the other way around the character so we see the opposite full side profile. Keep "
+        "the identical face, hairstyle, outfit, colours, body proportions and the same arm pose."
+    ),
+}
+VIEW_SUFFIX = (
+    " Full body from the top of the head to the soles of the feet, centred, orthographic "
+    "character turnaround sheet style, no perspective distortion, plain light-gray "
+    "background, soft even lighting, nothing else in the image."
+)
+
+
+def view_prompt(angle: str) -> str:
+    if angle not in VIEW_PROMPTS:
+        raise ValueError(f"Unknown view angle {angle!r}; choose from {sorted(VIEW_PROMPTS)}")
+    return VIEW_PROMPTS[angle] + VIEW_SUFFIX
+
+
+def build_qwen_edit_command(
+    sd_cli: Path, *, diffusion_model: Path, llm: Path, llm_vision: Path, vae: Path,
+    reference: Path, prompt: str, output: Path, size: int = 512, steps: int = 20,
+    cfg_scale: float = 2.5, seed: int = 42, ram_limit: str = "10G", swap_limit: str = "1G",
+) -> list[str]:
+    """Qwen-Image-Edit (2509/2511) with the front image as reference (sd-cli -r)."""
+    if min(size, steps) <= 0:
+        raise ValueError("size and steps must be positive")
+    return [
+        "systemd-run", "--user", "--scope", "-p", f"MemoryMax={ram_limit}",
+        "-p", f"MemorySwapMax={swap_limit}", str(sd_cli),
+        "--diffusion-model", str(diffusion_model),
+        "--llm", str(llm), "--llm_vision", str(llm_vision), "--vae", str(vae),
+        "-r", str(reference),
+        "--backend", "cuda0", "--params-backend", "disk", "--max-vram", "-1",
+        "--diffusion-fa", "--cfg-scale", str(cfg_scale), "--sampling-method", "euler",
+        "--flow-shift", "3", "--steps", str(steps), "-t", "4",
+        "-W", str(size), "-H", str(size), "--seed", str(seed),
+        "-p", prompt, "-o", str(output),
+    ]

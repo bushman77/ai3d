@@ -1,7 +1,9 @@
 # Configuration
 
-Future version-pinned dependencies, backend settings and example profiles
-will live here. Do not invent dependency locks: capture exact versions,
-upstream commits, model sources and checksums from validated installations.
+- `default.json`: every pipeline setting, with notes. Always loaded first.
+- `fast_6gb.json`: quickest profile (old Paint3D settings, fewer steps).
 
-Local configuration and credentials should not be committed.
+Use your own: `cp config/default.json config/mine.json`, edit it, then
+`--config config/mine.json`. Keep only the keys you change if you like; it
+is merged over the defaults. One-off changes: `--set section.key=value`.
+Relative paths are relative to the ai3d folder; `~` works.

@@ -174,7 +174,7 @@ def generate_character(
     if not include_regions and any(item["kind"] == "region" for item in plan):
         print("Region parts produce references only; use --include-regions to experiment with isolated meshes.")
 
-    from pipelines.image_to_3d import main as pipeline_main
+    from legacy.pipelines.image_to_3d_v1 import main as pipeline_main
 
     for index, item in enumerate(plan, start=1):
         print(f"\n[{index}/{len(plan)}] {item['part_id']} ({item['stage']})", flush=True)

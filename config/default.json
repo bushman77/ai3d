@@ -1,0 +1,80 @@
+{
+  "_about": "Default AI3D profile, tuned for a 6 GB GPU and 16 GB RAM. Copy this file, edit the copy, and pass it with --config. Single values can also be overridden with --set section.key=value. Relative paths resolve against the ai3d repository root; ~ is expanded.",
+  "seed": 42,
+  "paths": {
+    "blender": "blender",
+    "hunyuan": "Hunyuan3D-2",
+    "aigamekit": "AiGameKit",
+    "sd_cli": "stable-diffusion.cpp/build/bin/sd-cli",
+    "qwen_model_dir": "~/models/Qwen-Image-2512",
+    "qwen_edit_model_dir": "~/models/Qwen-Image-Edit-2509",
+    "hunyuan_models": "models"
+  },
+  "reference": {
+    "_about": "Only used with --prompt-file (text-to-image). With --image the file is copied unchanged.",
+    "diffusion_model": "qwen-image-2512-Q3_K_M.gguf",
+    "llm": "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+    "vae": "qwen_image_vae.safetensors",
+    "width": 512,
+    "height": 768,
+    "steps": 16,
+    "cfg_scale": 2.5,
+    "ram_limit": "10G",
+    "swap_limit": "1G"
+  },
+  "views": {
+    "_about": "Generates side/back views of the SAME character from the front image with Qwen-Image-Edit, so Hunyuan3D-2mv sees all sides instead of guessing. Hand-made views passed with --view-left/--view-back/--view-right always win.",
+    "enabled": true,
+    "angles": ["left", "back", "right"],
+    "diffusion_model": "Qwen-Image-Edit-2509-Q3_K_M.gguf",
+    "llm_vision": "mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf",
+    "size": 512,
+    "steps": 20,
+    "cfg_scale": 2.5
+  },
+  "shape": {
+    "_about": "model: auto picks mv (multi-view) when side/back views exist, otherwise mini. Choices: auto, mini, mini-turbo, mv, mv-turbo.",
+    "model": "auto",
+    "steps": 30,
+    "octree_resolution": 256,
+    "num_chunks": 8000,
+    "guidance_scale": 5.0,
+    "remove_floaters": true
+  },
+  "paint_mesh": {
+    "target_faces": 40000
+  },
+  "paint": {
+    "_about": "Paint3D settings. The old 6 GB-safe profile was quality=fast, max_views=2, view_resolution=256, render_size=512, texture_size=1024. Raise one value at a time.",
+    "quality": "medium",
+    "category": "humanoid",
+    "max_views": 4,
+    "view_resolution": 384,
+    "render_size": 768,
+    "texture_size": 2048,
+    "bake_exp": 4,
+    "debug": false
+  },
+  "retopo": {
+    "_about": "Builds a clean, watertight low-poly mesh and bakes the painted high-poly colour, normal and roughness onto it. method: quadriflow (quads) or decimate (old behaviour).",
+    "enabled": true,
+    "method": "quadriflow",
+    "target_faces": 8000,
+    "voxel_ratio": 0.004,
+    "texture_size": 2048,
+    "bake_samples": 4,
+    "cage_ratio": 0.012,
+    "device": "CPU"
+  },
+  "rig": {
+    "_about": "Mixamo-compatible humanoid skeleton with Blender automatic (heat) weights. Bone names use the prefix so Mixamo animations retarget by name in Three.js.",
+    "enabled": true,
+    "bone_prefix": "mixamorig:",
+    "test_animation": true
+  },
+  "report": {
+    "previews": true,
+    "preview_size": 512,
+    "silhouette_grid": 160
+  }
+}

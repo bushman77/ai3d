@@ -1,0 +1,9 @@
+{
+  "_about": "Overrides for the quickest run: the old pre-2026-11 Paint3D settings, fewer steps, no rig test animation. Use with --config config/fast_6gb.json (merged on top of config/default.json).",
+  "views": {"steps": 12},
+  "shape": {"steps": 20, "octree_resolution": 256},
+  "paint": {"quality": "fast", "max_views": 2, "view_resolution": 256, "render_size": 512, "texture_size": 1024, "bake_exp": 6},
+  "retopo": {"texture_size": 1024, "bake_samples": 1},
+  "rig": {"test_animation": false},
+  "report": {"previews": false}
+}

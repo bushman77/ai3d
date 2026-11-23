@@ -15,26 +15,47 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Compile and test (no AI dependencies)
+      - name: Pipeline tests (no AI dependencies)
         run: |
-          python -m compileall -q ai3d space_nova_pipeline tests
-          bash -n build_character.sh
-          ./build_character.sh --help >/dev/null
-          ./build_character.sh --body-only --dry-run --prefix mara_clean_smoke >/dev/null
+          python -m compileall -q ai3d pipelines backends tests
           python -m unittest discover -s tests -v
           python -m ai3d --help >/dev/null
           python -m ai3d generate --help >/dev/null
+          python -m ai3d generate --name ci_plan --image approved_references/mara_body_front_approved.png --dry-run >/dev/null
           python -m ai3d inspect --help >/dev/null
           python -m ai3d validate-blender --help >/dev/null
-          python -m ai3d character --help >/dev/null
-          python -m ai3d character init --help >/dev/null
-          python -m ai3d character validate legacy/characters/template.json
+      - name: Legacy parts-based workflow tests
+        run: |
+          python -m compileall -q legacy
+          python -m unittest discover -s legacy/tests -t . -v
+          bash -n legacy/build_character.sh
+          bash legacy/build_character.sh --help >/dev/null
           python -m ai3d character validate legacy/examples/space_nova/characters/mara_venn.json
-          python -m ai3d character reference legacy/examples/space_nova/characters/mara_venn.json --part head --dry-run >/dev/null
-          python -m ai3d character generate legacy/examples/space_nova/characters/mara_venn.json --all --dry-run >/dev/null
-          python -m ai3d character assemble legacy/examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_assembly_smoke --dry-run >/dev/null
-          python -m ai3d character cut --help >/dev/null
-          python -m ai3d character stage --help >/dev/null
-          python -m ai3d character component --help >/dev/null
-          python -m ai3d character assemble legacy/examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_all_parts_smoke --all-parts --dry-run >/dev/null
-          python space_nova_pipeline/space_nova_pipeline.py --help >/dev/null
+          python legacy/space_nova_pipeline/space_nova_pipeline.py --help >/dev/null
+
+  blender-stages:
+    # Runs the real Blender scripts (prepaint, retopo + bake, rig, quality)
+    # on a generated mannequin, using the bpy package instead of a Blender install.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install bpy
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxkbcommon0 libsm6 libxi6 libxrender1 libgl1 libegl1
+          python -m pip install "bpy>=4.2,<5" numpy
+      - name: Blender wrapper around bpy
+        run: |
+          mkdir -p "$HOME/bin"
+          cat > "$HOME/bin/blender" <<'EOF'
+          #!/bin/bash
+          while [[ $# -gt 0 ]]; do case "$1" in --python) S="$2"; shift 2;; --) shift; break;; *) shift;; esac; done
+          python "$S" -- "$@"
+          EOF
+          chmod +x "$HOME/bin/blender"
+      - name: Blender stage tests
+        env:
+          AI3D_BLENDER: /home/runner/bin/blender
+        run: python -m unittest tests.test_blender_stages -v

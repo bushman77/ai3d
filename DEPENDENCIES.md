@@ -1,4 +1,4 @@
-# Space Nova AI3D — Dependency Inventory
+# AI3D — Dependency Inventory
 
 This is an inventory of the *currently working local generator*, not a reproducible lockfile yet. The launcher now defaults to `~/ai3d/stable-diffusion.cpp` and `~/ai3d` dependency paths. On existing machines, `stable-diffusion.cpp` may be a symlink to an external installation (for example `~/ai-image/stable-diffusion.cpp`). Record tested versions/commits before attempting a clean-machine installation.
 
@@ -12,7 +12,7 @@ This is an inventory of the *currently working local generator*, not a reproduci
 | `git`, `git-lfs` | Source checkout; optional model download via Git LFS | Git required; LFS optional |
 | `build-essential` (GCC/G++/make), `cmake`, `ninja-build` | Native C++ and Python/CUDA extensions | Required for source builds |
 | Python, `venv`, `pip` | Separate ML tool environments | Yes |
-| `blender` with glTF 2.0 import/export | Mesh decimation, GLB export, rig authoring | Yes |
+| `blender` 4.1 or newer with glTF 2.0 import/export | Prepaint, retopology + bake (Cycles), rigging, reports | Yes |
 | `systemd-run` (`systemd` user service) | Launcher Qwen memory limits | Yes for existing launcher |
 | Core utilities (`sha256sum`, `cut`, `find`, `tee`, `date`) | Pipeline caching, logs, backups | Yes; commonly already installed |
 | `libgl1`, `libglib2.0-0` | Common OpenCV/Python graphics runtime dependencies | Frequently required on fresh systems |
@@ -38,7 +38,7 @@ sudo apt install -y \
 | Hunyuan3D-2 | https://github.com/Tencent-Hunyuan/Hunyuan3D-2 | `~/ai3d/Hunyuan3D-2` | Background removal and Hunyuan3D-2mini shape generation |
 | AiGameKit / Paint3D | https://github.com/maikramer/AiGameKit | `~/ai3d/AiGameKit/Paint3D` | Multi-view texture inference, UV atlas and PBR baking |
 | Blender | https://www.blender.org/ | `blender` on PATH | GLB prepaint mesh decimation, final optimization, rig tooling |
-| Local Space Nova AI3D repository | `bushman77/space-nova-ai3d` | `~/space-nova-ai3d` | Our orchestration scripts, documentation, testing |
+| AI3D (this repository) | `bushman77/ai3d` | `~/ai3d` | Orchestration, Blender scripts, tests |
 
 Use upstream install instructions. In particular:
 
@@ -85,7 +85,7 @@ Launcher: `~/ai3d/AiGameKit/Paint3D/.venv/bin/python`
 - Blender includes its own Python and `bpy` API; our current launcher uses Blender in `--background --python` mode.
 - Our procedural **51-bone male/female rig scripts** are Blender-based, not dependent on a separate AI rigging service.
 - For mesh audits outside Blender, Python **trimesh** and **numpy** suffice for our existing checks.
-- **Node.js** and **three** are optional for Three.js/glTF validation in Space Nova, not required to generate or paint a mesh.
+- **Node.js** and **three** are optional for Three.js/glTF validation in the game client, not required to generate or paint a mesh.
 
 ## 4. Model weights / inference assets (not installable with `apt`)
 
@@ -96,6 +96,9 @@ These are *downloaded separately*, sometimes automatically by the upstream tools
 | Qwen Image diffusion GGUF | `~/models/Qwen-Image-2512/qwen-image-2512-Q3_K_M.gguf` | Stage 1 reference generation |
 | Qwen2.5-VL text encoder / LLM GGUF | `~/models/Qwen-Image-2512/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf` | Stage 1 prompt/conditioning |
 | Qwen image VAE | `~/models/Qwen-Image-2512/qwen_image_vae.safetensors` | Stage 1 image decoding |
+| Qwen-Image-Edit-2509 GGUF | `~/models/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Q3_K_M.gguf` (QuantStack) | Side/back views |
+| Qwen2.5-VL mmproj | `~/models/Qwen-Image-Edit-2509/mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf` | Lets Qwen-Image-Edit see the front image |
+| Hunyuan3D-2mv | `~/ai3d/models/Hunyuan3D-2mv/hunyuan3d-dit-v2-mv/` (auto-downloads if missing) | Multi-view shape |
 | Hunyuan3D-2mini | `~/ai3d/models/Hunyuan3D-2mini/hunyuan3d-dit-v2-mini/model.fp16.safetensors` (with supporting model config files) | Stage 3 shape generation |
 | Background remover checkpoint | `rembg`/Hunyuan model cache | Stage 2 cutout |
 | Paint3D / Hunyuan3D-Paint 2.1 weights | AiGameKit / Hugging Face cache according to upstream installer | Stage 5 texturing |
@@ -104,6 +107,12 @@ These are *downloaded separately*, sometimes automatically by the upstream tools
 Model licensing must be reviewed separately from source-code licensing, especially before commercial distribution.
 
 ## 5. Current pipeline dependencies by stage
+
+The stage table below describes the old (legacy v1) pipeline. Current stages are
+listed in README.md; tool paths and model file names are in `config/default.json`,
+and every run checks them before starting.
+
+### Legacy v1 stages
 
 | Stage | Required components | Result |
 |---|---|---|
@@ -138,7 +147,7 @@ The `pip freeze` outputs are **machine snapshots**, not automatically portable u
 3. Preserve one verified dependency lock or constraints file **per environment**.
 4. Implement a bootstrap/check script that **detects existing installations before downloading**.
 5. Document exact model sources, filenames, checksums and licensing; keep weights outside Git.
-6. Move path configuration out of the Bash launcher into a config file without breaking existing installations.
+6. ~~Move path configuration into a config file~~ — done: `config/default.json`.
 
 ## Primary upstream documentation
 

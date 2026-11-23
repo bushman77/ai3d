@@ -56,7 +56,8 @@ class StandaloneCLITests(unittest.TestCase):
     def test_generate_help_is_generic(self):
         result = self.run_ai3d("generate", "--help")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("AI3D asset pipeline", result.stdout)
+        self.assertIn("rigged game-ready character", result.stdout)
+        self.assertIn("--view-back", result.stdout)
         self.assertIn("--output-dir", result.stdout)
         self.assertNotIn("Space Nova", result.stdout)
 

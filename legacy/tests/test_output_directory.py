@@ -10,7 +10,7 @@ from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
 from legacy.space_nova_pipeline.space_nova_pipeline import arguments
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 LEGACY_ENTRY = REPO_ROOT / "legacy" / "space_nova_pipeline" / "space_nova_pipeline.py"
 
 

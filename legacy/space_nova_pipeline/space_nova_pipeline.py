@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Backward-compatible entry point for the original Space Nova pipeline.
 
-Project-neutral orchestration now resides in pipelines.image_to_3d.
+Project-neutral orchestration now resides in legacy.pipelines.image_to_3d_v1.
 Keep this path and public argument helpers available for existing scripts.
 """
 
@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pipelines.image_to_3d import STAGES, arguments, main, positive, should_stop  # noqa: E402
+from legacy.pipelines.image_to_3d_v1 import STAGES, arguments, main, positive, should_stop  # noqa: E402
 
 
 if __name__ == "__main__":

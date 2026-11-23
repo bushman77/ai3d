@@ -16,7 +16,7 @@ from unittest.mock import patch, call
 
 from legacy.characters.batch import build_plan, generate_character
 from legacy.characters.card import ROOT, load_card
-from pipelines.image_to_3d import main as pipeline_main
+from legacy.pipelines.image_to_3d_v1 import main as pipeline_main
 
 MARA = ROOT / "legacy/examples/space_nova/characters/mara_venn.json"
 
@@ -140,7 +140,7 @@ class CharacterBatchTests(unittest.TestCase):
             self.preview(part_ids=["head"])
 
     def test_dry_run_does_not_call_full_pipeline(self):
-        with patch("pipelines.image_to_3d.main") as pipeline:
+        with patch("legacy.pipelines.image_to_3d_v1.main") as pipeline:
             self.preview(all_parts=True, stop_after="game")
         pipeline.assert_not_called()
 
@@ -152,7 +152,7 @@ class CharacterBatchTests(unittest.TestCase):
         def fake_pipeline(args, prog=None):
             recorded.append(("pipeline", args[args.index("--name") + 1]))
         with patch("legacy.characters.batch.run_reference", side_effect=fake_reference):
-            with patch("pipelines.image_to_3d.main", side_effect=fake_pipeline):
+            with patch("legacy.pipelines.image_to_3d_v1.main", side_effect=fake_pipeline):
                 with contextlib.redirect_stdout(io.StringIO()):
                     generate_character(
                         self.card, MARA, all_parts=True,
@@ -186,7 +186,7 @@ class CharacterBatchTests(unittest.TestCase):
         def fake_pipeline(argv, prog=None):
             captured.extend(argv)
         with patch("legacy.characters.batch.run_reference", side_effect=fake_reference):
-            with patch("pipelines.image_to_3d.main", side_effect=fake_pipeline):
+            with patch("legacy.pipelines.image_to_3d_v1.main", side_effect=fake_pipeline):
                 with contextlib.redirect_stdout(io.StringIO()):
                     generate_character(
                         card, MARA, part_ids=["head"], stop_after="paint",

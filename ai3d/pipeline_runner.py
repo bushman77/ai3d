@@ -69,6 +69,16 @@ class Runner:
             }, indent=2))
         self.timing[label] = {"cached": False, "seconds": round(time.monotonic() - start, 1)}
 
+    def run_cmd(self, label: str, inputs: list[Path], outputs: list[Path], config: dict,
+                cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> None:
+        """run() for a subprocess stage; dry runs print the command."""
+        if self.dry:
+            print(f"\n[PLAN] {label}\n$ " + subprocess.list2cmdline([str(c) for c in cmd]), flush=True)
+            self.timing[label] = {"cached": False, "seconds": 0}
+            return
+        self.run(label, inputs, outputs, config,
+                 lambda: self.command(label, [str(c) for c in cmd], cwd=cwd, env=env))
+
     def command(self, label: str, cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> None:
         print("$ " + subprocess.list2cmdline(cmd), flush=True)
         if self.dry:

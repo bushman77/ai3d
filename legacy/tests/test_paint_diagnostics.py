@@ -8,7 +8,7 @@ from unittest.mock import patch
 from ai3d.textures.diagnostics import (
     DEBUG_FILES, debug_directory, expected_debug_images, paint_debug_environment,
 )
-from pipelines.image_to_3d import arguments, main
+from legacy.pipelines.image_to_3d_v1 import arguments, main
 
 
 class PaintDiagnosticsTests(unittest.TestCase):
@@ -45,7 +45,7 @@ class PaintDiagnosticsTests(unittest.TestCase):
         options = arguments([
             "--name", "test", "--paint-debug", "--painted-mesh", "/tmp/painted.glb",
         ])
-        with patch("pipelines.image_to_3d.arguments", return_value=options):
+        with patch("legacy.pipelines.image_to_3d_v1.arguments", return_value=options):
             with self.assertRaisesRegex(RuntimeError, "skips painting"):
                 main()
 

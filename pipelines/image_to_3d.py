@@ -1,13 +1,28 @@
 #!/usr/bin/env python3
-"""AI3D: local image-to-3D orchestration with isolated inference backends.
+"""AI3D: one image in, one rigged game-ready character out.
 
-The controlling Python process requires only the standard library.
-Hunyuan, Paint3D, Qwen, and Blender run as independent subprocesses.
-Inputs and third-party upstream checkouts are never modified.
+    reference -> views -> cutout -> shape -> paint-mesh -> paint -> game -> rig -> report
+
+reference   copy --image, or Qwen text-to-image from --prompt-file
+views       Qwen-Image-Edit draws left/back/right of the SAME character
+            (or use your own with --view-left/--view-back/--view-right)
+cutout      background removal for every view
+shape       Hunyuan3D-2mv from all views (Hunyuan3D-2mini if front only)
+paint-mesh  Blender clean-up and reduction for Paint3D
+paint       Paint3D texturing
+game        Blender: watertight quad mesh + baked colour/normal/roughness
+rig         Blender: Mixamo-named skeleton + automatic weights + test action
+report      Blender: measurements, silhouette match, preview renders,
+            report.json and index.html
+
+All settings live in config/default.json (override with --config / --set).
+The controlling process is standard-library Python; every heavy tool runs
+as a subprocess in its own environment. Inputs are never modified.
 """
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
 from pathlib import Path
@@ -15,269 +30,450 @@ import shutil
 import subprocess
 import sys
 
-# Support direct script invocation from any working directory.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ai3d.common import ensure_file, resolve
-from ai3d.export.validation import readable_glb
-from ai3d.pipeline_runner import Runner
-from ai3d.optimization.blender import build_finalize_command
-from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
-from ai3d.image.qwen import build_qwen_command, DEFAULT_SD_CLI, DEFAULT_MODEL_DIR
-from ai3d.image.background import build_cutout_command
-from ai3d.geometry.hunyuan import build_shape_command, build_prepaint_command
-from ai3d.textures.paint3d import build_texture_command
-from ai3d.textures.diagnostics import paint_debug_environment, expected_debug_images
+from ai3d.blender.commands import blender_command  # noqa: E402
+from ai3d.common import ensure_file, resolve  # noqa: E402
+from ai3d.config import load_profile, repo_path  # noqa: E402
+from ai3d.export.validation import readable_glb  # noqa: E402
+from ai3d.geometry.hunyuan import build_hunyuan_shape_command  # noqa: E402
+from ai3d.image.qwen import build_qwen_command, build_qwen_edit_command, view_prompt  # noqa: E402
+from ai3d.optimization.blender import build_finalize_command  # noqa: E402
+from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory  # noqa: E402
+from ai3d.pipeline_runner import Runner  # noqa: E402
+from ai3d.textures.diagnostics import expected_debug_images, paint_debug_environment  # noqa: E402
+from ai3d.textures.paint3d import build_texture_command  # noqa: E402
 
-AI3D = PROJECT_ROOT
-STAGES = ("reference", "cutout", "shape", "paint-mesh", "paint", "game")
-
-
-def positive(value: str) -> int:
-    out = int(value)
-    if out <= 0:
-        raise argparse.ArgumentTypeError("expected a positive integer")
-    return out
+STAGES = ("reference", "views", "cutout", "shape", "paint-mesh", "paint", "game", "rig", "report")
+ANGLES = ("left", "back", "right")
+SHAPE_SCRIPT = PROJECT_ROOT / "backends" / "hunyuan_shape.py"
+CUTOUT_SCRIPT = PROJECT_ROOT / "backends" / "cutout.py"
+FINALIZE_SCRIPT = PROJECT_ROOT / "ai3d" / "optimization" / "blender_finalize.py"
 
 
 def arguments(argv: list[str] | None = None, *, prog: str | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog=prog,
-        description="AI3D asset pipeline: reference -> cutout -> geometry -> textures -> GLB"
+    p = argparse.ArgumentParser(
+        prog=prog, description=__doc__.split("\n\n")[0],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Stages: " + " -> ".join(STAGES) + "\nSettings: config/default.json",
     )
-    p.add_argument("--name", required=True, help="Asset ID, e.g. example_character")
-    inp = p.add_mutually_exclusive_group()
-    inp.add_argument("--image", type=Path, help="Existing reference PNG/JPEG (recommended)")
-    inp.add_argument("--prompt-file", type=Path, help="Qwen prompt.txt, requires --enable-qwen")
-    p.add_argument("--enable-qwen", action="store_true", help="Explicitly opt in to Qwen generation (large memory use)")
-    p.add_argument("--sd-cli", type=Path, default=DEFAULT_SD_CLI,
-                   help="Path to a CUDA-capable stable-diffusion.cpp sd-cli executable")
-    p.add_argument("--qwen-model-dir", type=Path, default=DEFAULT_MODEL_DIR,
-                   help="Directory containing Qwen image diffusion, LLM and VAE weights")
-    p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB instead of Hunyuan")
-    p.add_argument("--painted-mesh", type=Path, help="Reuse an existing fully painted GLB; skips generation and Paint3D")
-    p.add_argument("--output-dir", "--workdir", dest="workdir", metavar="PATH", type=Path,
-                   default=DEFAULT_OUTPUT_ROOT,
-                   help="Root for all generated run files (default: <ai3d>/outputs)")
-    p.add_argument("--hunyuan", type=Path, default=AI3D / "Hunyuan3D-2")
-    p.add_argument("--aigamekit", type=Path, default=AI3D / "AiGameKit")
-    p.add_argument("--blender", default="blender")
-    p.add_argument("--no-cutout", action="store_true", help="Pass original image unchanged (not recommended for opaque backgrounds)")
-    p.add_argument("--shape-steps", type=positive, default=20)
-    p.add_argument("--paint-faces", type=positive, default=40000, help="Geometry detail sent to Paint3D")
-    p.add_argument("--game-faces", type=positive, default=15000, help="Final target triangle count")
-    p.add_argument("--category", choices=("humanoid", "prop", "weapon", "none"), default="humanoid")
-    p.add_argument("--quality", choices=("fast", "low", "medium", "high", "highest"), default="fast")
-    p.add_argument("--max-views", type=positive, default=2)
-    p.add_argument("--view-resolution", type=positive, default=256)
-    p.add_argument("--render-size", type=positive, default=512)
-    p.add_argument("--texture-size", type=positive, default=1024)
-    p.add_argument("--bake-exp", type=positive, default=6)
+    p.add_argument("--name", required=True, help="Run name; files go to outputs/<name>/")
+    src = p.add_mutually_exclusive_group()
+    src.add_argument("--image", type=Path, help="Front reference image (PNG/JPEG)")
+    src.add_argument("--prompt-file", type=Path, help="Text prompt for Qwen text-to-image")
+    p.add_argument("--enable-qwen", action="store_true", help=argparse.SUPPRESS)  # old flag, no-op
+    for angle in ANGLES:
+        p.add_argument(f"--view-{angle}", type=Path, help=f"Your own {angle} view image")
+    p.add_argument("--no-views", action="store_true", help="Front image only (Hunyuan3D-2mini)")
+    p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB")
+    p.add_argument("--painted-mesh", type=Path, help="Reuse an existing painted GLB (skips to game)")
+    p.add_argument("--config", type=Path, help="Profile merged over config/default.json")
+    p.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE",
+                   help="Override one setting, e.g. --set shape.steps=50 (repeatable)")
+    p.add_argument("--seed", type=int, help="Overrides config seed")
+    p.add_argument("--no-retopo", action="store_true", help="Old behaviour: decimate only")
+    p.add_argument("--no-rig", action="store_true", help="Skip the rig stage")
     p.add_argument("--paint-debug", action="store_true",
-                   help="Save Paint3D per-view and UV bake diagnostic images under outputs/<name>/paint_debug")
-    p.add_argument("--stop-after", choices=STAGES, default="game", help="Stop at quality gate")
-    p.add_argument("--resume", action="store_true", help="Skip stages only when inputs/options match recorded stage manifest")
-    p.add_argument("--force", action="store_true", help="Rebuild all requested stages (overwriting only run outputs)")
-    p.add_argument("--dry-run", action="store_true", help="Print stage commands without running them")
-    p.add_argument("--qwen-width", type=positive, default=384)
-    p.add_argument("--qwen-height", type=positive, default=576)
-    p.add_argument("--qwen-steps", type=positive, default=12)
-    p.add_argument("--qwen-ram", default="10G", help="systemd MemoryMax for optional Qwen stage")
-    p.add_argument("--qwen-swap", default="1G", help="systemd MemorySwapMax for optional Qwen stage")
-    p.add_argument("--no-finalize", action="store_true", help="Use full painted GLB as final; skip polygon reduction")
+                   help="Save Paint3D per-view and UV bake images under paint_debug/")
+    p.add_argument("--stop-after", choices=STAGES, default="report")
+    p.add_argument("--output-dir", "--workdir", dest="workdir", metavar="PATH", type=Path,
+                   default=DEFAULT_OUTPUT_ROOT, help="Root for runs (default: <ai3d>/outputs)")
+    action = p.add_mutually_exclusive_group()
+    action.add_argument("--resume", action="store_true",
+                        help="Skip stages whose inputs and settings are unchanged")
+    action.add_argument("--force", action="store_true", help="Rerun every requested stage")
+    p.add_argument("--dry-run", action="store_true", help="Show the plan and commands only")
     return p.parse_args(argv)
 
 
-def should_stop(args, stage):
-    return STAGES.index(args.stop_after) <= STAGES.index(stage)
+def settings(a: argparse.Namespace) -> dict:
+    overrides = list(a.set)
+    if a.seed is not None:
+        overrides.append(f"seed={a.seed}")
+    if a.no_retopo:
+        overrides.append("retopo.enabled=false")
+    if a.no_rig:
+        overrides.append("rig.enabled=false")
+    if a.no_views:
+        overrides.append("views.enabled=false")
+    if a.paint_debug:
+        overrides.append("paint.debug=true")
+    return load_profile(a.config, overrides)
+
+
+class Plan:
+    """Resolved tool and model paths for one run, plus a preflight check."""
+
+    def __init__(self, a, cfg):
+        P = cfg["paths"]
+        self.blender = shutil.which(P["blender"]) or P["blender"]
+        self.hunyuan = repo_path(P["hunyuan"])
+        self.hy_python = self.hunyuan / ".venv/bin/python"
+        self.kit = repo_path(P["aigamekit"])
+        self.paint_python = self.kit / "Paint3D/.venv/bin/python"
+        self.sd_cli = repo_path(P["sd_cli"])
+        qdir = repo_path(P["qwen_model_dir"])
+        edir = repo_path(P["qwen_edit_model_dir"])
+        R, V = cfg["reference"], cfg["views"]
+        self.qwen = {k: qdir / R[k] for k in ("diffusion_model", "llm", "vae")}
+        self.edit = {"diffusion_model": edir / V["diffusion_model"],
+                     "llm_vision": edir / V["llm_vision"],
+                     "llm": self.qwen["llm"], "vae": self.qwen["vae"]}
+        self.models_root = repo_path(P["hunyuan_models"])
+        self.checks: list[tuple[str, Path | str, bool]] = []
+
+    def hunyuan_model_path(self, model: str) -> Path | None:
+        folder = self.models_root / ("Hunyuan3D-2mv" if model.startswith("mv") else "Hunyuan3D-2mini")
+        return folder if folder.is_dir() else None
+
+    def need(self, label: str, path: Path) -> None:
+        self.checks.append((label, path, Path(path).is_file()))
+
+    def need_blender(self) -> None:
+        self.checks.append(("Blender", self.blender, shutil.which(self.blender) is not None))
+
+    def report(self, dry: bool) -> None:
+        missing = [c for c in self.checks if not c[2]]
+        print("\nPreflight:")
+        for label, path, ok in self.checks:
+            print(f"  [{'ok' if ok else 'MISSING'}] {label}: {path}")
+        if missing and not dry:
+            raise RuntimeError(
+                "Missing tools/models listed above. Fix the paths in your config "
+                "(see config/default.json 'paths'), or skip that stage "
+                "(--no-views, --no-rig, --image instead of --prompt-file).")
 
 
 def main(argv: list[str] | None = None, *, prog: str | None = None):
     a = arguments(argv, prog=prog)
-    if a.force and a.resume:
-        raise RuntimeError("Choose either --force or --resume, not both")
-    if a.prompt_file and not a.enable_qwen:
-        raise RuntimeError("Qwen is opt-in: add --enable-qwen to use --prompt-file")
-    if a.enable_qwen and not a.prompt_file:
-        raise RuntimeError("--enable-qwen requires --prompt-file")
+    cfg = settings(a)
     if not (a.image or a.prompt_file or a.painted_mesh):
-        raise RuntimeError("Provide --image, --prompt-file with --enable-qwen, or --painted-mesh")
+        raise RuntimeError("Provide --image, --prompt-file or --painted-mesh")
+    if a.shape_mesh and not (a.image or a.prompt_file):
+        raise RuntimeError("--shape-mesh still needs --image (Paint3D uses the front cutout)")
     if a.shape_mesh and a.painted_mesh:
         raise RuntimeError("Choose either --shape-mesh or --painted-mesh")
-    if a.paint_debug and a.painted_mesh:
-        raise RuntimeError("--paint-debug requires a new Paint3D run; --painted-mesh skips painting")
+    if cfg["paint"]["debug"] and a.painted_mesh:
+        raise RuntimeError("--paint-debug needs a Paint3D run; --painted-mesh skips painting")
+    given_views = {k: getattr(a, f"view_{k}") for k in ANGLES if getattr(a, f"view_{k}")}
+    if given_views and not (a.image or a.prompt_file):
+        raise RuntimeError("--view-* images need a front --image or --prompt-file too")
 
     home = run_directory(a.name, a.workdir)
+    plan = Plan(a, cfg)
+    seed = cfg["seed"]
+    stop = STAGES.index(a.stop_after)
+    wants = lambda stage: STAGES.index(stage) <= stop  # noqa: E731
+    stats_dir = home / "stats"
+
+    # ---- decide what will run, then preflight before touching the GPU ------
+    make_reference = bool(a.prompt_file)
+    gen_views = []
+    if (a.image or a.prompt_file) and cfg["views"]["enabled"] and wants("views"):
+        gen_views = [v for v in cfg["views"]["angles"] if v not in given_views]
+    need_mesh_stages = not a.painted_mesh
+    if make_reference:
+        plan.need("sd-cli", plan.sd_cli)
+        for k, path in plan.qwen.items():
+            plan.need(f"Qwen {k}", path)
+    if gen_views:
+        plan.need("sd-cli", plan.sd_cli)
+        for k, path in plan.edit.items():
+            plan.need(f"Qwen-Image-Edit {k} (views)", path)
+    if need_mesh_stages and wants("cutout"):
+        plan.need("Hunyuan3D-2 python", plan.hy_python)
+    if need_mesh_stages and wants("paint-mesh"):
+        plan.need_blender()
+    if need_mesh_stages and wants("paint"):
+        plan.need("Paint3D python", plan.paint_python)
+    if wants("game"):
+        plan.need_blender()
+    for label, path in (("--image", a.image), ("--prompt-file", a.prompt_file),
+                        ("--shape-mesh", a.shape_mesh), ("--painted-mesh", a.painted_mesh),
+                        *[(f"--view-{k}", v) for k, v in given_views.items()]):
+        if path:
+            plan.need(label, resolve(path))
+    plan.checks = list(dict.fromkeys(plan.checks))
+    plan.report(a.dry_run)
+    runner = Runner(home, a.resume, a.force, a.dry_run)
     if not a.dry_run:
         home.mkdir(parents=True, exist_ok=True)
-    h = resolve(a.hunyuan)
-    kit = resolve(a.aigamekit)
-    bpy_script = PROJECT_ROOT / "ai3d/optimization/blender_finalize.py"
-    runner = Runner(home, a.resume, a.force, a.dry_run)
-    config = vars(a).copy()
-    config = {k: str(v) if isinstance(v, Path) else v for k, v in config.items()}
-    stages = {}
-    reference = None
-    cutout = None
-    raw = None
-    paint_mesh = None
-    painted = home / "05_painted.glb"
-    game = home / "06_game.glb"
+        stats_dir.mkdir(exist_ok=True)
+        (home / "settings.json").write_text(json.dumps(cfg, indent=2) + "\n")
 
-    if a.image:
-        image_in = resolve(a.image)
-        ensure_file(image_in, "Reference image")
-        reference = home / ("01_reference" + image_in.suffix.lower())
-        if image_in == reference.resolve():
-            # A character part's Qwen stage already wrote this file in-place.
-            # Do not replace its reference-stage cache stamp with a copy stamp:
-            # doing so would needlessly rerun Qwen on the next --resume.
-            print(f"[REUSE] reference already in run: {reference}", flush=True)
-        else:
+    painted = home / "05_painted.glb"
+    front_cut = home / "02_cutout.png"
+    cutouts: dict[str, Path] = {}
+
+    # ---- reference -----------------------------------------------------------
+    if a.image or a.prompt_file:
+        if a.image:
+            image_in = resolve(a.image)
+            reference = home / ("01_reference" + image_in.suffix.lower())
+            if not a.dry_run and image_in != reference.resolve():
+                ensure_file(image_in, "Reference image")
             runner.run("reference", [image_in], [reference], {"copy": True},
                        lambda: runner.copy(image_in, reference))
-    elif a.prompt_file:
-        prompt = resolve(a.prompt_file)
-        ensure_file(prompt, "Qwen prompt")
-        reference = home / "01_reference.png"
-        cli = resolve(a.sd_cli)
-        weights = resolve(a.qwen_model_dir)
-        ensure_file(cli, "sd-cli")
-        if not shutil.which("systemd-run"):
-            raise RuntimeError("systemd-run required for guarded Qwen. Use --image instead")
-        qwen_cmd = build_qwen_command(
-            cli, weights, prompt.read_text(), reference,
-            width=a.qwen_width, height=a.qwen_height, steps=a.qwen_steps,
-            ram_limit=a.qwen_ram, swap_limit=a.qwen_swap,
-        )
-        model_files = [
-            weights / name for name in (
-                "qwen-image-2512-Q3_K_M.gguf",
-                "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
-                "qwen_image_vae.safetensors",
-            )
-        ]
-        runner.run(
-            "reference", [prompt, cli, *model_files], [reference],
-            {"qwen": [a.qwen_width, a.qwen_height, a.qwen_steps, a.qwen_ram, a.qwen_swap],
-             "sd_cli": str(cli), "models": str(weights)},
-            lambda: runner.command("reference", qwen_cmd, cwd=cli.parent),
-        )
+        else:
+            R = cfg["reference"]
+            reference = home / "01_reference.png"
+            prompt = resolve(a.prompt_file)
+            cmd = build_qwen_command(plan.sd_cli, plan.qwen["diffusion_model"].parent,
+                                     prompt.read_text(), reference, width=R["width"],
+                                     height=R["height"], steps=R["steps"],
+                                     ram_limit=R["ram_limit"], swap_limit=R["swap_limit"])
+            cmd[cmd.index("--seed") + 1] = str(seed)
+            cmd[cmd.index("--cfg-scale") + 1] = str(R["cfg_scale"])
+            for flag, key in (("--diffusion-model", "diffusion_model"), ("--llm", "llm"), ("--vae", "vae")):
+                cmd[cmd.index(flag) + 1] = str(plan.qwen[key])
+            runner.run_cmd("reference", [prompt, *plan.qwen.values()], [reference],
+                           {"reference": R, "seed": seed}, cmd, cwd=plan.sd_cli.parent)
+        if not wants("views"):
+            return finish(a, home, f"Reference: {reference}")
 
-    if reference:
-        if should_stop(a, "reference"):
-            print(f"\nReference: {reference}")
-            return
-        cutout = home / "02_cutout.png"
-        hy_python = h / ".venv/bin/python"
-        cmd = build_cutout_command(hy_python, reference, cutout, skip=a.no_cutout)
-        runner.run("cutout", [reference, hy_python], [cutout], {"skip": a.no_cutout},
-                   lambda: runner.command("cutout", cmd, cwd=h))
-        if should_stop(a, "cutout"):
-            print(f"\nCutout: {cutout}")
-            return
+        # ---- views -------------------------------------------------------------
+        views: dict[str, Path] = {}
+        for angle, path in given_views.items():
+            src = resolve(path)
+            dst = home / f"01_view_{angle}{src.suffix.lower()}"
+            runner.run(f"views-{angle}", [src], [dst], {"copy": True},
+                       lambda s=src, d=dst: runner.copy(s, d))
+            views[angle] = dst
+        V = cfg["views"]
+        for angle in gen_views:
+            out = home / f"01_view_{angle}.png"
+            cmd = build_qwen_edit_command(
+                plan.sd_cli, reference=reference, prompt=view_prompt(angle), output=out,
+                size=V["size"], steps=V["steps"], cfg_scale=V["cfg_scale"], seed=seed,
+                ram_limit=cfg["reference"]["ram_limit"],
+                swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
+            runner.run_cmd(f"views-{angle}", [reference, *plan.edit.values()], [out],
+                           {"views": V, "seed": seed, "angle": angle}, cmd, cwd=plan.sd_cli.parent)
+            views[angle] = out
+        if not wants("cutout"):
+            names = ", ".join(str(v) for v in views.values()) or "none"
+            return finish(a, home, f"Reference: {reference}\nViews: {names}\n"
+                                   "Check every view shows the same character before --resume.")
 
+        # ---- cutout ------------------------------------------------------------
+        for angle, image in [("front", reference), *views.items()]:
+            out = front_cut if angle == "front" else home / f"02_cutout_{angle}.png"
+            cmd = [plan.hy_python, CUTOUT_SCRIPT, image, out, "auto"]
+            label = "cutout" if angle == "front" else f"cutout-{angle}"
+            runner.run_cmd(label, [image, plan.hy_python], [out], {}, cmd, cwd=plan.hunyuan)
+            cutouts[angle] = out
+        if not wants("shape"):
+            return finish(a, home, f"Cutouts: {', '.join(str(c) for c in cutouts.values())}")
+
+    # ---- shape -> paint-mesh -> paint ---------------------------------------------
     if a.painted_mesh:
         existing = resolve(a.painted_mesh)
-        readable_glb(existing, need_texture=True)
+        if not a.dry_run:
+            readable_glb(existing, need_texture=True)
         runner.run("paint", [existing], [painted], {"from": "existing"},
                    lambda: runner.copy(existing, painted))
     else:
-        assert cutout is not None
         raw = home / "03_shape.glb"
+        S = cfg["shape"]
+        side_views = {k: v for k, v in cutouts.items() if k != "front"}
+        model = S["model"]
+        if model == "auto":
+            model = "mv" if side_views else "mini"
         if a.shape_mesh:
             existing = resolve(a.shape_mesh)
-            readable_glb(existing)
             runner.run("shape", [existing], [raw], {"from": "existing"},
                        lambda: runner.copy(existing, raw))
         else:
-            hy_python = h / ".venv/bin/python"
-            script = h / "first_mesh.py"
-            ensure_file(script, "Hunyuan wrapper first_mesh.py")
-            cmd = build_shape_command(hy_python, script, cutout, raw, steps=a.shape_steps)
+            if not model.startswith("mv"):
+                side_views = {}
+            cmd = build_hunyuan_shape_command(
+                plan.hy_python, SHAPE_SCRIPT, raw, front=front_cut,
+                left=side_views.get("left"), back=side_views.get("back"),
+                right=side_views.get("right"), model=model,
+                model_path=plan.hunyuan_model_path(model), steps=S["steps"],
+                octree_resolution=S["octree_resolution"], num_chunks=S["num_chunks"],
+                guidance_scale=S["guidance_scale"], seed=seed,
+                remove_floaters=S["remove_floaters"])
             env = os.environ.copy()
             env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-            runner.run("shape", [cutout, script], [raw], {"steps": a.shape_steps},
-                       lambda: runner.command("shape", cmd, cwd=h, env=env))
-        if not a.dry_run:
-            stages["shape"] = readable_glb(raw)
-        if should_stop(a, "shape"):
-            print(f"\nShape: {raw}")
-            return
+            runner.run_cmd("shape", [front_cut, *side_views.values(), SHAPE_SCRIPT], [raw],
+                           {"shape": S, "model": model, "seed": seed}, cmd,
+                           cwd=plan.hunyuan, env=env)
+        if not wants("paint-mesh"):
+            return finish(a, home, f"Shape: {raw}  (open in Blender, solid view, all sides)")
 
         paint_mesh = home / "04_paint_mesh.glb"
-        geometry_script = h / "optimize_mesh.py"
-        ensure_file(geometry_script, "Existing geometry-only optimizer")
-        blender = shutil.which(a.blender) or a.blender
-        cmd = build_prepaint_command(blender, geometry_script, raw, paint_mesh, target_faces=a.paint_faces)
-        runner.run("paint-mesh", [raw, geometry_script], [paint_mesh], {"faces": a.paint_faces},
-                   lambda: runner.command("paint-mesh", cmd))
-        if not a.dry_run:
-            stages["paint-mesh"] = readable_glb(paint_mesh)
-        if should_stop(a, "paint-mesh"):
-            print(f"\nPrepared paint mesh: {paint_mesh}")
-            return
+        faces = cfg["paint_mesh"]["target_faces"]
+        cmd = blender_command(plan.blender, "prepaint.py", [
+            "--input", raw, "--output", paint_mesh, "--target-faces", faces,
+            "--stats", stats_dir / "paint_mesh.json"])
+        runner.run_cmd("paint-mesh", [raw], [paint_mesh], {"faces": faces, "v": 2}, cmd)
+        if not wants("paint"):
+            return finish(a, home, f"Paint mesh: {paint_mesh}")
 
-        paint_python = kit / "Paint3D/.venv/bin/python"
-        ensure_file(paint_python, "Paint3D Python")
+        T = cfg["paint"]
         cmd = build_texture_command(
-            paint_python, paint_mesh, cutout, painted,
-            quality=a.quality, category=a.category, max_views=a.max_views,
-            view_resolution=a.view_resolution, render_size=a.render_size,
-            texture_size=a.texture_size, bake_exp=a.bake_exp,
-        )
+            plan.paint_python, paint_mesh, front_cut, painted, quality=T["quality"],
+            category=T["category"], max_views=T["max_views"],
+            view_resolution=T["view_resolution"], render_size=T["render_size"],
+            texture_size=T["texture_size"], bake_exp=T["bake_exp"])
         env = os.environ.copy()
         env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-        env = paint_debug_environment(env, home, enabled=a.paint_debug)
-        outputs = [painted, *expected_debug_images(home)] if a.paint_debug else [painted]
-        runner.run("paint", [paint_mesh, cutout], outputs,
-                   {"quality": a.quality, "views": a.max_views,
-                    "view_res": a.view_resolution, "render": a.render_size,
-                    "texture": a.texture_size, "bake_exp": a.bake_exp,
-                    "category": a.category, "paint_debug": a.paint_debug},
-                   lambda: runner.command("paint", cmd, cwd=kit, env=env))
+        env = paint_debug_environment(env, home, enabled=T["debug"])
+        outputs = [painted, *expected_debug_images(home)] if T["debug"] else [painted]
+        runner.run_cmd("paint", [paint_mesh, front_cut], outputs, {"paint": T}, cmd, cwd=plan.kit, env=env)
+    if not wants("game"):
+        return finish(a, home, f"Textured GLB: {painted}")
 
-    if not a.dry_run:
-        stages["paint"] = readable_glb(painted, need_texture=True)
-    if should_stop(a, "paint"):
-        print(f"\nTextured GLB: {painted}")
-        return
-
-    if a.no_finalize:
-        runner.run("game", [painted], [game], {"copy": True}, lambda: runner.copy(painted, game))
+    # ---- game: retopo + bake ----------------------------------------------------
+    game = home / "06_game.glb"
+    G = cfg["retopo"]
+    if G["enabled"]:
+        cmd = blender_command(plan.blender, "retopo_bake.py", [
+            "--input", painted, "--output", game, "--target-faces", G["target_faces"],
+            "--method", G["method"], "--voxel-ratio", G["voxel_ratio"],
+            "--texture-size", G["texture_size"], "--samples", G["bake_samples"],
+            "--cage-ratio", G["cage_ratio"], "--device", G["device"], "--seed", seed,
+            "--stats", stats_dir / "game.json"])
     else:
-        ensure_file(bpy_script, "Textured Blender finalizer")
-        blender = shutil.which(a.blender) or a.blender
-        cmd = build_finalize_command(blender, bpy_script, painted, game, a.game_faces)
-        runner.run("game", [painted, bpy_script], [game], {"faces": a.game_faces},
-                   lambda: runner.command("game", cmd))
+        cmd = build_finalize_command(plan.blender, FINALIZE_SCRIPT, painted, game,
+                                     G["target_faces"] * 2)
+    runner.run_cmd("game", [painted], [game], {"retopo": G, "seed": seed}, cmd)
+    if not wants("rig"):
+        return finish(a, home, f"Game mesh: {game}")
 
-    if not a.dry_run:
-        stages["game"] = readable_glb(game, need_texture=True)
-        report = {"asset": a.name, "config": config, "stages": stages,
-                  "timing": runner.timing,
-                  "quality_notes": [
-                      "Inspect front/side/back in Blender Material Preview (Z then M)",
-                      "Compare shape and visual details against the source image",
-                      "Check UV seams and texture coverage before release",
-                      "Check orientation, scale, origin and materials in the target application",
-                      "This pipeline does not perform rigging or animation",
-                  ]}
-        (home / "report.json").write_text(json.dumps(report, indent=2))
-        print("\nSUCCESS: textured 3D asset:", game)
-        print("Size:", f"{game.stat().st_size / 1024:.0f} KiB")
-        print("Triangles:", stages["game"]["triangles"])
-        print("Texture images:", stages["game"]["images"])
-        print("Report:", home / "report.json")
-        print("NEXT: inspect 06_game.glb in Blender Material Preview (Z then M)")
-    else:
+    # ---- rig --------------------------------------------------------------------
+    rigged = home / "07_rigged.glb"
+    if cfg["rig"]["enabled"]:
+        args = ["--input", game, "--output", rigged, "--prefix", cfg["rig"]["bone_prefix"],
+                "--stats", stats_dir / "rig.json"]
+        if not cfg["rig"]["test_animation"]:
+            args.append("--no-test-animation")
+        cmd = blender_command(plan.blender, "rig.py", args)
+        runner.run_cmd("rig", [game], [rigged], {"rig": cfg["rig"]}, cmd)
+    if not wants("report"):
+        return finish(a, home, f"Rigged: {rigged}")
+
+    # ---- report -----------------------------------------------------------------
+    Q = cfg["report"]
+    targets = [("game", game)]
+    if cfg["rig"]["enabled"]:
+        targets.append(("rigged", rigged))
+    for label, mesh in targets:
+        args = ["--mesh", mesh, "--stats", stats_dir / f"quality_{label}.json",
+                "--grid", Q["silhouette_grid"], "--preview-size", Q["preview_size"]]
+        if front_cut.is_file() or (a.dry_run and cutouts):
+            args += ["--cutout", front_cut]
+        if Q["previews"]:
+            args += ["--previews", home / "previews"]
+        cmd = blender_command(plan.blender, "quality.py", args)
+        runner.run_cmd(f"report-{label}", [mesh], [stats_dir / f"quality_{label}.json"], {"report": Q}, cmd)
+    if a.dry_run:
+        return finish(a, home, "")
+    report = write_report(home, a, cfg, runner)
+    lines = [f"Final: {rigged if cfg['rig']['enabled'] else game}",
+             f"Report: {home / 'report.json'}", f"Gallery: {home / 'index.html'}"]
+    lines += [f"WARNING: {w}" for w in report["warnings"]] or ["No warnings."]
+    return finish(a, home, "\n".join(lines))
+
+
+def finish(a, home: Path, message: str):
+    if a.dry_run:
         print("\nDry run complete; nothing was generated.")
+    elif message:
+        print("\n" + message)
+    return 0
+
+
+def _load(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def warnings_for(stats: dict) -> list[str]:
+    out = []
+    q = stats.get("quality_game", {})
+    iou = q.get("silhouette_iou")
+    if iou is not None and iou < 0.80:
+        out.append(f"silhouette match {iou:.2f} < 0.80: the shape does not follow the reference "
+                   "outline; check views/cutouts and the shape stage")
+    mesh = q.get("mesh", {})
+    if mesh.get("pieces", 1) > 1:
+        out.append(f"game mesh has {mesh['pieces']} separate pieces")
+    if mesh.get("boundary_edges", 0) > 0:
+        out.append(f"game mesh has holes ({mesh['boundary_edges']} open edges)")
+    g = stats.get("game", {})
+    if str(g.get("method", "")).startswith("decimate (quadriflow"):
+        out.append("QuadriFlow failed; the game mesh was decimated instead (triangles, not quads)")
+    if (g.get("surface_error_max") or 0) > 0.03:
+        out.append(f"low-poly mesh misses detail: max surface error {g['surface_error_max']:.3f} "
+                   "of height; raise retopo.target_faces")
+    r = stats.get("rig", {})
+    if r:
+        if r.get("unweighted_after_heat_fraction", 0) > 0.02:
+            out.append("automatic weights missed some vertices (filled by nearest bone); "
+                       "check the pose previews")
+        if r.get("facing_detected", "").startswith("unknown"):
+            out.append("could not tell which way the character faces; assumed -Y")
+        if r.get("deform_bones_without_vertices"):
+            out.append("bones without any skin: " + ", ".join(r["deform_bones_without_vertices"]))
+    return out
+
+
+def write_report(home: Path, a, cfg: dict, runner: Runner) -> dict:
+    stats = {p.stem: _load(p) for p in sorted((home / "stats").glob("*.json"))}
+    files = {}
+    for name in ("01_reference.png", "02_cutout.png", "03_shape.glb", "05_painted.glb",
+                 "06_game.glb", "07_rigged.glb", "07_rigged.blend"):
+        if (home / name).is_file():
+            files[name] = (home / name).stat().st_size
+    for glb in ("06_game.glb", "07_rigged.glb"):
+        if (home / glb).is_file():
+            try:
+                stats[f"glb_{glb}"] = readable_glb(home / glb, need_texture=True)
+            except RuntimeError as exc:
+                stats[f"glb_{glb}"] = {"error": str(exc)}
+    report = {"asset": a.name, "settings": cfg, "files": files, "stats": stats,
+              "warnings": warnings_for(stats), "timing": runner.timing}
+    (home / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+    write_gallery(home, report)
+    return report
+
+
+def write_gallery(home: Path, report: dict) -> None:
+    imgs = [p for p in [home / "01_reference.png", *sorted(home.glob("01_view_*.png"))] if p.is_file()]
+    imgs += sorted((home / "previews").glob("*.png")) if (home / "previews").is_dir() else []
+    q = report["stats"].get("quality_game", {})
+    rows = "".join(f"<li>{html.escape(w)}</li>" for w in report["warnings"]) or "<li>none</li>"
+    cards = "".join(
+        f'<figure><img src="{html.escape(str(p.relative_to(home)))}"><figcaption>'
+        f"{html.escape(p.name)}</figcaption></figure>" for p in imgs)
+    summary = {
+        "silhouette match": q.get("silhouette_iou"),
+        "game triangles": q.get("mesh", {}).get("triangles"),
+        "pieces": q.get("mesh", {}).get("pieces"),
+        "holes (open edges)": q.get("mesh", {}).get("boundary_edges"),
+        "bones": report["stats"].get("rig", {}).get("bones"),
+    }
+    table = "".join(f"<tr><th>{html.escape(k)}</th><td>{v}</td></tr>" for k, v in summary.items())
+    (home / "index.html").write_text(f"""<!doctype html><meta charset="utf-8">
+<title>{html.escape(report['asset'])} – AI3D</title>
+<style>body{{font:15px system-ui;margin:24px;background:#1b1d21;color:#e6e6e6}}
+figure{{display:inline-block;margin:6px;background:#26292f;padding:6px;border-radius:6px}}
+img{{height:280px;display:block}}figcaption{{font-size:12px;color:#aaa}}
+th{{text-align:left;padding-right:16px;color:#aaa}}li{{color:#f3c26b}}</style>
+<h1>{html.escape(report['asset'])}</h1><table>{table}</table>
+<h3>Warnings</h3><ul>{rows}</ul>{cards}
+""")
 
 
 if __name__ == "__main__":
     try:
-        main()
-    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+        sys.exit(main())
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"\nERROR: {exc}", file=sys.stderr)
         sys.exit(1)

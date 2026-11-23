@@ -1,49 +1,19 @@
 # Tests
 
-Run the Python standard-library tests without installing PyTorch, Blender,
-or AI model weights:
-
 ```bash
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v                 # pipeline, no AI or Blender needed
+python3 -m unittest discover -s legacy/tests -t . -v     # legacy parts workflow
 ```
 
-- `test_glb_validation.py`: GLB structural metadata and negative cases
-- `test_pipeline_runner.py`: stage execution, resume, force and dry-run
-- `test_blender_optimization.py`: command construction, argument validation,
-  triangle counting and legacy wrapper routing (no Blender required)
+- `test_pipeline.py`: stage plan, view/model selection, preflight, validation, warnings
+- `test_config.py`: profile loading, merging and `--set` overrides
+- `test_blender_stages.py`: the real Blender scripts (prepaint, retopo + bake,
+  rig, quality) on a mannequin built by `blender_fixture.py`. Skipped unless
+  `blender` is on PATH or `AI3D_BLENDER` points to it. CI runs it with the
+  `bpy` package.
+- `test_backend_adapters.py`, `test_blender_optimization.py`,
+  `test_blender_validation.py`, `test_glb_validation.py`,
+  `test_pipeline_runner.py`, `test_sd_dependency.py`, `test_cli.py`:
+  command builders, GLB checks, stage runner, CLI
 
-Live Blender glTF import/decimation/export and GPU inference remain separate,
-hardware-dependent integration tests.
-
-- `test_blender_validation.py`: safe validation-directory policy,
-  dry-run and structurally checked round trips using a mocked Blender command
-
-Real Blender GLB round trips must be run separately against a local textured
-static GLB. A passing metadata check does not imply visually correct textures.
-
-- `test_paint_diagnostics.py`: debug opt-in flag, output isolation,
-  inherited-environment protection and compatibility guards
-
-The real Paint3D debug capture requires a GPU-equipped installation and a
-reference image plus untextured mesh; no inference is launched in CI.
-
-- `test_character_cards.py`: schema version, source-card creation, parent
-  cycles, reference IDs, non-overwriting persistence and CLI validation.
-- `test_character_reference.py`: Qwen per-part prompt isolation, CLI dry run,
-  safe output policy, resume caching and generated metadata with mocked image inference.
-
-- `test_character_batch.py`: sequential character generation, per-part
-  stages/settings, region safety, non-overwriting runs, dry-run and
-  preservation of Qwen's reference cache when reused in the 3D pipeline.
-
-- `test_character_assembly.py`: two-part preview plans, part and GLB
-  selection, safe output policy, editable manifests, explicit rebuild,
-  mocked Blender command execution and source-preservation checks.
-
-- `test_character_assembly.py` additionally exercises configurable
-  cut modes, backwards-compatible v1 manifests, invalid plane/kept-side
-  rejection, editing without Blender, and reversible working-copy contracts.
-
-- `test_character_assembly.py`: full-card staging, old-fit preservation,
-  per-component visibility/export flags, missing-source preflight, and
-  six-component mocked Blender rebuild.
+GPU inference (Qwen, Hunyuan, Paint3D) is never launched by the tests.

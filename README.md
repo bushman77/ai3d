@@ -1,350 +1,169 @@
 # AI3D
 
-A project-agnostic, local-first toolkit for generating and preparing 3D assets.
-
-## Standalone CLI
-
-From the repository root (no additional host Python packages required for
-the CLI itself):
-
-```bash
-python3 -m ai3d --help
-python3 -m ai3d generate --help
-python3 -m ai3d inspect /path/to/model.glb
-```
-
-Generate from an image, reusing the existing separated Hunyuan, Paint3D
-and Blender installations:
-
-```bash
-python3 -m ai3d generate --name example_character \\
-  --image /path/to/reference.png --stop-after reference
-```
-
-All generated artifacts default to `outputs/<name>/`. The existing
-`space_nova_pipeline/space_nova_pipeline.py` path remains available as a
-compatibility launcher. The current pipeline continues to produce a final
-`06_game.glb` filename and `game` stage for compatibility; neither requires
-Space Nova to run. More expressive export naming will come later.
-
-`inspect` performs read-only structural GLB metadata inspection; add
-`--require-texture` to require UVs, image metadata, and a base-color texture
-reference. This is not a full glTF conformance or visual-quality check.
-
-## Blender round-trip validation (optional)
-
-Use an existing **already-textured static GLB** to exercise the real Blender
-optimizer without launching Qwen, Hunyuan, or Paint3D:
-
-```bash
-python3 -m ai3d inspect /path/to/painted.glb --require-texture
-
-python3 -m ai3d validate-blender /path/to/painted.glb \\
-  --name sample_blender_check --target-faces 15000 --dry-run
-
-python3 -m ai3d validate-blender /path/to/painted.glb \\
-  --name sample_blender_check --target-faces 15000
-```
-
-By default, this writes **only** to
-`outputs/sample_blender_check/`, including
-`blender_validated.glb`, `blender_validation.json` and
-`logs/blender_validation.log`. The input file is never overwritten.
-A nonempty output run directory is rejected; use a new `--name` for each
-validation. This check verifies structural GLB metadata and triangle counts,
-**not visual texture quality**. Inspect the resulting GLB in Blender Material
-Preview from front, side and back before treating it as production-ready.
-
-The built-in finalizer currently only targets static unrigged meshes.
-Animated or armature-bearing exports are not supported by this test.
-
-## Debugging texture baking and individual views
-
-The mesh exists **before** texturing. Paint3D unwraps UVs, generates and
-enhances selected views, projects them onto the texture atlas, then fills
-uncovered texels by inpainting. Enable the upstream debug hook through AI3D
-to inspect these phases without modifying third-party source files:
-
-```bash
-python3 -m ai3d generate \\
-  --name texture_diagnostics \\
-  --image /path/to/reference.png \\
-  --shape-mesh /path/to/untextured_mesh.glb \\
-  --paint-debug --stop-after paint
-```
-
-This **runs Paint3D inference**, not just a metadata check. It saves debug
-images under `outputs/texture_diagnostics/paint_debug/`, including:
-
-- `ref.png`: resized reference image actually used by the paint model
-- `albedo_*.png` and `enhanced_*.png`: per-camera colors before baking
-- `tex_baked.png`: UV atlas immediately after multiview projection
-- `tex_trust.png`: coverage/trust mask of texels actually baked from views
-- `tex_inpainted.png`: final atlas after filling missing texture areas
-
-If a face is already malformed in `albedo_*.png`, examine reference
-framing and generated views. If the views look good but `tex_baked.png`
-doesn't, investigate UV projection and bake visibility. If `tex_baked.png`
-looks good but `tex_inpainted.png` doesn't, investigate coverage and
-inpainting. These files are generated only when `--paint-debug` is enabled.
-
-The original Paint3D implementation resizes the reference to 512 x 512 before
-creating views; a small full-body face can lose important pixels. The default
-AI3D fast profile uses just two views and small render settings, which favor
-6 GB GPU memory over fine detail. Make controlled single-variable changes
-after reviewing the debug images.
-
-`--paint-debug` requires running Paint3D; it cannot be combined with
-`--painted-mesh`, which skips painting. All artifacts remain in the single
-`outputs/` root. Existing experimental assets remain untouched.
-
-## Reusable character cards
-
-Version 1 includes a **permanent, project-independent character-card
-template** with separate body, unified head (face + hair), clothing, hands and equipment
-sections. Each part can have its own prompts, references, generation
-preferences and quality gates. The source cards are editable JSON files,
-never temporary generated outputs.
-
-```bash
-python3 -m ai3d character init my_character --name "My Character"
-python3 -m ai3d character validate characters/my_character.json
-```
-
-New cards default to `characters/<id>.json`, a tracked source directory.
-The reusable template and JSON Schema are in `legacy/characters/`. See
-[the card format guide](legacy/characters/README.md) and the
-[Mara Venn example](legacy/examples/space_nova/characters/mara_venn.json).
-
-**Card-driven per-part Qwen, Hunyuan and Paint3D generation is implemented**
-with sequential batch processing and resumable intermediate stages.
-A non-destructive **two-part Blender assembly preview** is available through
-`python3 -m ai3d character assemble`. It creates an editable scene and
-manifest, but automatic body-part replacement, head-to-neck fitting and
-final assembly are future work. The card maintains
-persistent design identity and per-part prompts independently of generated
-images and meshes.
-
-To preview Mara's head-specific Qwen prompt without running inference:
-
-```bash
-python3 -m ai3d character reference \
-  legacy/examples/space_nova/characters/mara_venn.json --part head --dry-run
-```
-
-Then remove `--dry-run` to create the head reference in
-`outputs/mara_venn_head_head_closeup/`. See the
-[reference generation guide](legacy/characters/README.md) for settings and
-the identity-consistency limitations of text-to-image generation.
-
-## Project layout
-
-- `ai3d/`: reusable Python modules, including GLB structural validation,
-  a stage runner, and a Blender static-mesh optimization backend
-- `pipelines/`: general-purpose orchestration (scaffold only)
-- `legacy/examples/space_nova/`: consumer-specific integration example (scaffold)
-- `tests/`: dependency-free unit tests
-- `config/`: future source/dependency manifests
-- `space_nova_pipeline/`: legacy integration, now using AI3D components
-- `doctor.sh` and `install.sh`: existing dependency checks and cautious bootstrap
-
-## Output policy
-
-AI3D has **one default generated-file root**: `outputs/` beside this README.
-Every named run is self-contained, so intermediate meshes, textures, logs,
-stage manifests, reports and the final GLB are written under
-`outputs/<asset_name>/`. For example:
+Local, one-command pipeline: **one front image of a character in → one
+rigged, textured, game-ready GLB out**, on a 6 GB GPU.
 
 ```text
-outputs/
-└── example_character/
-    ├── 01_reference.png
-    ├── 02_cutout.png
-    ├── 03_shape.glb
-    ├── 04_paint_mesh.glb
-    ├── 05_painted.glb
-    ├── 06_game.glb
-    ├── logs/
-    ├── .stages/
-    └── report.json
+reference → views → cutout → shape → paint-mesh → paint → game → rig → report
 ```
 
-The legacy pipeline accepts `--output-dir PATH` to override the root, and
-still accepts `--workdir PATH` as an alias for older commands. A project
-checkout can be relocated without changing the default output location.
+| Stage | Tool | Output |
+|---|---|---|
+| reference | copy your image (or Qwen text-to-image from `--prompt-file`) | `01_reference.png` |
+| views | **Qwen-Image-Edit** draws the same character from left / back / right | `01_view_*.png` |
+| cutout | background removal (Hunyuan's rembg) for every view | `02_cutout*.png` |
+| shape | **Hunyuan3D-2mv** builds the mesh from all views (2mini if front only) | `03_shape.glb` |
+| paint-mesh | Blender clean-up + reduction | `04_paint_mesh.glb` |
+| paint | Paint3D texturing | `05_painted.glb` |
+| game | Blender: watertight **quad** mesh, baked colour / normal / roughness | `06_game.glb` |
+| rig | Blender: **Mixamo-named skeleton**, automatic weights, test animation | `07_rigged.glb`, `07_rigged.blend` |
+| report | measurements, silhouette match, preview renders | `report.json`, `index.html`, `previews/` |
 
-**Existing `assets/` and `pipeline_runs/` directories are legacy data.**
-They are not moved, removed, or read as default output locations. They remain
-Git-ignored, and existing assets may be supplied explicitly as inputs.
+Everything for a run lands in `outputs/<name>/`. Inputs are never modified.
 
-## Migration status
-
-**Phase 1:** extracted filesystem helpers, GLB structural validation,
-subprocess execution, stage caching and logging.
-
-**Phase 2:** extracted material-preserving Blender finalization into
-`ai3d/optimization/blender_finalize.py`. The original entry point
-`space_nova_pipeline/space_nova_blender_finalize.py` remains as a
-compatibility wrapper. `ai3d/optimization/blender.py` supplies a reusable
-command builder. None of these changes install or modify AI backends.
-
-The finalizer is designed for **static, already-textured GLB meshes**.
-It retains UVs, imported images, and materials, but deliberately excludes
-animation and non-mesh scene objects from export. Rigged/animated export is
-not implemented yet. This is not an end-to-end GPU inference validation.
-
-The legacy runner's resume fingerprint uses paths, file sizes, timestamps and
-settings, not content hashes. The extracted Blender implementation is now
-included as a stage dependency, so a resume may rerun final optimization once
-after upgrading. Inference stages are unaffected.
-
-**Phase 3:** pure subprocess command builders now live under
-`ai3d/image/`, `ai3d/geometry/`, and `ai3d/textures/` for Qwen image
-generation, Hunyuan background removal and shape/prepaint processing, and
-Paint3D texture inference. Each heavyweight backend still executes in its
-existing isolated runtime. No models are downloaded or imported by the host
-Python test suite.
-
-The legacy CLI also accepts optional `--sd-cli` and `--qwen-model-dir`
-overrides, with the original known-working local defaults preserved.
-
-**Phase 4:** orchestration moved into `pipelines/image_to_3d.py`, with
-`python3 -m ai3d generate` and `python3 -m ai3d inspect` as
-project-independent entry points. The older Space Nova launcher now delegates
-to the same pipeline without duplicating generation logic. No AI weights,
-CUDA environments, or runtime assets were changed.
-
-**Phase 5:** added opt-in `ai3d validate-blender` for nondestructive
-Blender round-trip validation. Real Blender execution is only possible on a
-machine with Blender and a suitable textured GLB; CI covers command routing,
-path safety, reports, and validation logic with a mocked subprocess.
-
-**Phase 6:** optional `--paint-debug` exposes Paint3D's own selected
-multiview images, UV bake mask and intermediate atlases. Unit tests verify
-the environment and output contract without launching inference.
-
-**Phase 7:** versioned character-card definitions, JSON Schema, source-only
-templates and a standard-library `character init/validate` CLI. The worked
-Mara example lives outside the project-agnostic core. Character cards contain
-no live generation status or generated geometry.
-
-## Run tests
+## Quick start (Mara)
 
 ```bash
-python3 -m unittest discover -s tests -v
-python3 space_nova_pipeline/space_nova_pipeline.py --help
+cd ~/ai3d
+git pull
+
+# See the plan and check that every tool/model is found. Nothing runs.
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png --dry-run
+
+# Run everything.
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png
+
+firefox outputs/mara_v1/index.html
+blender outputs/mara_v1/07_rigged.blend
 ```
 
-No AI packages are required for these tests. For existing image-to-3D
-workflows, see `space_nova_pipeline/README.md` and `DEPENDENCIES.md`.
+The run checks every tool and model **before** using the GPU and lists
+anything missing, so it can't fail halfway through for a missing file.
 
-## Local stable-diffusion.cpp dependency
+### Recommended: check the views before the 3D stages
 
-The default executable is now `~/ai3d/stable-diffusion.cpp/build/bin/sd-cli`.
-An existing installation can be reused with a symbolic link, without moving
-source code, duplicating model weights or rebuilding CUDA:
+The side/back views are the step most worth a look. Stop after them,
+inspect, then continue:
 
 ```bash
-ln -s "$HOME/ai-image/stable-diffusion.cpp" "$HOME/ai3d/stable-diffusion.cpp"
-./doctor.sh
-./install.sh --dry-run --only sd-cpp
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png --stop-after views
+xdg-open outputs/mara_v1/01_view_back.png
+
+# Happy? Continue; finished stages are skipped.
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png --resume
 ```
 
-Both a real local checkout and a valid symlink are supported. The installer
-**never overwrites a symlink or builds through one**. A broken symlink produces
-a clear error rather than being treated as an absent checkout. The link/checkout
-is excluded from Git using `/stable-diffusion.cpp/`.
-
-On a fresh install without a checkout, `./install.sh --apply --only sd-cpp`
-can build the pinned source into the same project-local path, subject to
-CUDA and build prerequisites. This is an intentionally limited installer:
-it does not set up every model or Python environment.
-
-Use `SD_ROOT`/`SD_CLI` shell overrides or the generation command's
-`--sd-cli` argument when pointing AI3D at a different executable.
-
-## Generate all character components
+Bad view? Edit or redraw it yourself and pass it in; your own views
+always win over generated ones:
 
 ```bash
-python3 -m ai3d character generate \
-  legacy/examples/space_nova/characters/mara_venn.json \
-  --all --run-prefix mara_components_v1 --dry-run
+python3 -m ai3d generate --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png \
+  --view-back my_fixed_back.png --resume
 ```
 
-After checking the plan, remove `--dry-run`, use
-`--stop-after reference` to produce every component's input image,
-and inspect them. Continue with `--stop-after shape --resume`,
-`--stop-after paint --resume`, and `--stop-after game --resume`.
-Only mesh and attachment parts proceed beyond reference by default;
-`--include-regions` opts into experimental standalone mesh generation for
-clothing and hands. The generator does not assemble, align or rig parts.
+## Settings
 
-See [character-card batch workflow](legacy/characters/README.md).
-
-## Preview body + head in Blender
+All settings live in **`config/default.json`** (paths, steps, Paint3D
+quality, poly budget, texture size...). Two ways to change them:
 
 ```bash
-python3 -m ai3d character assemble \
-  legacy/examples/space_nova/characters/mara_venn.json \
-  --run-prefix mara_components_v1 --name mara_assembly_v1 --dry-run
-# Once the two source GLBs exist, run without --dry-run:
-python3 -m ai3d character assemble \
-  legacy/examples/space_nova/characters/mara_venn.json \
-  --run-prefix mara_components_v1 --name mara_assembly_v1
-blender outputs/mara_assembly_v1/preview.blend
+# one-off
+python3 -m ai3d generate ... --set shape.steps=50 --set retopo.target_faces=12000
+
+# your own profile, merged over the defaults
+cp config/default.json config/mine.json
+vim config/mine.json
+python3 -m ai3d generate ... --config config/mine.json
 ```
 
-The command imports the full-detail painted body and head, each under its
-own control object and collection. Default side-by-side placement is a
-visual comparison, **not an alignment**. The manifest at
-`outputs/mara_assembly_v1/assembly.json` can be edited and replayed
-explicitly with `--rebuild`; the original GLBs are never modified.
+`config/fast_6gb.json` is the old, quickest Paint3D profile. Every run saves
+the exact settings it used in `outputs/<name>/settings.json`. Changing a
+setting and using `--resume` reruns only the stages it affects.
 
-See [the assembly preview guide](legacy/characters/README.md).
+Useful switches: `--no-views` (front only), `--no-retopo` (old decimate
+behaviour), `--no-rig`, `--seed N`, `--stop-after STAGE`, `--force`,
+`--paint-debug`, `--shape-mesh` / `--painted-mesh` to reuse earlier meshes.
 
-## Reversible character cut-plane preview (Phase 1)
+## Reading the report
 
-`python3 -m ai3d character cut` adds adjustable cut guides to the
-existing Blender assembly manifest. Modes are `off` (default),
-`guide` (visual-only), and `apply` (working-copy mesh bisect).
-The cutting plane is horizontal at a specified world-space Z; source
-component GLBs are never edited. Rebuilding with mode `off` restores
-the original geometry.
+`outputs/<name>/index.html` shows the reference, the views, front / side /
+back renders, and the rig in four test poses. `report.json` has the numbers
+and a **warnings** list, e.g.:
+
+- **silhouette match** below 0.80: the 3D shape doesn't follow the
+  reference outline. Look at the views/cutouts and `03_shape.glb`.
+- **pieces > 1 / holes**: the game mesh isn't one closed surface.
+- **QuadriFlow failed**: the game mesh fell back to triangles.
+- **surface error high**: the low-poly mesh lost detail; raise
+  `retopo.target_faces`.
+- **automatic weights missed vertices**: check the pose renders.
+
+## The rig
+
+Bones use Mixamo names with the `mixamorig:` prefix (Hips, Spine, Spine1,
+Spine2, Neck, Head, Left/Right Shoulder, Arm, ForeArm, Hand, UpLeg, Leg,
+Foot, ToeBase). Three.js strips the colon, so tracks named
+`mixamorigHips.quaternion` from Mixamo FBX animations line up by name; use
+`SkeletonUtils.retargetClip` because the rest pose (A-pose) differs from
+Mixamo's T-pose. The character is turned to face −Y (glTF forward) if the
+toes point the other way. `07_rigged.blend` is there for hand fixes.
+
+## Models you need
+
+Already used before: Qwen-Image-2512 GGUF + Qwen2.5-VL + VAE,
+Hunyuan3D-2 checkout and venv, Hunyuan3D-2mini, AiGameKit Paint3D, Blender.
+New for multi-view:
 
 ```bash
-python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
-  --part body --mode guide --z 0.76 --keep below
-python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
-  --part head --mode guide --z 0.68 --keep above
-python3 -m ai3d character assemble \
-  legacy/examples/space_nova/characters/mara_venn.json \
-  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+# Qwen-Image-Edit-2509 (side/back views) + its vision projector
+hf download QuantStack/Qwen-Image-Edit-2509-GGUF \
+  Qwen-Image-Edit-2509-Q3_K_M.gguf mmproj/Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf \
+  --local-dir ~/models/Qwen-Image-Edit-2509
+
+# Hunyuan3D-2mv (multi-view shape). Without this folder it downloads itself.
+hf download tencent/Hunyuan3D-2mv --include "hunyuan3d-dit-v2-mv/*" \
+  --local-dir ~/ai3d/models/Hunyuan3D-2mv
 ```
 
-Inspect both guides in Blender before requesting `--mode apply`.
-These heights are only starting points for visual inspection.
-The preview remains two independent meshes, with no neck-seam
-welding, automatic fitting, rigging or production export.
+Older `huggingface_hub` installs call the command `huggingface-cli` instead
+of `hf`. If your file names differ, set them in your config
+(`views.diffusion_model`, `views.llm_vision`). Your `stable-diffusion.cpp`
+build must support Qwen-Image-Edit: `sd-cli --help` should list `-r` and
+`--llm_vision`. If not, `git pull` and rebuild it.
 
-See [assembly guide and safety details](legacy/characters/README.md).
+**6 GB notes.** Hunyuan3D-2mv is 1.1B parameters, the same size as
+standard Hunyuan3D-2, which Tencent rates at 6 GB for shape. That's tight
+on a 6 GB card. If it runs out of memory, try in this order:
+`--set shape.num_chunks=4000`, `--set shape.model=mv-turbo`, then
+`--set shape.model=mini` (front view only). Paint3D defaults are higher than
+before (4 views at 384 px, 2K texture). If Paint3D runs out of memory, use
+`--config config/fast_6gb.json`.
 
-## Stage all generated character parts safely
-
-The body/head assembly can now stage **all** card parts without changing
-existing fitting and cuts. Example:
+## Other commands
 
 ```bash
-python3 -m ai3d character stage \
-  outputs/mara_assembly_v1/assembly.json \
-  legacy/examples/space_nova/characters/mara_venn.json --all
-python3 -m ai3d character assemble \
-  legacy/examples/space_nova/characters/mara_venn.json \
-  --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
+python3 -m ai3d inspect outputs/mara_v1/07_rigged.glb --require-texture
+python3 -m ai3d validate-blender some_painted.glb --name check1 --dry-run
 ```
 
-New clothing/hands/equipment GLBs are imported into hidden Blender
-collections and excluded from the comparison GLB until explicitly
-activated, to avoid duplicate geometry. Use
-`python3 -m ai3d character component --help` for visibility/export
-controls. Existing geometry remains unmodified. See the
-[full-character staging guide](legacy/characters/README.md).
+## Layout
+
+- `pipelines/image_to_3d.py`: the pipeline (standard-library Python)
+- `config/`: settings profiles
+- `backends/`: scripts run inside the Hunyuan venv (shape, cutout); now tracked here
+  instead of living untracked inside the Hunyuan checkout
+- `ai3d/blender/`: Blender scripts (prepaint, retopo_bake, rig, quality)
+- `ai3d/`: small helpers (config, GLB validation, stage runner, command builders)
+- `tests/`: `python3 -m unittest discover -s tests -v`; Blender stage tests run
+  when `blender` is on PATH or `AI3D_BLENDER` is set
+- `legacy/`: the old parts-based Mara workflow (separate body / head / outfit
+  meshes, assembly, cut planes, custom 51-bone rig). Still works; see
+  `legacy/README.md`.
+- `doctor.sh`, `install.sh`: dependency audit and cautious installer
+
+See `DEPENDENCIES.md` for the full dependency inventory.
