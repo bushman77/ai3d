@@ -16,12 +16,19 @@ def main(argv: list[str] | None = None) -> int:
         description="AI3D: local 3D assets, character cards, and Blender previews",
     )
     root.add_argument(
-        "command", nargs="?", choices=("generate", "inspect", "validate-blender", "character"),
-        help="generate, inspect, validate GLBs, or manage reusable character cards",
+        "command", nargs="?",
+        choices=("make", "generate", "inspect", "validate-blender", "character"),
+        help="make (guided: views -> model -> rig -> SunRacer), generate (pipeline), "
+             "inspect / validate GLBs, character (legacy)",
     )
     if not args or args[0] in ("-h", "--help"):
         root.print_help()
         return 0
+
+    if args[0] == "make":
+        from ai3d.make import main as make
+
+        return make(args[1:])
 
     if args[0] == "character":
         from legacy.characters.cli import main as character

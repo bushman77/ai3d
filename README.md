@@ -21,7 +21,35 @@ reference → views → cutout → shape → paint-mesh → paint → game → r
 
 Everything for a run lands in `outputs/<name>/`. Inputs are never modified.
 
-## Quick start (Mara)
+## One command: `make_character.sh`
+
+Runs the whole procedure and asks you at the two points that need eyes:
+
+```bash
+cd ~/ai3d
+bash make_character.sh --name mara_v1 \
+  --image approved_references/mara_body_front_approved.png --install-as mara_venn
+```
+
+1. **Views:** makes left / back / right views and opens them. Press Enter if
+   they're right, type the ones to redo (`back`, `left right`, ...; each
+   redo is a new seed), `none` to build from the front only, or `q` to stop.
+2. **Build:** shape → paint → game mesh (1024 px textures) → rig with
+   `idle` → report. Out of GPU memory in shape? It retries with two views,
+   then mv-turbo (if downloaded), then front-only. In Paint3D? It retries
+   with the light 6 GB settings.
+3. **Review:** prints the numbers and warnings, opens the gallery, asks if
+   the poses look right.
+4. **Install:** copies the GLB to
+   `~/SunRacer/apps/sunracer_web/priv/static/images/game/station/mara_venn.glb`
+   and checks the 5 MB target.
+
+It always resumes, so after `q` (or a crash) run the same command again.
+`--yes` answers everything for you, `--fresh` starts over,
+`--texture-size 512` for smaller files, `--sunracer PATH` if SunRacer lives
+elsewhere. Same as `python3 -m ai3d make ...`.
+
+## Step by step (Mara)
 
 ```bash
 cd ~/ai3d
