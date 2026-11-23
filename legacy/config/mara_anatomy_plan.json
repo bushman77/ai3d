@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "card_id": "mara_venn",
+  "original_card": "legacy/examples/space_nova/characters/mara_venn.json",
+  "source_image": "approved_references/mara_body_front_approved.png",
+  "source_sha256": "144d06916502ecb524e4113f8bc11b9ab80bfa6714290773a7046d23bd4e2791",
+  "component_ids": [
+    "torso_pelvis",
+    "head",
+    "left_arm",
+    "right_arm",
+    "left_hand",
+    "right_hand",
+    "left_leg",
+    "right_leg",
+    "left_foot",
+    "right_foot"
+  ],
+  "reference_method": "pending_verified_crops_or_image_conditioned_edit",
+  "component_crops": {
+    "torso_pelvis": null,
+    "head": null,
+    "left_arm": null,
+    "right_arm": null,
+    "left_hand": null,
+    "right_hand": null,
+    "left_leg": null,
+    "right_leg": null,
+    "left_foot": null,
+    "right_foot": null
+  },
+  "gpu_generation_permitted": false,
+  "blockers": [
+    "Create and inspect component masks/crops from approved master; preserve exact aspect ratio and origin",
+    "Implement and test image-conditioned reference consumption instead of the current text-only Qwen path",
+    "Establish shared component scale, landmarks, and seam-fit validation",
+    "Adapt existing two-part Blender preview to a multi-component assembly"
+  ]
+}

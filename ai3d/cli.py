@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args[0] == "character":
-        from ai3d.characters.cli import main as character
+        from legacy.characters.cli import main as character
 
         return character(args[1:])
 

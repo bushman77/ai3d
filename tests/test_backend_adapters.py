@@ -8,7 +8,7 @@ from ai3d.geometry.hunyuan import build_prepaint_command, build_shape_command
 from ai3d.image.background import build_cutout_command
 from ai3d.image.qwen import DEFAULT_SD_CLI, build_qwen_command
 from ai3d.textures.paint3d import build_texture_command
-from space_nova_pipeline.space_nova_pipeline import arguments
+from legacy.space_nova_pipeline.space_nova_pipeline import arguments
 
 
 class BackendAdapterTests(unittest.TestCase):

@@ -112,9 +112,9 @@ python3 -m ai3d character validate characters/my_character.json
 ```
 
 New cards default to `characters/<id>.json`, a tracked source directory.
-The reusable template and JSON Schema are in `ai3d/characters/`. See
-[the card format guide](ai3d/characters/README.md) and the
-[Mara Venn example](examples/space_nova/characters/mara_venn.json).
+The reusable template and JSON Schema are in `legacy/characters/`. See
+[the card format guide](legacy/characters/README.md) and the
+[Mara Venn example](legacy/examples/space_nova/characters/mara_venn.json).
 
 **Card-driven per-part Qwen, Hunyuan and Paint3D generation is implemented**
 with sequential batch processing and resumable intermediate stages.
@@ -129,12 +129,12 @@ To preview Mara's head-specific Qwen prompt without running inference:
 
 ```bash
 python3 -m ai3d character reference \
-  examples/space_nova/characters/mara_venn.json --part head --dry-run
+  legacy/examples/space_nova/characters/mara_venn.json --part head --dry-run
 ```
 
 Then remove `--dry-run` to create the head reference in
 `outputs/mara_venn_head_head_closeup/`. See the
-[reference generation guide](ai3d/characters/README.md) for settings and
+[reference generation guide](legacy/characters/README.md) for settings and
 the identity-consistency limitations of text-to-image generation.
 
 ## Project layout
@@ -142,7 +142,7 @@ the identity-consistency limitations of text-to-image generation.
 - `ai3d/`: reusable Python modules, including GLB structural validation,
   a stage runner, and a Blender static-mesh optimization backend
 - `pipelines/`: general-purpose orchestration (scaffold only)
-- `examples/space_nova/`: consumer-specific integration example (scaffold)
+- `legacy/examples/space_nova/`: consumer-specific integration example (scaffold)
 - `tests/`: dependency-free unit tests
 - `config/`: future source/dependency manifests
 - `space_nova_pipeline/`: legacy integration, now using AI3D components
@@ -267,7 +267,7 @@ Use `SD_ROOT`/`SD_CLI` shell overrides or the generation command's
 
 ```bash
 python3 -m ai3d character generate \
-  examples/space_nova/characters/mara_venn.json \
+  legacy/examples/space_nova/characters/mara_venn.json \
   --all --run-prefix mara_components_v1 --dry-run
 ```
 
@@ -279,17 +279,17 @@ Only mesh and attachment parts proceed beyond reference by default;
 `--include-regions` opts into experimental standalone mesh generation for
 clothing and hands. The generator does not assemble, align or rig parts.
 
-See [character-card batch workflow](ai3d/characters/README.md).
+See [character-card batch workflow](legacy/characters/README.md).
 
 ## Preview body + head in Blender
 
 ```bash
 python3 -m ai3d character assemble \
-  examples/space_nova/characters/mara_venn.json \
+  legacy/examples/space_nova/characters/mara_venn.json \
   --run-prefix mara_components_v1 --name mara_assembly_v1 --dry-run
 # Once the two source GLBs exist, run without --dry-run:
 python3 -m ai3d character assemble \
-  examples/space_nova/characters/mara_venn.json \
+  legacy/examples/space_nova/characters/mara_venn.json \
   --run-prefix mara_components_v1 --name mara_assembly_v1
 blender outputs/mara_assembly_v1/preview.blend
 ```
@@ -300,7 +300,7 @@ visual comparison, **not an alignment**. The manifest at
 `outputs/mara_assembly_v1/assembly.json` can be edited and replayed
 explicitly with `--rebuild`; the original GLBs are never modified.
 
-See [the assembly preview guide](ai3d/characters/README.md).
+See [the assembly preview guide](legacy/characters/README.md).
 
 ## Reversible character cut-plane preview (Phase 1)
 
@@ -317,7 +317,7 @@ python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
 python3 -m ai3d character cut outputs/mara_assembly_v1/assembly.json \
   --part head --mode guide --z 0.68 --keep above
 python3 -m ai3d character assemble \
-  examples/space_nova/characters/mara_venn.json \
+  legacy/examples/space_nova/characters/mara_venn.json \
   --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
 ```
 
@@ -326,7 +326,7 @@ These heights are only starting points for visual inspection.
 The preview remains two independent meshes, with no neck-seam
 welding, automatic fitting, rigging or production export.
 
-See [assembly guide and safety details](ai3d/characters/README.md).
+See [assembly guide and safety details](legacy/characters/README.md).
 
 ## Stage all generated character parts safely
 
@@ -336,9 +336,9 @@ existing fitting and cuts. Example:
 ```bash
 python3 -m ai3d character stage \
   outputs/mara_assembly_v1/assembly.json \
-  examples/space_nova/characters/mara_venn.json --all
+  legacy/examples/space_nova/characters/mara_venn.json --all
 python3 -m ai3d character assemble \
-  examples/space_nova/characters/mara_venn.json \
+  legacy/examples/space_nova/characters/mara_venn.json \
   --run-prefix mara_components_v1 --name mara_assembly_v1 --rebuild
 ```
 
@@ -347,4 +347,4 @@ collections and excluded from the comparison GLB until explicitly
 activated, to avoid duplicate geometry. Use
 `python3 -m ai3d character component --help` for visibility/export
 controls. Existing geometry remains unmodified. See the
-[full-character staging guide](ai3d/characters/README.md).
+[full-character staging guide](legacy/characters/README.md).

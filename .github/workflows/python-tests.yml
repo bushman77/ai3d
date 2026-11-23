@@ -28,13 +28,13 @@ jobs:
           python -m ai3d validate-blender --help >/dev/null
           python -m ai3d character --help >/dev/null
           python -m ai3d character init --help >/dev/null
-          python -m ai3d character validate ai3d/characters/template.json
-          python -m ai3d character validate examples/space_nova/characters/mara_venn.json
-          python -m ai3d character reference examples/space_nova/characters/mara_venn.json --part head --dry-run >/dev/null
-          python -m ai3d character generate examples/space_nova/characters/mara_venn.json --all --dry-run >/dev/null
-          python -m ai3d character assemble examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_assembly_smoke --dry-run >/dev/null
+          python -m ai3d character validate legacy/characters/template.json
+          python -m ai3d character validate legacy/examples/space_nova/characters/mara_venn.json
+          python -m ai3d character reference legacy/examples/space_nova/characters/mara_venn.json --part head --dry-run >/dev/null
+          python -m ai3d character generate legacy/examples/space_nova/characters/mara_venn.json --all --dry-run >/dev/null
+          python -m ai3d character assemble legacy/examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_assembly_smoke --dry-run >/dev/null
           python -m ai3d character cut --help >/dev/null
           python -m ai3d character stage --help >/dev/null
           python -m ai3d character component --help >/dev/null
-          python -m ai3d character assemble examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_all_parts_smoke --all-parts --dry-run >/dev/null
+          python -m ai3d character assemble legacy/examples/space_nova/characters/mara_venn.json --run-prefix mara_components_v1 --name mara_all_parts_smoke --all-parts --dry-run >/dev/null
           python space_nova_pipeline/space_nova_pipeline.py --help >/dev/null

@@ -12,7 +12,7 @@ from ai3d.optimization.blender_finalize import parse_arguments, tris
 
 ROOT = Path(__file__).resolve().parents[1]
 FINALIZER = ROOT / "ai3d/optimization/blender_finalize.py"
-COMPAT = ROOT / "space_nova_pipeline/space_nova_blender_finalize.py"
+COMPAT = ROOT / "legacy/space_nova_pipeline/space_nova_blender_finalize.py"
 
 
 class BlenderOptimizationTests(unittest.TestCase):

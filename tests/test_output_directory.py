@@ -7,11 +7,11 @@ import tempfile
 import unittest
 
 from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory
-from space_nova_pipeline.space_nova_pipeline import arguments
+from legacy.space_nova_pipeline.space_nova_pipeline import arguments
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-LEGACY_ENTRY = REPO_ROOT / "space_nova_pipeline" / "space_nova_pipeline.py"
+LEGACY_ENTRY = REPO_ROOT / "legacy" / "space_nova_pipeline" / "space_nova_pipeline.py"
 
 
 class OutputDirectoryTests(unittest.TestCase):

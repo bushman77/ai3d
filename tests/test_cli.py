@@ -12,10 +12,10 @@ from pathlib import Path
 import unittest
 
 from pipelines.image_to_3d import arguments as generic_arguments
-from space_nova_pipeline.space_nova_pipeline import arguments as legacy_arguments
+from legacy.space_nova_pipeline.space_nova_pipeline import arguments as legacy_arguments
 
 REPO = Path(__file__).resolve().parents[1]
-LEGACY = REPO / "space_nova_pipeline/space_nova_pipeline.py"
+LEGACY = REPO / "legacy/space_nova_pipeline/space_nova_pipeline.py"
 
 
 def tiny_glb(path: Path) -> None:

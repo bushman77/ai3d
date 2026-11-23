@@ -1,0 +1,40 @@
+"""Regression checks for the staged clean-body restart (no GPU or Blender)."""
+from pathlib import Path
+import unittest
+
+from legacy.characters.card import load_card
+from legacy.characters.reference import compose_reference_prompt, select_part_and_view
+
+
+CARD = Path(__file__).resolve().parents[2] / "legacy/examples/space_nova/characters/mara_venn.json"
+
+
+class MaraCleanBodyContractTest(unittest.TestCase):
+    def test_body_reference_has_clean_jumpsuit_without_gear(self):
+        card = load_card(CARD)
+        body, view = select_part_and_view(card, "body")
+        positive = body["prompts"]["reference"].lower()
+        for disallowed in ("belt", "pouch", "holster", "repair tool", "thigh rig"):
+            self.assertNotIn(disallowed, positive, f"positive body prompt includes {disallowed!r}")
+        self.assertIn("jumpsuit", positive)
+        self.assertIn("continuous", positive)
+        self.assertIn("t-pose", positive)
+        self.assertEqual(view, "front")
+        combined = compose_reference_prompt(card, body, view).lower()
+        self.assertIn("clean studio visual reference", combined)
+        self.assertIn("continuous", combined)
+        self.assertNotIn("avoid:", combined)
+        self.assertNotIn("spaceport repair engineer", combined)
+        for disallowed in ("belt", "holster", "pouch", "tool", "camera", "badge", "boots", "gloves"):
+            self.assertNotIn(disallowed, combined)
+        self.assertIn("adult woman", positive)
+
+    def test_design_brief_still_preserves_full_equipment_identity(self):
+        card = load_card(CARD)
+        self.assertIn("utility belt", card["prompts"]["master"].lower())
+        self.assertTrue(any(p["id"] == "equipment" for p in card["parts"]))
+        self.assertGreaterEqual(card["revision"], 3)
+
+
+if __name__ == "__main__":
+    unittest.main()
