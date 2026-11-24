@@ -39,7 +39,8 @@ class BlenderStageTests(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.dir = Path(cls.tmp.name)
         for name, extra in (("mannequin-y", ["--face", "-y"]), ("mannequin+y", ["--face", "+y"]),
-                            ("wide_tpose", ["--hips", "wide", "--pose", "t"])):
+                            ("wide_tpose", ["--hips", "wide", "--pose", "t"]),
+                            ("steep_apose", ["--arm-drop", "65"])):
             out = cls.dir / f"{name}.glb"
             blender([BLENDER, "--background", "--factory-startup", "--python-exit-code", "1",
                      "--python", str(FIXTURE), "--", str(out), *extra])
@@ -125,6 +126,19 @@ class BlenderStageTests(unittest.TestCase):
         # fixture shoulders at 1.40 m of 1.74 m = 0.80
         self.assertAlmostEqual(r["shoulder_height_fraction"], 0.80, delta=0.03)
         self.assertLess(r["arm_leak_before_trim"], 0.05)
+        self.assertEqual(r["arm_leak"], 0.0)
+
+    def test_steep_a_pose_shoulders(self):
+        # Regression (Ilya): arms hanging at ~55-65 degrees sit so close to the
+        # torso that the shoulders were placed at 0.62 of the height.
+        game, rigged = self.dir / "steep_game.glb", self.dir / "steep_rigged.glb"
+        self.stage("retopo_bake.py", ["--input", self.dir / "steep_apose.glb", "--output", game,
+                                      "--target-faces", 3000, "--texture-size", 128,
+                                      "--samples", 1])
+        self.stage("rig.py", ["--input", game, "--output", rigged, "--no-test-animation",
+                              "--stats", self.dir / "steep_rig.json"])
+        r = self.stats("steep_rig.json")
+        self.assertAlmostEqual(r["shoulder_height_fraction"], 0.80, delta=0.035)
         self.assertEqual(r["arm_leak"], 0.0)
 
     def test_views_are_projected_sharper_than_paint3d(self):

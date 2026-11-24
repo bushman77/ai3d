@@ -117,33 +117,42 @@ def find_crotch(points, zmin, H):
     return zmin + 0.47 * H
 
 
-def track_arm(points, s, chest_half, H):
+def track_arm(points, s, H):
     """Follow one arm from the fingertip inward to the shoulder.
 
-    Steps inward in thin X slices; in each slice it keeps only the cluster of
-    points closest in height to the previous slice, so wide hips or thighs at
-    the same X never get mixed into the arm (they sit far lower). Returns the
-    fingertip and the arm centreline from the tip inward, or (None, []).
+    Steps inward in thin X slices. In each slice it keeps only the cluster of
+    points closest in height to the previous slice, so hips or thighs at the
+    same X never get mixed in. It stops where the cluster suddenly becomes
+    much taller than the arm has been: that is the arm joining the torso.
+    This works for T-poses and steep A-poses alike, without needing to know
+    how wide the chest is (arms hanging close to the body fool that).
+    Returns the fingertip and the arm centreline from the tip inward.
     """
-    side = [p for p in points if s * p.x > chest_half and p.z > min(q.z for q in points) + 0.3 * H]
+    zmin = min(q.z for q in points)
+    side = [p for p in points if s * p.x > 0.03 * H and p.z > zmin + 0.3 * H]
     if len(side) < 10:
         return None, []
     tip = max(side, key=lambda p: s * p.x)
     step = 0.02 * H
     x = s * tip.x - step
     prev = tip
-    line = []
-    while x > chest_half:
+    line, extents = [], []
+    while x > 0.03 * H:
         slab = [p for p in side if abs(s * p.x - x) <= step / 2]
         if slab:
             clusters = []
             for group in runs([p.z for p in slab], 0.02 * H):
                 lo, hi = group[0], group[-1]
-                clusters.append([p for p in slab if lo <= p.z <= hi])
-            best = min(clusters, key=lambda c: abs(centre(c, prev).z - prev.z))
+                clusters.append(([p for p in slab if lo <= p.z <= hi], hi - lo))
+            best, extent = min(clusters, key=lambda c: abs(centre(c[0], prev).z - prev.z))
+            if len(extents) >= 3:
+                typical = sorted(extents)[len(extents) // 2]
+                if extent > max(2.2 * typical, typical + 0.06 * H):
+                    break  # reached the torso
             c = centre(best, prev)
-            if abs(c.z - prev.z) < 0.08 * H:  # still the same limb
+            if abs(c.z - prev.z) < 0.08 * H:
                 line.append(c)
+                extents.append(extent)
                 prev = c
         x -= step
     return tip, line
@@ -193,13 +202,30 @@ def landmarks(obj):
     shoulder_zs = []
     for side, s in SIDES:
         root_guess = Vector((s * chest_half, torso_y, shoulder_guess_z))
-        tip, line = track_arm(pts, s, chest_half * 1.05, H)
+        tip, line = track_arm(pts, s, H)
         if tip is None or len(line) < 3:
             tip = root_guess + Vector((s * 0.35 * H, 0, -0.25 * H))
             line = [tip, root_guess]
         path = [*reversed(line), tip]            # shoulder -> fingertip
         root = path[0].copy()
-        root.x = s * chest_half * 0.92
+        # Steep A-poses: the upper arm touches the body before the shoulder,
+        # so tracing stops low. Continue along the arm's own direction to a
+        # typical shoulder width (~11% of height).
+        shoulder_x = 0.11 * H
+        if len(line) >= 3 and s * root.x > shoulder_x:
+            far = line[max(0, len(line) - 4)]
+            d = root - far
+            if abs(d.x) > 1e-6:
+                t = (s * root.x - shoulder_x) / abs(d.x)
+                root = root + d * min(t, 3.0)
+        # Shoulder height check: at shoulder width the highest point of the
+        # body is the top of the shoulder; the joint sits ~3.5% of height
+        # below it. If tracing stopped well below that, move the joint up.
+        top = [p for p in pts if abs(s * p.x - shoulder_x) < 0.012 * H]
+        if top:
+            joint_z = max(p.z for p in top) - 0.035 * H
+            if root.z < joint_z - 0.03 * H:
+                root = Vector((s * min(s * root.x, shoulder_x), root.y, joint_z))
         path[0] = root
         elbow = along(path, 0.42)
         wrist = along(path, 0.80)

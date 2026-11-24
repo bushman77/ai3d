@@ -17,6 +17,7 @@ out = Path(args[0]) if args else Path("/tmp/ai3d_mannequin.glb")
 pose = args[args.index("--pose") + 1] if "--pose" in args else "a"
 face = args[args.index("--face") + 1] if "--face" in args else "-y"
 hips = args[args.index("--hips") + 1] if "--hips" in args else "narrow"
+arm_drop = float(args[args.index("--arm-drop") + 1]) if "--arm-drop" in args else None
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 parts = []
@@ -47,6 +48,8 @@ torso.scale = (0.19, 0.12, 0.32)
 pelvis = add(bpy.ops.mesh.primitive_uv_sphere_add, segments=24, ring_count=16, radius=1, location=(0, 0, 0.93))
 pelvis.scale = (0.17, 0.11, 0.14) if hips == "narrow" else (0.24, 0.12, 0.22)
 drop = 0.0 if pose == "t" else math.radians(40)
+if arm_drop is not None:
+    drop = math.radians(arm_drop)
 for s in (1, -1):
     sh = (s * 0.19, 0, 1.40)
     reach = 0.62
