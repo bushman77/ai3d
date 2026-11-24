@@ -170,6 +170,15 @@ def project(low, views, base_image, uv_main, *, power=3.0, base_weight=0.02, sam
     for kind, path in views:
         img, (x0, x1, y0, y1), mask = load_view(Path(path))
         W, H = img.size
+        edges = [e for e, hit in (("bottom", y0 <= 1), ("top", y1 >= H - 1),
+                                  ("left", x0 <= 1), ("right", x1 >= W - 1)) if hit]
+        if edges:
+            # Cut off (e.g. top of the head): the outline box no longer spans
+            # the whole figure, so the alignment would slide colours around.
+            print(f"[project] skipping {kind}: figure touches the {', '.join(edges)} edge",
+                  flush=True)
+            stats.append({"view": kind, "file": str(path), "skipped": True, "cut_off": edges})
+            continue
         fit, to_cam, right = choose_orientation(kind, mask, tree, lo, hi)
         if fit < min_match:
             # A view that doesn't line up would paint colours onto the wrong

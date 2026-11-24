@@ -14,6 +14,7 @@ class FakePipeline:
         self.home = home
         self.calls = []
         self.fail_with = list(fail_with or [])  # [(stage, log text), ...] for full runs
+        self.crop_back = False
 
     def __call__(self, argv):
         self.calls.append(argv)
@@ -21,6 +22,10 @@ class FakePipeline:
         if "--stop-after" in argv:
             for angle in ("left", "back", "right"):
                 (self.home / f"01_view_{angle}.png").write_bytes(b"png")
+                touches = ["top"] if (angle == "back" and self.crop_back) else []
+                (self.home / f"02_cutout_{angle}.json").write_text(json.dumps({"touches": touches}))
+                if angle == "back":
+                    self.crop_back = False  # the redo fixes it
             return 0
         if self.fail_with:
             stage, text = self.fail_with.pop(0)
@@ -85,6 +90,14 @@ class MakeTests(unittest.TestCase):
         self.assertEqual(installed.read_bytes(), (self.home / "07_rigged.glb").read_bytes())
         self.assertIn(self.home / "index.html", self.opened)
         self.assertTrue(any("01_view_back.png" in str(p) for p in self.opened))
+
+    def test_cut_off_view_is_flagged_at_review(self):
+        m, pipe = self.maker(["back", "", "y", ""])
+        pipe.crop_back = True
+        self.assertEqual(m.go(), 0)
+        self.assertEqual(pipe.calls[0][pipe.calls[0].index("--stop-after") + 1], "cutout")
+        flagged = [s for s in self.said if "back picture is cut off at the top" in s]
+        self.assertEqual(len(flagged), 1, "warned before the redo, not after")
 
     def test_shape_out_of_memory_falls_back_step_by_step(self):
         oom = "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 86.00 MiB"

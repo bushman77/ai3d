@@ -126,6 +126,33 @@ class PipelineTests(unittest.TestCase):
             self.assertIn(needle, text)
 
 
+class AspectTests(unittest.TestCase):
+    def test_edit_dims_keep_the_reference_shape(self):
+        from ai3d.image.size import edit_dims, image_size
+        self.assertEqual(edit_dims((512, 512), 512), (512, 512))
+        self.assertEqual(edit_dims((512, 768), 512), (448, 640))   # portrait stays portrait
+        self.assertEqual(edit_dims((512, 768), 1024), (832, 1280))
+        self.assertEqual(edit_dims(None, 1024), (1024, 1024))
+        mara = Path(__file__).resolve().parent.parent / "approved_references/mara_body_front_approved.png"
+        self.assertEqual(image_size(mara), (512, 512))
+
+    def test_portrait_prompt_reference_gives_portrait_views(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            prompt = tmp / "p.txt"
+            prompt.write_text("A pilot.")
+            text = run("--name", "x", "--prompt-file", str(prompt), "--output-dir", str(tmp / "o"),
+                       "--dry-run")
+            back = text.split("[PLAN] views-back")[1].split("[PLAN]")[0]
+            self.assertIn("-W 448 -H 640", back)
+            hd = text.split("[PLAN] texture-views-front")[1].split("[PLAN]")[0]
+            self.assertIn("-W 832 -H 1280", hd)
+
+    def test_cut_off_warning(self):
+        w = warnings_for({"cutouts": {"cut_off": {"back": ["top"]}}})
+        self.assertTrue(any("back picture is cut off at the top" in x for x in w))
+
+
 class PromptSplitTests(unittest.TestCase):
     def test_negative_prompt_is_separated(self):
         from ai3d.image.qwen import split_prompt

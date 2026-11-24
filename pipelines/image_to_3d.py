@@ -42,6 +42,7 @@ from ai3d.common import ensure_file, resolve  # noqa: E402
 from ai3d.config import load_profile, repo_path  # noqa: E402
 from ai3d.export.validation import readable_glb  # noqa: E402
 from ai3d.geometry.hunyuan import build_hunyuan_shape_command  # noqa: E402
+from ai3d.image.size import edit_dims, image_size  # noqa: E402
 from ai3d.image.qwen import (  # noqa: E402
     UPSCALE_PROMPT, build_qwen_command, build_qwen_edit_command, split_prompt, view_prompt,
 )
@@ -278,6 +279,10 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
                        lambda s=src, d=dst: runner.copy(s, d))
             views[angle] = dst
         V = cfg["views"]
+        # Same shape as the front image, or Qwen crops a tall figure (head cut off).
+        ref_dims = ((cfg["reference"]["width"], cfg["reference"]["height"]) if a.prompt_file
+                    else image_size(reference) or image_size(resolve(a.image)))
+        view_w, view_h = edit_dims(ref_dims, V["size"])
         view_seeds = dict(view_seeds_early)
         for angle in [v for v in a.redo_view if v != "front"]:
             view_seeds[angle] = secrets.randbelow(2**31)
@@ -292,7 +297,7 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             cmd = build_qwen_edit_command(
                 plan.sd_cli, reference=reference, prompt=view_prompt(angle), output=out,
                 size=V["size"], steps=V["steps"], cfg_scale=V["cfg_scale"], seed=angle_seed,
-                vae_tiling=V["vae_tiling"],
+                vae_tiling=V["vae_tiling"], width=view_w, height=view_h,
                 ram_limit=cfg["reference"]["ram_limit"],
                 swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
             runner.run_cmd(f"views-{angle}", [reference, *plan.edit.values()], [out],
@@ -314,6 +319,12 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             label = "cutout" if angle == "front" else f"cutout-{angle}"
             runner.run_cmd(label, [image, plan.hy_python], [out], {}, cmd, cwd=plan.hunyuan)
             cutouts[angle] = out
+        cropped = cut_off_views(cutouts) if not a.dry_run else {}
+        if not a.dry_run:
+            (stats_dir / "cutouts.json").write_text(json.dumps({"cut_off": cropped}, indent=2) + "\n")
+        for kind, edges in cropped.items():
+            print(f"WARNING: {kind} picture: the figure touches the {', '.join(edges)} edge "
+                  f"(cut off?). Redo it: --redo-view {kind}")
         if not wants("shape"):
             return finish(a, home, f"Cutouts: {', '.join(str(c) for c in cutouts.values())}")
 
@@ -385,13 +396,14 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         for angle in ANGLES:
             if angle in views:
                 sources.append((angle, views[angle], cutouts.get(angle)))
+    hd_w, hd_h = edit_dims(ref_dims if sources else None, TV["size"])
     for kind, image, cut in sources:
         if TV["upscale"]:
             hd = home / f"01_hd_{kind}.png"
             cmd = build_qwen_edit_command(
                 plan.sd_cli, reference=image, prompt=UPSCALE_PROMPT, output=hd,
                 size=TV["size"], steps=TV["steps"], cfg_scale=TV["cfg_scale"], seed=seed,
-                vae_tiling=TV["vae_tiling"],
+                vae_tiling=TV["vae_tiling"], width=hd_w, height=hd_h,
                 ram_limit=cfg["reference"]["ram_limit"],
                 swap_limit=cfg["reference"]["swap_limit"], **plan.edit)
             runner.run_cmd(f"texture-views-{kind}", [image, *plan.edit.values()], [hd],
@@ -463,6 +475,16 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
     return finish(a, home, "\n".join(lines))
 
 
+def cut_off_views(cutouts: dict) -> dict:
+    """{view: [edges]} for cutouts whose figure touches the picture edge."""
+    out = {}
+    for kind, path in cutouts.items():
+        info = _load(Path(path).with_suffix(".json"))
+        if info.get("touches"):
+            out[kind] = info["touches"]
+    return out
+
+
 def finish(a, home: Path, message: str):
     if a.dry_run:
         print("\nDry run complete; nothing was generated.")
@@ -480,6 +502,9 @@ def _load(path: Path) -> dict:
 
 def warnings_for(stats: dict) -> list[str]:
     out = []
+    for kind, edges in stats.get("cutouts", {}).get("cut_off", {}).items():
+        out.append(f"{kind} picture is cut off at the {', '.join(edges)} edge; "
+                   f"redo it (--redo-view {kind}) and rebuild")
     q = stats.get("quality_game", {})
     iou = q.get("silhouette_iou")
     if iou is not None and iou < 0.80:
@@ -498,8 +523,8 @@ def warnings_for(stats: dict) -> list[str]:
                    f"{g['shape_pieces']}: a limb came loose")
     skipped = [v["view"] for v in g.get("projected_views", []) if v.get("skipped")]
     if skipped:
-        out.append("views not projected (outline did not match the mesh): " + ", ".join(skipped)
-                   + "; those sides keep the Paint3D colour")
+        out.append("views not projected (cut off, or outline did not match the mesh): "
+                   + ", ".join(skipped) + "; those sides keep the Paint3D colour")
     if (g.get("surface_error_max") or 0) > 0.03:
         out.append(f"low-poly mesh misses detail: max surface error {g['surface_error_max']:.3f} "
                    "of height; raise retopo.target_faces")

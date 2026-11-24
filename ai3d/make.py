@@ -144,6 +144,19 @@ class Maker:
                    "failed during weight preparation", "out of memory")
         return any(m in log for m in markers)
 
+    def cut_off(self) -> dict:
+        """{picture: [edges]} for cutouts whose figure touches the edge."""
+        out = {}
+        for path in sorted(self.home.glob("02_cutout*.json")):
+            try:
+                info = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue
+            if info.get("touches"):
+                kind = path.stem.replace("02_cutout", "").lstrip("_") or "front"
+                out[kind] = info["touches"]
+        return out
+
     def views_enabled(self) -> bool:
         return bool(self.cfg["views"]["enabled"]) and "views.enabled=false" not in self.extra
 
@@ -152,7 +165,7 @@ class Maker:
         if not self.views_enabled():
             return True
         self.say("\n=== 1. Side and back views ===")
-        self.run("--stop-after", "views")
+        self.run("--stop-after", "cutout")
         while True:
             views = [self.home / f"01_view_{v}.png" for v in self.cfg["views"]["angles"]]
             views = [v for v in views if v.is_file()]
@@ -162,6 +175,9 @@ class Maker:
                 self.say(f"  {view}")
                 self.opener(view)
             self.say(VIEW_CHECKS)
+            for kind, edges in self.cut_off().items():
+                self.say(f"  WARNING: {kind} picture is cut off at the {', '.join(edges)} edge "
+                         f"(head or feet missing?): redo it by typing '{kind}'")
             redo_names = "front/left/back/right" if self.a.prompt_file else "left/back/right"
             answer = self.question(
                 f"Views OK? [Enter]=yes, or the ones to redo ({redo_names}, e.g. 'back'), "
@@ -183,7 +199,7 @@ class Maker:
             if not redo:
                 self.say("Didn't understand; type e.g. 'back' or 'left right'.")
                 continue
-            args = ["--stop-after", "views"]
+            args = ["--stop-after", "cutout"]
             for angle in dict.fromkeys(redo):
                 args += ["--redo-view", angle]
             self.run(*args)
