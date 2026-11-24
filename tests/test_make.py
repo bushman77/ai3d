@@ -146,3 +146,22 @@ class MakeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PromptFileTests(unittest.TestCase):
+    def test_front_can_be_redone_with_a_prompt_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            prompt = tmp / "prompt.txt"
+            prompt.write_text("a pilot")
+            home = tmp / "out" / "ilya"
+            a = arguments(["--name", "ilya", "--prompt-file", str(prompt),
+                           "--output-dir", str(tmp / "out"), "--sunracer", str(tmp)])
+            replies = iter(["front", "", "y", ""])
+            pipe = FakePipeline(home)
+            said = []
+            m = Maker(a, pipeline=pipe, ask=lambda _p: next(replies), opener=lambda p: None,
+                      say=said.append)
+            self.assertEqual(m.go(), 0)
+            self.assertEqual(pipe.calls[1][pipe.calls[1].index("--redo-view") + 1], "front")
+            self.assertTrue(any("redrawn" in s for s in said))

@@ -43,7 +43,7 @@ from ai3d.config import load_profile, repo_path  # noqa: E402
 from ai3d.export.validation import readable_glb  # noqa: E402
 from ai3d.geometry.hunyuan import build_hunyuan_shape_command  # noqa: E402
 from ai3d.image.qwen import (  # noqa: E402
-    UPSCALE_PROMPT, build_qwen_command, build_qwen_edit_command, view_prompt,
+    UPSCALE_PROMPT, build_qwen_command, build_qwen_edit_command, split_prompt, view_prompt,
 )
 from ai3d.optimization.blender import build_finalize_command  # noqa: E402
 from ai3d.output import DEFAULT_OUTPUT_ROOT, run_directory  # noqa: E402
@@ -73,7 +73,7 @@ def arguments(argv: list[str] | None = None, *, prog: str | None = None) -> argp
     for angle in ANGLES:
         p.add_argument(f"--view-{angle}", type=Path, help=f"Your own {angle} view image")
     p.add_argument("--no-views", action="store_true", help="Front image only (Hunyuan3D-2mini)")
-    p.add_argument("--redo-view", action="append", choices=ANGLES, default=[],
+    p.add_argument("--redo-view", action="append", choices=("front", *ANGLES), default=[],
                    help="Regenerate this view with a new random seed (repeatable); "
                         "use with --resume so the other views are kept")
     p.add_argument("--shape-mesh", type=Path, help="Reuse an existing raw shape GLB")
@@ -220,6 +220,20 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         stats_dir.mkdir(exist_ok=True)
         (home / "settings.json").write_text(json.dumps(cfg, indent=2) + "\n")
 
+    # Seeds per view (and "front" for a text-to-image reference), so redoing
+    # one picture with a new random seed keeps the rest.
+    seeds_file = home / "view_seeds.json"
+    view_seeds_early = json.loads(seeds_file.read_text()) if seeds_file.is_file() else {}
+    if "front" in a.redo_view:
+        if not a.prompt_file:
+            raise RuntimeError("--redo-view front only works with --prompt-file "
+                               "(with --image the front is your picture)")
+        view_seeds_early["front"] = secrets.randbelow(2**31)
+        print(f"[redo] front image with seed {view_seeds_early['front']}")
+        if not a.dry_run:
+            (home / "01_reference.png").unlink(missing_ok=True)
+            seeds_file.write_text(json.dumps(view_seeds_early, indent=2) + "\n")
+
     painted = home / "05_painted.glb"
     front_cut = home / "02_cutout.png"
     cutouts: dict[str, Path] = {}
@@ -237,16 +251,21 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             R = cfg["reference"]
             reference = home / "01_reference.png"
             prompt = resolve(a.prompt_file)
+            positive, negative = split_prompt(prompt.read_text())
+            ref_seed = view_seeds_early.get("front", seed)
             cmd = build_qwen_command(plan.sd_cli, plan.qwen["diffusion_model"].parent,
-                                     prompt.read_text(), reference, width=R["width"],
+                                     positive, reference, width=R["width"],
                                      height=R["height"], steps=R["steps"],
                                      ram_limit=R["ram_limit"], swap_limit=R["swap_limit"])
-            cmd[cmd.index("--seed") + 1] = str(seed)
+            cmd[cmd.index("--seed") + 1] = str(ref_seed)
             cmd[cmd.index("--cfg-scale") + 1] = str(R["cfg_scale"])
             for flag, key in (("--diffusion-model", "diffusion_model"), ("--llm", "llm"), ("--vae", "vae")):
                 cmd[cmd.index(flag) + 1] = str(plan.qwen[key])
+            cmd[cmd.index("-o"):cmd.index("-o")] = ["--vae-tiling"]
+            if negative:
+                cmd[cmd.index("-o"):cmd.index("-o")] = ["-n", negative]
             runner.run_cmd("reference", [prompt, *plan.qwen.values()], [reference],
-                           {"reference": R, "seed": seed}, cmd, cwd=plan.sd_cli.parent)
+                           {"reference": R, "seed": ref_seed}, cmd, cwd=plan.sd_cli.parent)
         if not wants("views"):
             return finish(a, home, f"Reference: {reference}")
 
@@ -259,9 +278,8 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
                        lambda s=src, d=dst: runner.copy(s, d))
             views[angle] = dst
         V = cfg["views"]
-        seeds_file = home / "view_seeds.json"
-        view_seeds = json.loads(seeds_file.read_text()) if seeds_file.is_file() else {}
-        for angle in a.redo_view:
+        view_seeds = dict(view_seeds_early)
+        for angle in [v for v in a.redo_view if v != "front"]:
             view_seeds[angle] = secrets.randbelow(2**31)
             print(f"[redo] {angle} view with seed {view_seeds[angle]}")
             if not a.dry_run:

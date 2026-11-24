@@ -126,6 +126,31 @@ class PipelineTests(unittest.TestCase):
             self.assertIn(needle, text)
 
 
+class PromptSplitTests(unittest.TestCase):
+    def test_negative_prompt_is_separated(self):
+        from ai3d.image.qwen import split_prompt
+        pos, neg = split_prompt("A pilot.\n\nFull body.\n\n**Negative prompt:**\n\nNo backpack, no text.")
+        self.assertEqual(pos, "A pilot.\n\nFull body.")
+        self.assertEqual(neg, "No backpack, no text.")
+        self.assertEqual(split_prompt("Negative prompt: no hats\n")[1], "no hats")
+        self.assertEqual(split_prompt("just a prompt"), ("just a prompt", ""))
+
+    def test_reference_command_gets_negative_prompt_and_redo_front(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            prompt = tmp / "p.txt"
+            prompt.write_text("A pilot.\n**Negative prompt:** no backpack")
+            text = run("--name", "x", "--prompt-file", str(prompt), "--output-dir", str(tmp / "o"),
+                       "--stop-after", "reference", "--dry-run", "--redo-view", "front")
+            ref = text.split("[PLAN] reference")[1]
+            self.assertIn("-n 'no backpack'", ref.replace('"', "'"))
+            self.assertNotIn("no backpack", ref.split(" -n ")[0])
+            self.assertIn("[redo] front image with seed", text)
+            with self.assertRaisesRegex(RuntimeError, "only works with --prompt-file"):
+                run("--name", "y", "--image", str(prompt), "--output-dir", str(tmp / "o"),
+                    "--redo-view", "front", "--dry-run")
+
+
 class BuilderTests(unittest.TestCase):
     def test_qwen_edit_uses_reference_and_vision_encoder(self):
         cmd = build_qwen_edit_command(

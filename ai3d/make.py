@@ -41,6 +41,9 @@ STATION_DIR = Path("apps/sunracer_web/priv/static/images/game/station")
 SIZE_TARGET_MB = 5.0
 
 VIEW_CHECKS = """\
+With --prompt-file, check 01_reference.png first: full body head to feet,
+facing you, arms out, plain background, looks like the character you want
+(type 'front' to draw it again).
 Check each view:
   - the SAME character as the front image (outfit, colours, hair, build)
   - the WHOLE body turned, not just the head (back view: heels, no face)
@@ -159,8 +162,9 @@ class Maker:
                 self.say(f"  {view}")
                 self.opener(view)
             self.say(VIEW_CHECKS)
+            redo_names = "front/left/back/right" if self.a.prompt_file else "left/back/right"
             answer = self.question(
-                "Views OK? [Enter]=yes, or the ones to redo (left/back/right, e.g. 'back'), "
+                f"Views OK? [Enter]=yes, or the ones to redo ({redo_names}, e.g. 'back'), "
                 "'none'=build without views, q=stop: ", default="")
             if answer in ("", "y", "yes"):
                 return True
@@ -171,9 +175,11 @@ class Maker:
                 self.extra.append("views.enabled=false")
                 self.say("Building from the front view only.")
                 return True
-            redo = [w for w in answer.replace(",", " ").split()
-                    if w in ANGLES or w in ("l", "b", "r")]
-            redo = [{"l": "left", "b": "back", "r": "right"}.get(w, w) for w in redo]
+            allowed = (*ANGLES, "l", "b", "r") + (("front", "f") if self.a.prompt_file else ())
+            redo = [w for w in answer.replace(",", " ").split() if w in allowed]
+            redo = [{"l": "left", "b": "back", "r": "right", "f": "front"}.get(w, w) for w in redo]
+            if "front" in redo:
+                self.say("New front image: the side and back views are redrawn from it too.")
             if not redo:
                 self.say("Didn't understand; type e.g. 'back' or 'left right'.")
                 continue

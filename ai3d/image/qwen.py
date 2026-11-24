@@ -33,6 +33,24 @@ def build_qwen_command(
     ]
 
 
+def split_prompt(text: str) -> tuple[str, str]:
+    """Split a prompt file into (prompt, negative prompt).
+
+    Everything after a line starting with "Negative prompt" (markdown bold
+    allowed, e.g. "**Negative prompt:**") is the negative prompt. Sending the
+    negative list as part of the main prompt would make the model draw what
+    it names ("no backpack" -> backpack).
+    """
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        bare = line.strip().strip("*#_ ").lower()
+        if bare.startswith("negative prompt"):
+            after = line.split(":", 1)[1].strip().strip("*").strip() if ":" in line else ""
+            negative = "\n".join([after, *lines[i + 1:]]).strip()
+            return "\n".join(lines[:i]).strip(), negative
+    return text.strip(), ""
+
+
 # --------------------------------------------------------------------------
 # Multi-view: side/back views of the SAME character from the front image.
 

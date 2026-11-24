@@ -1,0 +1,19 @@
+Full-body character reference for a stylized-realistic science-fiction video game NPC, Ilya Quill, an adult human male ship outfitter who sells and installs lasers, shields and ship fittings at a frontier starbase.
+
+Ilya is in his mid-forties, lean and wiry, with a realistic adult male build, narrow shoulders, long arms and capable hands. His proportions are anatomically accurate, neither heroic nor cartoonish.
+
+He has a long, angular, weathered face, sharp cheekbones, close-cropped dark hair greying at the temples, a short neatly trimmed salt-and-pepper beard, and alert grey eyes. His expression is shrewd and quietly amused, the faint knowing half-smile of a dealer who already knows what you can afford.
+
+He wears a close-fitting, practical spacer's work jumpsuit in muted olive and sand-khaki with darker graphite-gray panels on the shoulders, sides and shins, in the spirit of late-1980s science-fiction space-trading games: utilitarian, slightly worn, well cared for. The jumpsuit follows his body closely, with a straight front zip, reinforced seams, a small rectangular olive shoulder patch on each upper arm, and restrained brass-colored metal details. The chest is unobstructed, showing only the jumpsuit fabric and its seams.
+
+A narrow dark-brown belt with a plain rectangular buckle sits at his waist. He wears fitted dark-gray work gloves and sturdy dark-brown low boots.
+
+He stands upright in a relaxed, symmetrical T-pose, both arms straight out to the sides at shoulder height, hands open with fingers together and fully visible, legs slightly apart, and feet completely visible.
+
+Straight-on frontal character reference, entire figure visible from the top of his head to the soles of his boots, with generous margins on every side. Neutral full-body studio composition with minimal perspective distortion, soft even lighting, and a clean light-gray seamless background.
+
+High-quality stylized-realistic 3D game character concept art, accurate human anatomy, clean clothing contours, coherent proportions and crisp costume details. Suitable for image-to-3D mesh reconstruction.
+
+**Negative prompt:**
+
+No coat, no jacket, no open vest, no cape, no loose or flowing fabric, no hood, no hat, no helmet, no goggles, no backpack, no holster, no weapons, no handheld tools, no chest straps, no necklaces, no badges on the chest, no bulky armor, no exaggerated anatomy, no extra limbs, no extra fingers, no cropped feet, no additional characters, no kiosk, no scenery, no watermark, no labels, no text.
