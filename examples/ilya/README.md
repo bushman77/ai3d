@@ -11,7 +11,7 @@ bash make_character.sh --name ilya_v1 --prompt-file examples/ilya/prompt.txt --i
 At the first prompt check `01_reference.png` (type `front` to draw it again
 with a new seed), then the left / back / right views as for Mara.
 
-Design notes: kept deliberately 3D-friendly — close-fitting jumpsuit, no
-coat or loose fabric, nothing held, no backpack — because image-to-3D and
-the rig handle those badly. Edit `prompt.txt` freely (vim), then redo with
+Brief: Brad's prompt (drafted with GPT), with its "no ..." items moved into the
+negative prompt and a few 3D-friendly negatives added (no coat, loose fabric,
+backpack, helmet). Edit `prompt.txt` freely (vim), then redo with
 `--redo-view front`.

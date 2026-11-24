@@ -1,19 +1,21 @@
-Full-body character reference for a stylized-realistic science-fiction video game NPC, Ilya Quill, an adult human male ship outfitter who sells and installs lasers, shields and ship fittings at a frontier starbase.
+Full-body character reference for a stylized-realistic science-fiction video game NPC named Ilya Quill, a middle-aged human male spacecraft outfitting specialist working aboard an industrial starbase.
 
-Ilya is in his mid-forties, lean and wiry, with a realistic adult male build, narrow shoulders, long arms and capable hands. His proportions are anatomically accurate, neither heroic nor cartoonish.
+He has a sturdy, broad-shouldered physique, realistic adult male anatomy, thick forearms, short greying dark hair, a neatly trimmed beard, and a weathered, distinctive face.
 
-He has a long, angular, weathered face, sharp cheekbones, close-cropped dark hair greying at the temples, a short neatly trimmed salt-and-pepper beard, and alert grey eyes. His expression is shrewd and quietly amused, the faint knowing half-smile of a dealer who already knows what you can afford.
+His expression is reserved, calculating and quietly confident, reflecting decades of experience installing and maintaining spacecraft equipment.
 
-He wears a close-fitting, practical spacer's work jumpsuit in muted olive and sand-khaki with darker graphite-gray panels on the shoulders, sides and shins, in the spirit of late-1980s science-fiction space-trading games: utilitarian, slightly worn, well cared for. The jumpsuit follows his body closely, with a straight front zip, reinforced seams, a small rectangular olive shoulder patch on each upper arm, and restrained brass-colored metal details. The chest is unobstructed, showing only the jumpsuit fabric and its seams.
+He wears a mustard-yellow and charcoal-gray industrial engineering jumpsuit with reinforced fabric panels, practical stitching, restrained metallic fasteners and subtle signs of wear.
 
-A narrow dark-brown belt with a plain rectangular buckle sits at his waist. He wears fitted dark-gray work gloves and sturdy dark-brown low boots.
+A compact utility belt holds small equipment pouches around his waist. He wears fitted dark work gloves and heavy industrial boots.
 
-He stands upright in a relaxed, symmetrical T-pose, both arms straight out to the sides at shoulder height, hands open with fingers together and fully visible, legs slightly apart, and feet completely visible.
+He stands in a symmetrical A-pose, arms separated from the torso, elbows straight, hands open with naturally separated fingers, legs slightly apart, and feet facing forward.
 
-Straight-on frontal character reference, entire figure visible from the top of his head to the soles of his boots, with generous margins on every side. Neutral full-body studio composition with minimal perspective distortion, soft even lighting, and a clean light-gray seamless background.
+Straight-on orthographic frontal view. Entire character visible from head to boot soles, generous margins, uniform soft lighting and a seamless light-gray background.
 
-High-quality stylized-realistic 3D game character concept art, accurate human anatomy, clean clothing contours, coherent proportions and crisp costume details. Suitable for image-to-3D mesh reconstruction.
+Accurate anatomy, coherent body proportions, clearly defined clothing contours and detailed facial features. Suitable for multi-view 3D reconstruction and humanoid skeletal animation.
+
+A single character with an unobstructed silhouette and empty hands.
 
 **Negative prompt:**
 
-No coat, no jacket, no open vest, no cape, no loose or flowing fabric, no hood, no hat, no helmet, no goggles, no backpack, no holster, no weapons, no handheld tools, no chest straps, no necklaces, no badges on the chest, no bulky armor, no exaggerated anatomy, no extra limbs, no extra fingers, no cropped feet, no additional characters, no kiosk, no scenery, no watermark, no labels, no text.
+No handheld equipment, no tools in hand, no weapons, no holster, no backpack, no coat, no jacket, no open vest, no cape, no loose or flowing fabric, no hood, no hat, no helmet, no goggles, no chest straps, no necklaces, no bulky armor, no exaggerated anatomy, no extra limbs, no extra fingers, no cropped feet, no additional characters, no scenery, no text, no labels, no watermark.
