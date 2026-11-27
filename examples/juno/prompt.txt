@@ -1,0 +1,21 @@
+Full-body character reference for a stylized-realistic science-fiction video game NPC named Juno Rook, an adult human female mission liaison and investigator working in the mission office of an orbital starbase.
+
+She has a composed, upright posture with realistic adult female anatomy, a lean and moderately athletic build, natural bust definition, a gently defined waist, and proportionate hips. Her proportions are anatomically accurate, neither exaggerated nor cartoonish.
+
+She has an angular, distinctive face with attentive dark eyes, dark brown hair pulled back into a low, neat bun, and a level, unhurried expression that is patient and quietly assessing, like someone who waits for evidence before answering.
+
+She wears a fitted slate-blue and charcoal-gray liaison uniform: a closed high-collar tunic that follows her natural body shape, with reinforced shoulder panels, clean topstitched seams, a single restrained metallic clasp at the collar, and plain matching trousers. The chest area is completely unobstructed, showing only the tunic fabric and its seams.
+
+A narrow utility belt sits at her waist, holding two flat closed record pouches exclusively at the waist. She wears fitted dark gloves and low dark service boots. Her uniform is neat and well pressed, with subtle signs of long service but no insignia clutter.
+
+She stands upright in a relaxed, symmetrical A-pose, arms separated from the torso, elbows straight, hands open with naturally separated fingers, legs slightly apart, and feet facing forward and completely visible.
+
+Straight-on orthographic frontal view. Entire character visible from the top of her head to the soles of her boots, with generous margins on every side, minimal perspective distortion, uniform soft lighting, and a seamless light-gray background.
+
+Accurate anatomy, coherent body proportions, a clearly defined feminine silhouette, clean clothing contours, and detailed facial features. Suitable for multi-view 3D reconstruction and humanoid skeletal animation.
+
+A single character with an unobstructed silhouette and empty hands.
+
+**Negative prompt:**
+
+No datapad, no tablet, no clipboard, no folders, no handheld equipment, no tools in hand, no weapons, no holster, no backpack, no coat, no jacket, no open vest, no cape, no loose or flowing fabric, no skirt, no hood, no hat, no cap, no helmet, no goggles, no glasses, no chest straps, no cross-body straps, no lanyard, no chest badges, no necklaces, no epaulettes, no bulky armor, no long loose hair, no exaggerated anatomy, no masculine body proportions, no extra limbs, no extra fingers, no cropped feet, no additional characters, no desk, no scenery, no text, no labels, no watermark.
