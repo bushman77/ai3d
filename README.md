@@ -115,8 +115,13 @@ pipeline builds. SunRacer plays them over the idle at random intervals.
 ```bash
 # Download > FBX Binary, Without Skin, 30 fps, In Place
 cp ~/Downloads/Brushing\ Shoulder.fbx gestures/brush_shoulder.fbx
-python3 -m ai3d generate --name juno_v1 --prompt-file examples/juno/prompt.txt --resume
+bash make_character.sh --name juno_v1 --prompt-file examples/juno/prompt.txt --resume
 ```
+
+`--resume` re-runs only the rig stage: adding the gesture settings changes
+that stage's fingerprint, so the shape and texture work is reused rather than
+regenerated. Adding more clips later does not change the config, so use
+`--force` for that.
 
 Rotation is taken and translation is not, so a clip can never walk a station
 attendant off its spot. Bones the rig does not have are dropped, which means
