@@ -91,3 +91,7 @@ secrets/
 *~
 .DS_Store
 Thumbs.db
+
+# Mixamo gesture sources: used locally, not redistributed (see gestures/README.md)
+gestures/*.fbx
+gestures/*.FBX

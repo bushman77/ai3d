@@ -447,6 +447,16 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
                 "--stats", stats_dir / "rig.json"]
         if not cfg["rig"]["test_animation"]:
             args.append("--no-test-animation")
+        # Mixamo clips are optional: merged when the folder exists, skipped
+        # silently when it does not, so a checkout without them still rigs.
+        gestures = cfg["rig"].get("gestures_dir")
+        if gestures:
+            folder = Path(gestures).expanduser()
+            if not folder.is_absolute():
+                folder = Path(__file__).resolve().parent.parent / folder
+            if folder.is_dir():
+                args += ["--gestures", folder,
+                         "--gesture-step", cfg["rig"].get("gesture_step", 1)]
         cmd = blender_command(plan.blender, "rig.py", args)
         runner.run_cmd("rig", [game], [rigged], {"rig": cfg["rig"]}, cmd)
     if not wants("report"):

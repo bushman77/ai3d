@@ -84,7 +84,9 @@
     "_about": "Mixamo-compatible humanoid skeleton with Blender automatic (heat) weights. Bone names use the prefix so Mixamo animations retarget by name in Three.js.",
     "enabled": true,
     "bone_prefix": "mixamorig:",
-    "test_animation": true
+    "test_animation": true,
+    "gestures_dir": "gestures",
+    "gesture_step": 1
   },
   "report": {
     "previews": true,

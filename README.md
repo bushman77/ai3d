@@ -17,7 +17,7 @@ reference → views → cutout → shape → paint-mesh → paint → texture-vi
 | paint | Paint3D texturing | `05_painted.glb` |
 | texture-views | Qwen-Image-Edit redraws each view at 1024 px (same content, sharper) | `01_hd_*.png`, `02_hd_cutout_*.png` |
 | game | Blender: watertight **quad** mesh, baked colour / normal / roughness, colour **painted straight from the sharp views** | `06_game.glb` |
-| rig | Blender: **Mixamo-named skeleton**, automatic weights, test animation | `07_rigged.glb`, `07_rigged.blend` |
+| rig | Blender: **Mixamo-named skeleton**, automatic weights, test animation, any Mixamo clips in `gestures/` | `07_rigged.glb`, `07_rigged.blend` |
 | report | measurements, silhouette match, preview renders | `report.json`, `index.html`, `previews/` |
 
 Everything for a run lands in `outputs/<name>/`. Inputs are never modified.
@@ -104,6 +104,24 @@ python3 -m ai3d generate --name mara_v1 \
   --image approved_references/mara_body_front_approved.png \
   --view-back my_fixed_back.png --resume
 ```
+
+## Gestures
+
+The generated idle only breathes and looks around. For real movement, drop
+Mixamo `.fbx` clips into `gestures/` and the rig stage merges each one as an
+extra clip named after the file, retargeted by bone name onto the rig this
+pipeline builds. SunRacer plays them over the idle at random intervals.
+
+```bash
+# Download > FBX Binary, Without Skin, 30 fps, In Place
+cp ~/Downloads/Brushing\ Shoulder.fbx gestures/brush_shoulder.fbx
+python3 -m ai3d generate --name juno_v1 --prompt-file examples/juno/prompt.txt --resume
+```
+
+Rotation is taken and translation is not, so a clip can never walk a station
+attendant off its spot. Bones the rig does not have are dropped, which means
+Mixamo's finger curves are skipped: this skeleton ends at the hand. With no
+clips the stage says so and carries on. See `gestures/README.md`.
 
 ## Settings
 

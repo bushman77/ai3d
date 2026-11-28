@@ -37,6 +37,11 @@ def parse():
     p.add_argument("--input", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--prefix", default="mixamorig:")
+    p.add_argument("--gestures", type=Path, default=None,
+                   help="Folder of Mixamo .fbx clips to merge as extra actions "
+                        "(file name becomes the clip name)")
+    p.add_argument("--gesture-step", type=int, default=1,
+                   help="Keep every Nth source frame when baking a gesture")
     p.add_argument("--no-test-animation", action="store_true")
     p.add_argument("--image-format", choices=("JPEG", "AUTO"), default="JPEG")
     p.add_argument("--jpeg-quality", type=int, default=90)
@@ -526,6 +531,124 @@ def world_rotation_to_local(pbone, axis, degrees):
     return (rest.inverted() @ q @ rest).to_quaternion()
 
 
+def bone_key(name):
+    """Bone names ignoring ":" and case, so "mixamorig:LeftArm" matches
+    "mixamorigLeftArm" or "LeftArm" from whatever wrote the clip."""
+    return "".join(c for c in str(name) if c.isalnum()).lower()
+
+
+def quat_world_to_local(pbone, q):
+    """A rotation given in armature space, expressed in the bone's own space."""
+    rest = pbone.bone.matrix_local.to_3x3()
+    return (rest.inverted() @ q.to_matrix() @ rest).to_quaternion()
+
+
+def remove_objects(objects):
+    """Drop imported objects and any datablock they leave behind. Removing an
+    object can free its data with it, so every later touch is guarded."""
+    leftovers = [(obj.type, getattr(obj, "data", None)) for obj in objects]
+    for obj in objects:
+        try:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        except ReferenceError:
+            pass
+    for kind, data in leftovers:
+        collection = {"ARMATURE": bpy.data.armatures, "MESH": bpy.data.meshes}.get(kind)
+        if data is None or collection is None:
+            continue
+        try:
+            if data.users == 0:
+                collection.remove(data)
+        except (ReferenceError, RuntimeError):
+            pass
+
+
+def add_gesture_actions(arm, folder, step=1):
+    """Merge every .fbx under folder onto arm as one extra action each.
+
+    Mixamo exports carry the bone names this rig is built with, so the
+    transfer is by name. Three things make it a retarget rather than a copy:
+
+    * Only rotation is taken. Mixamo authors at its own proportions, and
+      copied translation would slide a station attendant off its spot or sink
+      it through the floor. Attendants stand where the server puts them.
+    * Rest poses differ between the two skeletons, so a bone's rotation is
+      read as its difference from its own rest in armature space, carried
+      through world space (the two armature objects may not share an
+      orientation) and re-expressed in the target bone's space.
+    * Bones this skeleton does not have are skipped, which is how Mixamo's
+      finger curves are dropped: this rig ends at the hand.
+
+    The clip is baked frame by frame with keyframe_insert, as the idle is,
+    rather than by copying F-curves, so it does not depend on the action API
+    of any one Blender version. The file name becomes the clip name.
+    """
+    folder = Path(folder).expanduser()
+    if not folder.is_dir():
+        print(f"[rig] gestures: no folder at {folder}", flush=True)
+        return []
+    files = sorted(folder.glob("*.fbx")) + sorted(folder.glob("*.FBX"))
+    if not files:
+        print(f"[rig] gestures: no .fbx files in {folder}", flush=True)
+        return []
+    targets = {bone_key(b.name): b for b in arm.pose.bones}
+    made = []
+    for path in files:
+        before = set(bpy.data.objects)
+        try:
+            bpy.ops.import_scene.fbx(filepath=str(path), ignore_leaf_bones=True,
+                                     automatic_bone_orientation=True)
+        except RuntimeError as err:
+            print(f"[rig] gesture {path.name}: import failed ({err})", flush=True)
+            continue
+        imported = [o for o in bpy.data.objects if o not in before]
+        src = next((o for o in imported if o.type == "ARMATURE"), None)
+        source_action = src.animation_data.action if src and src.animation_data else None
+        if source_action is None:
+            print(f"[rig] gesture {path.name}: no animated armature", flush=True)
+            remove_objects(imported)
+            continue
+        pairs = [(sb, targets[bone_key(sb.name)]) for sb in src.pose.bones
+                 if bone_key(sb.name) in targets]
+        if not pairs:
+            print(f"[rig] gesture {path.name}: no bone names in common", flush=True)
+            remove_objects(imported)
+            continue
+        first, last = (int(round(v)) for v in source_action.frame_range)
+        name = path.stem
+        dest = bpy.data.actions.new(name)
+        dest.use_fake_user = True
+        select_only([arm])
+        bpy.ops.object.mode_set(mode="POSE")
+        arm.animation_data_create()
+        kept = arm.animation_data.action
+        arm.animation_data.action = dest
+        src_world = src.matrix_world.to_3x3()
+        dst_world = arm.matrix_world.to_3x3()
+        into_target = dst_world.inverted()
+        out = 1
+        for frame in range(first, last + 1, max(1, int(step))):
+            bpy.context.scene.frame_set(frame)
+            for sb, tb in pairs:
+                local = sb.matrix.to_3x3() @ sb.bone.matrix_local.to_3x3().inverted()
+                in_world = src_world @ local @ src_world.inverted()
+                in_target = into_target @ in_world @ dst_world
+                tb.rotation_mode = "QUATERNION"
+                tb.rotation_quaternion = quat_world_to_local(tb, in_target.to_quaternion())
+                tb.keyframe_insert("rotation_quaternion", frame=out)
+            out += 1
+        for bone in arm.pose.bones:
+            bone.rotation_quaternion = Quaternion()
+        bpy.ops.object.mode_set(mode="OBJECT")
+        arm.animation_data.action = kept
+        remove_objects(imported)
+        if source_action.users == 0:
+            bpy.data.actions.remove(source_action)
+        made.append(name)
+        print(f"[rig] gesture {name}: {out - 1} frames, {len(pairs)} bones", flush=True)
+    return made
+
+
 def hang_angle(lm, side):
     """Degrees out from vertical so the hanging hand clears the hips."""
     H = lm["_height"]
@@ -704,9 +827,11 @@ def main():
     actions = [add_idle_action(arm, a.prefix, lm)]
     if not a.no_test_animation:
         actions.append(add_test_action(arm, a.prefix))
+    action = actions[-1]
+    gestures = add_gesture_actions(arm, a.gestures, a.gesture_step) if a.gestures else []
+    actions += gestures
     for act in bpy.data.actions:
         act.use_fake_user = True
-    action = actions[-1]
 
     export_glb(a.output, [body, arm], animations=True, apply_modifiers=False,
                image_format=a.image_format, jpeg_quality=a.jpeg_quality)
@@ -735,6 +860,7 @@ def main():
         "deform_bones_without_vertices": unused,
         "test_action": action if not a.no_test_animation else None,
         "actions": actions,
+        "gestures": gestures,
         "idle_arm_angle_deg": round(hang_angle(lm, "Left"), 1),
         "height_m": round(H, 4),
         "blend": str(blend),
