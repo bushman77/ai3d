@@ -115,13 +115,12 @@ pipeline builds. SunRacer plays them over the idle at random intervals.
 ```bash
 # Download > FBX Binary, Without Skin, 30 fps, In Place
 cp ~/Downloads/Brushing\ Shoulder.fbx gestures/brush_shoulder.fbx
-bash make_character.sh --name juno_v1 --prompt-file examples/juno/prompt.txt --resume
+bash make_character.sh --name juno_v1 --prompt-file examples/juno/prompt.txt
 ```
 
-`--resume` re-runs only the rig stage: adding the gesture settings changes
-that stage's fingerprint, so the shape and texture work is reused rather than
-regenerated. Adding more clips later does not change the config, so use
-`--force` for that.
+Every run resumes, so this re-runs only the rig stage and reuses the cached
+shape and texture work. The clips are stage inputs, so adding, replacing or
+removing one re-runs the rig on its own; no flag is needed.
 
 Rotation is taken and translation is not, so a clip can never walk a station
 attendant off its spot. Bones the rig does not have are dropped, which means

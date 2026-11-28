@@ -449,16 +449,21 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
             args.append("--no-test-animation")
         # Mixamo clips are optional: merged when the folder exists, skipped
         # silently when it does not, so a checkout without them still rigs.
+        gesture_files: list[Path] = []
         gestures = cfg["rig"].get("gestures_dir")
         if gestures:
             folder = Path(gestures).expanduser()
             if not folder.is_absolute():
                 folder = Path(__file__).resolve().parent.parent / folder
             if folder.is_dir():
+                gesture_files = sorted(folder.glob("*.fbx")) + sorted(folder.glob("*.FBX"))
                 args += ["--gestures", folder,
                          "--gesture-step", cfg["rig"].get("gesture_step", 1)]
         cmd = blender_command(plan.blender, "rig.py", args)
-        runner.run_cmd("rig", [game], [rigged], {"rig": cfg["rig"]}, cmd)
+        # The clips are stage inputs, not just settings: adding, replacing or
+        # removing one has to re-run the rig, and the config alone would not
+        # change. Without this a new gesture is silently ignored on resume.
+        runner.run_cmd("rig", [game, *gesture_files], [rigged], {"rig": cfg["rig"]}, cmd)
     if not wants("report"):
         return finish(a, home, f"Rigged: {rigged}")
 
