@@ -6,10 +6,10 @@ No image exists for her, so the front picture is drawn from `prompt.txt`.
 ```bash
 cd ~/ai3d
 bash make_character.sh --name juno_v1 --prompt-file examples/juno/prompt.txt \
-  --install-as juno_rook --sunracer ~/darkorbit_umbrella
+  --install-as juno_rook
 ```
 
-Drop `--sunracer` if your SunRacer checkout is at the default `~/SunRacer`.
+The checkout is at `~/SunRacer`, which is the default, so no `--sunracer`.
 
 At the first prompt check `01_reference.png` (type `front` to draw it again
 with a new seed), then the left / back / right views as for Mara.
