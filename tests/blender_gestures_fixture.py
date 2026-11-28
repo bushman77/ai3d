@@ -118,7 +118,11 @@ def main():
     made = R.add_gesture_actions(target, folder)
 
     report = {"made": made, "bones": [], "rotation_only": True,
-              "turn_degrees": TURN_DEGREES}
+              "turn_degrees": TURN_DEGREES,
+              # Anything the FBX import left behind would be exported as a
+              # clip targeting the source skeleton, so the merge must clean up
+              # after itself. Only the rig's own actions may remain.
+              "actions_left": sorted(a.name for a in bpy.data.actions)}
     if made:
         merged = bpy.data.actions[made[0]]
         paths = [fc.data_path for fc in action_fcurves(merged)]

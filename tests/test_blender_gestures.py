@@ -54,6 +54,13 @@ class GestureMergeTests(unittest.TestCase):
     def test_the_clip_starts_from_rest(self):
         self.assertLess(self.report["rest_degrees"], 1.0)
 
+    def test_the_import_leaves_no_stray_actions(self):
+        # Blender's FBX importer sets a fake user on imported actions, so a
+        # refcount check never removes them and they reach the exported GLB
+        # as clips driving bones this skeleton does not have.
+        self.assertEqual(self.report["actions_left"], ["brush_shoulder"],
+                         "the imported clip's own action was left behind")
+
     def test_keys_never_flip_hemisphere(self):
         # q and -q are the same rotation, but a sign flip between keys makes
         # Blender interpolate the long way round, which spikes the mesh.

@@ -595,6 +595,7 @@ def add_gesture_actions(arm, folder, step=1):
     made = []
     for path in files:
         before = set(bpy.data.objects)
+        before_actions = set(bpy.data.actions)
         try:
             bpy.ops.import_scene.fbx(filepath=str(path), ignore_leaf_bones=True,
                                      automatic_bone_orientation=True)
@@ -654,8 +655,19 @@ def add_gesture_actions(arm, folder, step=1):
         bpy.ops.object.mode_set(mode="OBJECT")
         arm.animation_data.action = kept
         remove_objects(imported)
-        if source_action.users == 0:
-            bpy.data.actions.remove(source_action)
+        # Everything the import brought in goes, not just the action we read.
+        # Checking users is not enough: Blender's FBX importer sets a fake
+        # user on imported actions, so the count never reaches zero and the
+        # raw "Armature|mixamo.com|Layer0" clips end up in the exported GLB,
+        # where they target a skeleton this rig does not have.
+        for stray in list(bpy.data.actions):
+            if stray is dest or stray in before_actions:
+                continue
+            stray.use_fake_user = False
+            try:
+                bpy.data.actions.remove(stray)
+            except (ReferenceError, RuntimeError):
+                pass
         made.append(name)
         print(f"[rig] gesture {name}: {out - 1} frames, {len(pairs)} bones", flush=True)
     return made
