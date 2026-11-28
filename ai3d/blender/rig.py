@@ -626,6 +626,13 @@ def add_gesture_actions(arm, folder, step=1):
         src_world = src.matrix_world.to_3x3()
         dst_world = arm.matrix_world.to_3x3()
         into_target = dst_world.inverted()
+        # q and -q are the same rotation, but Matrix.to_quaternion() returns
+        # w >= 0, so a bone passing through 180 degrees flips sign between one
+        # frame and the next. Blender then interpolates the long way round and
+        # the bone spins almost a full turn in a single frame, which tears the
+        # mesh into a spike. Keep every key on the same hemisphere as the one
+        # before it.
+        previous: dict[str, Quaternion] = {}
         out = 1
         for frame in range(first, last + 1, max(1, int(step))):
             bpy.context.scene.frame_set(frame)
@@ -633,8 +640,13 @@ def add_gesture_actions(arm, folder, step=1):
                 local = sb.matrix.to_3x3() @ sb.bone.matrix_local.to_3x3().inverted()
                 in_world = src_world @ local @ src_world.inverted()
                 in_target = into_target @ in_world @ dst_world
+                value = quat_world_to_local(tb, in_target.to_quaternion())
+                last_value = previous.get(tb.name)
+                if last_value is not None:
+                    value.make_compatible(last_value)
+                previous[tb.name] = value.copy()
                 tb.rotation_mode = "QUATERNION"
-                tb.rotation_quaternion = quat_world_to_local(tb, in_target.to_quaternion())
+                tb.rotation_quaternion = value
                 tb.keyframe_insert("rotation_quaternion", frame=out)
             out += 1
         for bone in arm.pose.bones:

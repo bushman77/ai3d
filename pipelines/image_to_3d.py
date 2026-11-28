@@ -37,7 +37,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ai3d.blender.commands import blender_command  # noqa: E402
+from ai3d.blender.commands import SCRIPTS as BLENDER_SCRIPTS, blender_command  # noqa: E402
 from ai3d.common import ensure_file, resolve  # noqa: E402
 from ai3d.config import load_profile, repo_path  # noqa: E402
 from ai3d.export.validation import readable_glb  # noqa: E402
@@ -463,7 +463,10 @@ def main(argv: list[str] | None = None, *, prog: str | None = None):
         # The clips are stage inputs, not just settings: adding, replacing or
         # removing one has to re-run the rig, and the config alone would not
         # change. Without this a new gesture is silently ignored on resume.
-        runner.run_cmd("rig", [game, *gesture_files], [rigged], {"rig": cfg["rig"]}, cmd)
+        # The script counts too: a fix to rig.py changes what this stage
+        # produces, and resuming past it would keep serving the old GLB.
+        runner.run_cmd("rig", [game, *gesture_files, BLENDER_SCRIPTS / "rig.py"],
+                       [rigged], {"rig": cfg["rig"]}, cmd)
     if not wants("report"):
         return finish(a, home, f"Rigged: {rigged}")
 

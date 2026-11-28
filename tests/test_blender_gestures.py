@@ -54,6 +54,18 @@ class GestureMergeTests(unittest.TestCase):
     def test_the_clip_starts_from_rest(self):
         self.assertLess(self.report["rest_degrees"], 1.0)
 
+    def test_keys_never_flip_hemisphere(self):
+        # q and -q are the same rotation, but a sign flip between keys makes
+        # Blender interpolate the long way round, which spikes the mesh.
+        self.assertGreater(self.report["baked_keys"], 1)
+        self.assertGreaterEqual(self.report["worst_dot"], 0.0,
+                                "a baked key flipped to the opposite hemisphere")
+
+    def test_no_single_frame_spins_the_bone(self):
+        # The source sweeps smoothly through a full turn, so no one frame
+        # should carry a large jump however far the total rotation goes.
+        self.assertLess(self.report["worst_step_degrees"], 90.0)
+
 
 if __name__ == "__main__":
     unittest.main()

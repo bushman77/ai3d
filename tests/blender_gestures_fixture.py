@@ -94,7 +94,19 @@ def main():
     source.animation_data.action = action
     bone = source.pose.bones["mixamorig:LeftArm"]
     bone.rotation_mode = "QUATERNION"
-    for frame, value in ((1, Quaternion()), (10, R.quat_world_to_local(bone, turn))):
+    # Sweep well past 180 degrees. Matrix.to_quaternion() returns w >= 0, so a
+    # naive bake flips sign as the rotation crosses the half turn and the curve
+    # then interpolates the long way round, spiking the mesh for a frame.
+    sweep = [(1, 0.0), (10, TURN_DEGREES), (20, 170.0), (30, 190.0), (40, 300.0)]
+    written = None
+    for frame, degrees in sweep:
+        spin = Quaternion(Vector((0, 0, 1)), math.radians(degrees))
+        value = R.quat_world_to_local(bone, spin)
+        # Author the source cleanly, the way a real exporter would, so the test
+        # measures what the bake introduces rather than what the source had.
+        if written is not None:
+            value.make_compatible(written)
+        written = value.copy()
         bone.rotation_quaternion = value
         bone.keyframe_insert("rotation_quaternion", frame=frame)
     bpy.ops.object.mode_set(mode="OBJECT")
@@ -115,13 +127,29 @@ def main():
         report["rotation_only"] = all(p.endswith(".rotation_quaternion") for p in paths)
         target.animation_data_create()
         target.animation_data.action = merged
-        bpy.context.scene.frame_set(int(round(merged.frame_range[1])))
+        # Source frame 10 holds the known TURN_DEGREES key, and the bake maps
+        # source frames onto output frames one for one.
+        bpy.context.scene.frame_set(10)
         posed = world_delta(target.pose.bones["mixamorig:LeftArm"])
         report["reached_degrees"] = math.degrees(posed.angle)
         report["axis_error_degrees"] = math.degrees(posed.rotation_difference(turn).angle)
         bpy.context.scene.frame_set(1)
         report["rest_degrees"] = math.degrees(
             world_delta(target.pose.bones["mixamorig:LeftArm"]).angle)
+        # Walk the baked curve itself: every key must sit on the same
+        # hemisphere as the one before it, and no single frame may jump far.
+        curves = {fc.array_index: fc for fc in action_fcurves(merged)
+                  if fc.data_path == 'pose.bones["mixamorig:LeftArm"].rotation_quaternion'}
+        keys = len(curves[0].keyframe_points) if curves else 0
+        worst_dot, worst_step = 1.0, 0.0
+        for index in range(1, keys):
+            a = Quaternion([curves[i].keyframe_points[index - 1].co[1] for i in range(4)])
+            b = Quaternion([curves[i].keyframe_points[index].co[1] for i in range(4)])
+            worst_dot = min(worst_dot, a.dot(b))
+            worst_step = max(worst_step, math.degrees(a.rotation_difference(b).angle))
+        report["baked_keys"] = keys
+        report["worst_dot"] = worst_dot
+        report["worst_step_degrees"] = worst_step
     args.out.write_text(json.dumps(report, indent=2))
 
 
